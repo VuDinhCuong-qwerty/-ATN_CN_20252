@@ -1,0 +1,43 @@
+services:
+  iam-auth-service:
+    image: iam-auth-service:latest
+    container_name: iam-auth-service
+    restart: unless-stopped
+    ports:
+      - "8888:8888"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - AUTH_ISSUER=http://localhost:8888/ms-internal-iam/auth
+      - AUTH_BASE_URL=http://localhost:8888
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - iam-internal-network
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8888/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+# =============================================================================
+# CHƯA CÓ CỤM — khởi động Redis + service cùng lúc
+# =============================================================================
+# docker compose \
+#   -f docker-compose.yml \
+#   -f docker-compose.redis.yml \
+#   -f docker-compose.iam-auth-service.yml \
+#   up -d
+#
+# =============================================================================
+# ĐÃ CÓ CỤM — chỉ thêm service này vào cluster đang chạy
+# (redis đang chạy rồi sẽ không bị restart)
+# =============================================================================
+# docker compose \
+#   -f docker-compose.yml \
+#   -f docker-compose.redis.yml \
+#   -f docker-compose.iam-auth-service.yml \
+#   up -d

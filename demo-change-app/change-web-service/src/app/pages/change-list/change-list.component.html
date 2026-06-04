@@ -1,0 +1,140 @@
+<div class="page-container">
+
+  <!-- Page header -->
+  <div class="page-hdr">
+    <div class="page-hdr-left">
+      <div class="page-icon"><i class="bi bi-list-task"></i></div>
+      <div>
+        <h1 class="page-title">Danh sách Change Request</h1>
+        <p class="page-sub">Quản lý quy trình change &amp; go-live hệ thống IT</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filter bar -->
+  <div class="filter-bar card">
+    <div class="filter-row">
+      <div class="filter-group">
+        <label class="filter-lbl">Trạng thái</label>
+        <select class="form-control" [(ngModel)]="filterStatus" style="min-width:150px">
+          <option value="">Tất cả</option>
+          <option value="DRAFT">Bản nháp</option>
+          <option value="PENDING">Chờ duyệt</option>
+          <option value="APPROVED">Đã duyệt</option>
+          <option value="EXECUTING">Đang golive</option>
+          <option value="SUCCESS">Thành công</option>
+          <option value="FAIL">Thất bại</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label class="filter-lbl">Mã nhân viên tạo</label>
+        <input class="form-control" type="text" [(ngModel)]="filterCreatedByCode"
+               placeholder="VD: EMP001" (keyup.enter)="search()" style="min-width:160px">
+      </div>
+      <div class="filter-group">
+        <label class="filter-lbl">Từ ngày</label>
+        <input class="form-control" type="date" [(ngModel)]="filterFromDate" style="min-width:145px">
+      </div>
+      <div class="filter-group">
+        <label class="filter-lbl">Đến ngày</label>
+        <input class="form-control" type="date" [(ngModel)]="filterToDate" style="min-width:145px">
+      </div>
+      <div class="filter-actions">
+        <button class="btn btn-primary" (click)="search()">
+          <i class="bi bi-search"></i> Tìm kiếm
+        </button>
+        <button class="btn btn-ghost btn-sm" (click)="reset()">
+          <i class="bi bi-x-circle"></i> Xóa lọc
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Table card -->
+  <div class="card table-card">
+    @if (loading) {
+      <div class="loading-state">
+        <div class="spinner"></div>
+        <span>Đang tải dữ liệu...</span>
+      </div>
+    } @else if (error) {
+      <div style="padding:20px">
+        <div class="alert alert-error"><i class="bi bi-exclamation-triangle-fill"></i>{{ error }}</div>
+      </div>
+    } @else if (changes.length === 0) {
+      <div class="empty-state">
+        <i class="bi bi-inbox"></i>
+        <p>Chưa có change request nào</p>
+      </div>
+    } @else {
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th style="width:90px">Mã</th>
+            <th>Tên Change</th>
+            <th style="width:130px">Trạng thái</th>
+            <th style="width:150px">Go-Live</th>
+            <th style="width:160px">Người tạo</th>
+            <th style="width:140px">Ngày tạo</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (cr of changes; track cr.id) {
+            <tr class="clickable" [routerLink]="['/changes', cr.id]">
+              <td><span class="chg-id">{{ shortId(cr.changeId) }}</span></td>
+              <td><span class="chg-name">{{ cr.changeName }}</span></td>
+              <td>
+                <span class="badge-status badge-{{ cr.status }}">
+                  {{ STATUS_LABELS[cr.status] || cr.status }}
+                </span>
+              </td>
+              <td class="txt-muted">{{ fmtDateShort(cr.goliveAt) }}</td>
+              <td>
+                <span>{{ cr.createdBy || '—' }}</span>
+                @if (cr.createdByCode) {
+                  <span class="emp-code">{{ cr.createdByCode }}</span>
+                }
+              </td>
+              <td class="txt-muted">{{ fmtDate(cr.createdAt) }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+
+      <!-- Pagination -->
+      @if (totalPage > 1) {
+        <div class="pagination-bar">
+          <span class="pg-info">
+            Trang {{ currentPage + 1 }} / {{ totalPage }}
+            &nbsp;·&nbsp; {{ totalElement }} bản ghi
+          </span>
+          <div class="pg-controls">
+            <button class="btn btn-ghost btn-sm" (click)="prevPage()" [disabled]="currentPage === 0">
+              <i class="bi bi-chevron-left"></i>
+            </button>
+            @for (p of pages; track p) {
+              @if (p >= currentPage - 2 && p <= currentPage + 2) {
+                <button class="btn btn-sm"
+                        [class.btn-primary]="p === currentPage"
+                        [class.btn-ghost]="p !== currentPage"
+                        (click)="load(p)">
+                  {{ p + 1 }}
+                </button>
+              }
+            }
+            <button class="btn btn-ghost btn-sm" (click)="nextPage()" [disabled]="currentPage >= totalPage - 1">
+              <i class="bi bi-chevron-right"></i>
+            </button>
+          </div>
+        </div>
+      }
+    }
+  </div>
+
+</div>
+
+@if (perm.has('create')) {
+  <a class="fab" [routerLink]="['/changes/new']" title="Tạo change mới">
+    <i class="bi bi-plus-lg"></i>
+  </a>
+}

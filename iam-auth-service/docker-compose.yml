@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  iam-auth-service:
+    build: .
+    container_name: iam-auth-service
+    ports:
+      - "8080:8080"
+    environment:
+      DB_USERNAME: iam
+      DB_PASSWORD: iam123
+      REDIS_HOST: iam-redis
+      REDIS_PASSWORD: iam123
+      KAFKA_SERVERS: iam-kafka:9092
+      JWT_SECRET: your-secret-key-must-be-at-least-32-characters
+      JWT_ACCESS_EXPIRY: 900
+      JWT_REFRESH_EXPIRY: 86400
+    networks:
+      - iam-network
+
+networks:
+  iam-network:
+    external: true

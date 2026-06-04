@@ -1,0 +1,16 @@
+/* Shared modal/fab/alert/table classes are in styles.css */
+
+/* Dropdown in table cell (three-dot pattern) */
+.action-cell { position: relative; }
+.action-dropdown {
+  position: absolute;
+  right: 8px;
+  top: 100%;
+  z-index: 2000;
+  background: #fff;
+  border: 1px solid #D5E3F5;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 59, 142, 0.15);
+  min-width: 160px;
+  overflow: hidden;
+}

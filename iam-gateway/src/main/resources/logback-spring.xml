@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+  <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+    <encoder>
+      <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+    </encoder>
+  </appender>
+
+  <appender name="FLUENT_ASYNC" class="ch.qos.logback.classic.AsyncAppender">
+    <queueSize>512</queueSize>
+    <discardingThreshold>0</discardingThreshold>
+    <neverBlock>true</neverBlock>
+    <appender-ref ref="FLUENT"/>
+  </appender>
+
+  <appender name="FLUENT" class="net.logstash.logback.appender.LogstashTcpSocketAppender">
+    <destination>localhost:5044</destination>
+    <reconnectionDelay>10 seconds</reconnectionDelay>
+    <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+      <customFields>{"service": "iam-gateway"}</customFields>
+    </encoder>
+  </appender>
+
+  <root level="INFO">
+    <appender-ref ref="CONSOLE"/>
+    <appender-ref ref="FLUENT_ASYNC"/>
+  </root>
+
+</configuration>

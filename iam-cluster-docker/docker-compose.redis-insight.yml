@@ -1,0 +1,14 @@
+services:
+  redis-insight:
+    image: redis/redisinsight:latest
+    container_name: redis-insight
+    restart: unless-stopped
+    ports:
+      - "5540:5540"
+    volumes:
+      - redis_insight_data:/data
+    networks:
+      - iam-internal-network
+    depends_on:
+      redis:
+        condition: service_healthy

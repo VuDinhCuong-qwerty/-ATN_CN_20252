@@ -1,0 +1,256 @@
+<nav aria-label="breadcrumb" class="mb-2">
+  <ol class="breadcrumb mb-0">
+    <li class="breadcrumb-item text-muted small">Quản lý Users</li>
+    <li class="breadcrumb-item small"><a class="text-decoration-none" routerLink="/users/permissions">Phân quyền</a></li>
+    <li class="breadcrumb-item active small fw-semibold">Tạo yêu cầu</li>
+  </ol>
+</nav>
+
+<div *ngIf="message" class="alert alert-{{ messageType }} alert-floating" role="alert">{{ message }}</div>
+
+<div class="page-header mb-4">
+  <h4 class="mb-0"><i class="bi bi-plus-circle me-2 text-primary"></i>Tạo yêu cầu phân quyền</h4>
+</div>
+
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+
+    <!-- Requester info (readonly, lấy từ JWT) -->
+    <div class="card mb-3">
+      <div class="card-header py-2 small fw-semibold text-muted">
+        <i class="bi bi-person-circle me-1"></i>Người yêu cầu (từ tài khoản của bạn)
+      </div>
+      <div class="card-body py-3">
+        <div class="row g-2">
+          <div class="col-md-6">
+            <span class="form-label small text-muted">Username</span>
+            <div class="fw-semibold">{{ perm.userInfo?.username ?? '—' }}</div>
+          </div>
+          <div class="col-md-6">
+            <span class="form-label small text-muted">Mã nhân viên</span>
+            <div class="fw-semibold">{{ perm.userInfo?.employeeCode ?? '—' }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Grantee (người được cấp quyền) -->
+    <div class="card mb-3">
+      <div class="card-header py-2 small fw-semibold text-muted">
+        <i class="bi bi-person-badge me-1"></i>Người được cấp quyền
+      </div>
+      <div class="card-body py-3">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label small fw-semibold">Username</label>
+            <div class="position-relative" (click)="$event.stopPropagation()">
+              <input class="form-control form-control-sm"
+                     [(ngModel)]="form.grantee"
+                     (ngModelChange)="onGranteeInput()"
+                     placeholder="Để trống = xin quyền cho chính mình..."
+                     autocomplete="off">
+              <div class="reviewer-dropdown" *ngIf="showGranteeDropdown">
+                <div *ngFor="let user of granteeSuggestions"
+                     class="reviewer-dropdown-item"
+                     (click)="selectGrantee(user, $event)">
+                  <div class="fw-semibold small">{{ user.username }}</div>
+                  <div class="reviewer-dropdown-meta">
+                    {{ user.employeeCode }}<span *ngIf="user.fullName"> · {{ user.fullName }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div *ngIf="selectedGrantee" class="mt-1 text-success small">
+              <i class="bi bi-check-circle-fill me-1"></i>{{ selectedGrantee.fullName ?? selectedGrantee.username }}
+            </div>
+            <div *ngIf="!selectedGrantee" class="mt-1 text-muted small">
+              <i class="bi bi-info-circle me-1"></i>Mặc định: xin quyền cho chính mình
+            </div>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label small fw-semibold">Mã nhân viên</label>
+            <input class="form-control form-control-sm"
+                   [(ngModel)]="form.granteeCode"
+                   [readonly]="!!selectedGrantee"
+                   [class.bg-light]="!!selectedGrantee"
+                   placeholder="Tự động điền khi chọn...">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Reviewer -->
+    <div class="card mb-3">
+      <div class="card-header py-2 small fw-semibold text-muted">
+        <i class="bi bi-person-check me-1"></i>Người duyệt (CAB)
+      </div>
+      <div class="card-body py-3">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label small fw-semibold">
+              Username người duyệt <span class="text-danger">*</span>
+            </label>
+            <div class="position-relative" (click)="$event.stopPropagation()">
+              <input class="form-control form-control-sm"
+                     [(ngModel)]="form.reviewer"
+                     (ngModelChange)="onReviewerInput()"
+                     placeholder="Nhập username CAB reviewer..."
+                     autocomplete="off">
+              <div class="reviewer-dropdown" *ngIf="showReviewerDropdown">
+                <div *ngFor="let user of reviewerSuggestions"
+                     class="reviewer-dropdown-item"
+                     (click)="selectReviewer(user, $event)">
+                  <div class="fw-semibold small">{{ user.username }}</div>
+                  <div class="reviewer-dropdown-meta">
+                    {{ user.employeeCode }}<span *ngIf="user.fullName"> · {{ user.fullName }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div *ngIf="selectedReviewer" class="mt-1 text-success small">
+              <i class="bi bi-check-circle-fill me-1"></i>{{ selectedReviewer.fullName ?? selectedReviewer.username }}
+            </div>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label small fw-semibold">
+              Mã nhân viên người duyệt <span class="text-danger">*</span>
+            </label>
+            <input class="form-control form-control-sm"
+                   [(ngModel)]="form.reviewerCode"
+                   [readonly]="!!selectedReviewer"
+                   [class.bg-light]="!!selectedReviewer"
+                   placeholder="Tự động điền khi chọn...">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Reason -->
+    <div class="card mb-3">
+      <div class="card-header py-2 small fw-semibold text-muted">
+        <i class="bi bi-chat-left-text me-1"></i>Lý do yêu cầu
+      </div>
+      <div class="card-body py-3">
+        <label class="form-label small fw-semibold">Lý do <span class="text-danger">*</span></label>
+        <textarea class="form-control form-control-sm" [(ngModel)]="form.reason"
+                  rows="3" maxlength="500"
+                  placeholder="Nhập lý do xin quyền..."></textarea>
+        <div class="text-end text-muted small mt-1">{{ form.reason.length }}/500</div>
+      </div>
+    </div>
+
+    <!-- Apps -->
+    <div class="card mb-3">
+      <div class="card-header py-2 d-flex align-items-center justify-content-between">
+        <span class="small fw-semibold text-muted"><i class="bi bi-window me-1"></i>Quyền ứng dụng</span>
+        <button class="btn btn-outline-primary btn-sm" (click)="addApp()">
+          <i class="bi bi-plus-lg me-1"></i>Thêm ứng dụng
+        </button>
+      </div>
+      <div class="card-body py-3">
+        <div *ngIf="appItems.length === 0" class="text-muted small text-center py-2">
+          Chưa có ứng dụng nào được thêm
+        </div>
+        <div *ngFor="let item of appItems; let i = index" class="d-flex align-items-center gap-2 mb-2">
+          <select class="form-select form-select-sm flex-grow-1" [(ngModel)]="item.appId">
+            <option value="">-- Chọn ứng dụng --</option>
+            <option *ngFor="let app of allApps" [value]="app.id">{{ app.name }} ({{ app.serviceCode ?? app.code }})</option>
+          </select>
+          <button class="btn btn-outline-danger btn-sm flex-shrink-0" (click)="removeApp(i)">
+            <i class="bi bi-trash"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Resources -->
+    <div class="card mb-4">
+      <div class="card-header py-2 d-flex align-items-center justify-content-between">
+        <span class="small fw-semibold text-muted"><i class="bi bi-boxes me-1"></i>Quyền tài nguyên</span>
+        <button class="btn btn-outline-success btn-sm" (click)="addResource()">
+          <i class="bi bi-plus-lg me-1"></i>Thêm tài nguyên
+        </button>
+      </div>
+      <div class="card-body py-3">
+        <div *ngIf="resourceItems.length === 0" class="text-muted small text-center py-2">
+          Chưa có tài nguyên nào được thêm
+        </div>
+        <div *ngFor="let item of resourceItems; let i = index" class="resource-row mb-3 p-3 border rounded">
+          <div class="row g-2 align-items-end">
+            <div class="col-md-4">
+              <label class="form-label small mb-1">Ứng dụng</label>
+              <select class="form-select form-select-sm" [(ngModel)]="item.appId"
+                      (ngModelChange)="onResourceAppChange(i)">
+                <option value="">-- Chọn ứng dụng --</option>
+                <option *ngFor="let app of allApps" [value]="app.id">{{ app.name }}</option>
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label small mb-1">Tài nguyên</label>
+              <div class="d-flex align-items-center gap-1">
+                <select class="form-select form-select-sm" [(ngModel)]="item.resourceId"
+                        [disabled]="!item.appId || item.loadingRes"
+                        (ngModelChange)="onResourceChange(i)">
+                  <option value="">-- Chọn tài nguyên --</option>
+                  <option *ngFor="let r of item.resOptions" [value]="r.id">{{ r.resourceName ?? r.resourceCode }}</option>
+                </select>
+                <span *ngIf="item.loadingRes" class="spinner-border spinner-border-sm text-secondary flex-shrink-0"></span>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label small mb-1">Actions</label>
+              <div class="action-multiselect"
+                   [class.disabled]="getAvailableActions(i).length === 0"
+                   (click)="toggleActionDropdown(i, $event)">
+                <ng-container *ngIf="getSelectedActions(i).length > 0; else crActPlaceholder">
+                  <span *ngFor="let act of getSelectedActions(i)" class="action-chip">
+                    {{ act }}
+                    <span class="action-chip-remove" (click)="removeAction(i, act, $event)">×</span>
+                  </span>
+                </ng-container>
+                <ng-template #crActPlaceholder>
+                  <span class="action-placeholder">
+                    {{ item.resourceId ? 'Chọn action...' : 'Chọn tài nguyên trước' }}
+                  </span>
+                </ng-template>
+                <span class="action-caret"><i class="bi bi-chevron-down"></i></span>
+
+                <div class="action-dropdown-list" *ngIf="item.showActionDropdown" (click)="$event.stopPropagation()">
+                  <div *ngFor="let act of getAvailableActions(i)"
+                       class="action-dropdown-item"
+                       [class.act-selected]="item.selectedActions[act]"
+                       (click)="toggleAction(i, act, $event)">
+                    <i class="bi" [class.bi-check-square-fill]="item.selectedActions[act]"
+                                  [class.bi-square]="!item.selectedActions[act]"></i>
+                    {{ act }}
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-1 d-flex justify-content-end">
+              <button class="btn btn-outline-danger btn-sm" (click)="removeResource(i)">
+                <i class="bi bi-trash"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Action buttons -->
+    <div class="d-flex gap-2 justify-content-end mb-4">
+      <button class="btn btn-outline-secondary" (click)="cancel()" [disabled]="loadingSave || loadingSend">
+        <i class="bi bi-arrow-left me-1"></i>Hủy
+      </button>
+      <button class="btn btn-outline-primary" (click)="submit('DRAFT')" [disabled]="loadingSave || loadingSend">
+        <span *ngIf="loadingSave" class="spinner-border spinner-border-sm me-1"></span>
+        <i *ngIf="!loadingSave" class="bi bi-save me-1"></i>Lưu nháp
+      </button>
+      <button class="btn btn-primary" (click)="submit('OFFICIAL')" [disabled]="loadingSave || loadingSend">
+        <span *ngIf="loadingSend" class="spinner-border spinner-border-sm me-1"></span>
+        <i *ngIf="!loadingSend" class="bi bi-send me-1"></i>Gửi yêu cầu
+      </button>
+    </div>
+
+  </div>
+</div>

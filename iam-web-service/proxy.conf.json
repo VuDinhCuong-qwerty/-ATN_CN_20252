@@ -1,0 +1,20 @@
+{
+  "/api/auth": {
+    "target": "http://localhost:8888",
+    "changeOrigin": true,
+    "pathRewrite": { "^/api/auth": "/ms-internal-iam/auth" },
+    "secure": false
+  },
+  "/api/identity": {
+    "target": "http://localhost:8080",
+    "changeOrigin": true,
+    "pathRewrite": { "^/api/identity": "/iam-identity-service" },
+    "secure": false
+  },
+  "/api/app": {
+    "target": "http://localhost:8080",
+    "changeOrigin": true,
+    "pathRewrite": { "^/api/app": "/iam-app-service" },
+    "secure": false
+  }
+}

@@ -1,0 +1,57 @@
+services:
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.15.3
+    container_name: elasticsearch
+    restart: unless-stopped
+    ports:
+      - "9200:9200"
+    environment:
+      - discovery.type=single-node
+      - ES_JAVA_OPTS=-Xms256m -Xmx256m
+      - xpack.security.enabled=true
+      - xpack.security.http.ssl.enabled=false
+      - xpack.security.transport.ssl.enabled=false
+      - xpack.ml.enabled=false
+      - xpack.watcher.enabled=false
+      - ELASTIC_PASSWORD=${ES_PASSWORD}
+      - LDAP_BIND_PASSWORD=${LDAP_BIND_PASSWORD}
+    # Chạy init script để populate keystore trước khi ES start
+    entrypoint: ["/bin/bash", "/usr/share/elasticsearch/config/es-keystore-init.sh"]
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+      - ./config/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro
+      - ./config/es-keystore-init.sh:/usr/share/elasticsearch/config/es-keystore-init.sh:ro
+      - ./config/role_mapping.yml:/usr/share/elasticsearch/config/role_mapping.yml:ro
+    networks:
+      - iam-internal-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf -u elastic:${ES_PASSWORD} http://localhost:9200/_cluster/health | grep -qE '\"status\":\"(green|yellow)\"'"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.15.3
+    container_name: kibana
+    restart: unless-stopped
+    ports:
+      - "5601:5601"
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - ELASTICSEARCH_SERVICEACCOUNTTOKEN=${KIBANA_SERVICE_TOKEN}
+      - NODE_OPTIONS=--max-old-space-size=512
+    volumes:
+      - ./config/kibana.yml:/usr/share/kibana/config/kibana.yml:ro
+    networks:
+      - iam-internal-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+
+volumes:
+  es_data:

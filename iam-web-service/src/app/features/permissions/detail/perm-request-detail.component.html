@@ -1,0 +1,374 @@
+<nav aria-label="breadcrumb" class="mb-2">
+  <ol class="breadcrumb mb-0">
+    <li class="breadcrumb-item text-muted small">Quản lý Users</li>
+    <li class="breadcrumb-item small"><a class="text-decoration-none" routerLink="/users/permissions">Phân quyền</a></li>
+    <li class="breadcrumb-item active small fw-semibold">
+      {{ mode === 'approve' ? 'Duyệt yêu cầu' : 'Chi tiết yêu cầu' }}
+    </li>
+  </ol>
+</nav>
+
+<div *ngIf="message" class="alert alert-{{ messageType }} alert-floating" role="alert">{{ message }}</div>
+
+<!-- Loading -->
+<div *ngIf="loading" class="text-center py-5">
+  <span class="spinner-border text-primary"></span>
+  <div class="text-muted small mt-2">Đang tải...</div>
+</div>
+
+<ng-container *ngIf="!loading && detail">
+
+  <!-- ========== PAGE HEADER ========== -->
+  <div class="page-header mb-4 d-flex align-items-center gap-3 flex-wrap">
+    <div>
+      <h4 class="mb-1">
+        <i class="bi bi-file-text me-2 text-primary"></i>Yêu cầu #{{ detail.requestId }}
+      </h4>
+      <span class="badge fs-6" [class]="statusBadge(detail.status)">{{ detail.status }}</span>
+      <span *ngIf="mode === 'approve'" class="badge bg-warning text-dark ms-2">Chờ xét duyệt</span>
+    </div>
+    <button class="btn btn-outline-secondary btn-sm ms-auto" (click)="goBack()">
+      <i class="bi bi-arrow-left me-1"></i>Quay lại
+    </button>
+  </div>
+
+  <!-- ========== META SECTION ========== -->
+  <div class="card mb-3">
+    <div class="card-header py-2 small fw-semibold text-muted">
+      <i class="bi bi-info-circle me-1"></i>Thông tin yêu cầu
+    </div>
+    <div class="card-body py-3">
+      <div class="row g-3">
+
+        <!-- Requester -->
+        <div class="col-md-6">
+          <div class="small text-muted mb-1 fw-semibold">Người yêu cầu</div>
+          <div class="fw-semibold">{{ detail.requester?.fullName ?? '—' }}</div>
+          <div class="small text-muted">{{ detail.requester?.employeeCode }}
+            <span *ngIf="detail.requester?.username"> · {{ detail.requester.username }}</span>
+          </div>
+          <div *ngIf="detail.requester?.department" class="small text-muted">{{ detail.requester.department }}</div>
+        </div>
+
+        <!-- Reviewer -->
+        <div class="col-md-6">
+          <div class="small text-muted mb-1 fw-semibold">Người duyệt</div>
+          <div class="fw-semibold">{{ detail.reviewer?.fullName ?? '—' }}</div>
+          <div class="small text-muted">{{ detail.reviewer?.employeeCode }}
+            <span *ngIf="detail.reviewer?.username"> · {{ detail.reviewer.username }}</span>
+          </div>
+          <div *ngIf="detail.reviewer?.department" class="small text-muted">{{ detail.reviewer.department }}</div>
+        </div>
+
+        <!-- Grantee (người được cấp quyền) -->
+        <div class="col-12">
+          <div class="small text-muted mb-1 fw-semibold">Người được cấp quyền</div>
+
+          <!-- Edit mode -->
+          <ng-container *ngIf="canEdit">
+            <div class="row g-2">
+              <div class="col-md-6">
+                <div class="position-relative" (click)="$event.stopPropagation()">
+                  <input class="form-control form-control-sm"
+                         [(ngModel)]="editGrantee"
+                         (ngModelChange)="onGranteeInput()"
+                         placeholder="Để trống = xin quyền cho chính mình..."
+                         autocomplete="off">
+                  <div class="reviewer-dropdown" *ngIf="showGranteeDropdown">
+                    <div *ngFor="let user of granteeSuggestions"
+                         class="reviewer-dropdown-item"
+                         (click)="selectGrantee(user, $event)">
+                      <div class="fw-semibold small">{{ user.username }}</div>
+                      <div class="reviewer-dropdown-meta">
+                        {{ user.employeeCode }}<span *ngIf="user.fullName"> · {{ user.fullName }}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div *ngIf="selectedEditGrantee" class="mt-1 text-success small">
+                  <i class="bi bi-check-circle-fill me-1"></i>{{ selectedEditGrantee.fullName ?? selectedEditGrantee.username }}
+                </div>
+              </div>
+              <div class="col-md-4">
+                <input class="form-control form-control-sm"
+                       [(ngModel)]="editGranteeCode"
+                       [readonly]="!!selectedEditGrantee"
+                       [class.bg-light]="!!selectedEditGrantee"
+                       placeholder="Mã nhân viên...">
+              </div>
+            </div>
+          </ng-container>
+
+          <!-- View mode -->
+          <ng-container *ngIf="!canEdit">
+            <div class="fw-semibold">{{ detail.grantee?.fullName ?? detail.grantee?.employeeCode ?? '—' }}</div>
+            <div class="small text-muted">{{ detail.grantee?.employeeCode }}
+              <span *ngIf="detail.grantee?.username"> · {{ detail.grantee.username }}</span>
+            </div>
+            <div *ngIf="detail.grantee?.department" class="small text-muted">{{ detail.grantee.department }}</div>
+          </ng-container>
+        </div>
+
+        <!-- Reason -->
+        <div class="col-12">
+          <div class="small text-muted mb-1 fw-semibold">Lý do</div>
+          <textarea *ngIf="canEdit" class="form-control form-control-sm" rows="2"
+                    [(ngModel)]="editReason" placeholder="Lý do yêu cầu..."></textarea>
+          <div *ngIf="!canEdit" class="text-body">{{ detail.reason ?? '—' }}</div>
+        </div>
+
+        <!-- Note (CAB comment after review) -->
+        <div class="col-12" *ngIf="detail.note">
+          <div class="small text-muted mb-1 fw-semibold">Ghi chú duyệt</div>
+          <div class="text-muted fst-italic">{{ detail.note }}</div>
+        </div>
+
+        <!-- Dates -->
+        <div class="col-md-6">
+          <div class="small text-muted mb-1 fw-semibold">Ngày tạo</div>
+          <div class="small">{{ detail.requestedAt | date:'dd/MM/yyyy HH:mm' }}</div>
+        </div>
+        <div class="col-md-6" *ngIf="detail.reviewedAt">
+          <div class="small text-muted mb-1 fw-semibold">Ngày duyệt</div>
+          <div class="small">{{ detail.reviewedAt | date:'dd/MM/yyyy HH:mm' }}</div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== DETAILS: Apps ========== -->
+  <div class="card mb-3">
+    <div class="card-header py-2 d-flex align-items-center gap-2">
+      <i class="bi bi-window text-primary small"></i>
+      <span class="small fw-semibold text-muted">Quyền ứng dụng</span>
+      <span class="badge bg-primary ms-auto">{{ editApps.length }}</span>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-sm mb-0">
+        <thead>
+          <tr>
+            <th>Ứng dụng</th>
+            <th>Mã</th>
+            <th *ngIf="canEdit" style="width:50px"></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let app of editApps; let i = index">
+            <td>{{ app.name }}</td>
+            <td><code class="small">{{ app.code }}</code></td>
+            <td *ngIf="canEdit">
+              <button class="btn btn-sm btn-outline-danger py-0 px-1" (click)="removeApp(i)" title="Xóa">
+                <i class="bi bi-trash3 small"></i>
+              </button>
+            </td>
+          </tr>
+
+          <!-- Add app inline row -->
+          <tr *ngIf="canEdit && showAddApp">
+            <td colspan="2">
+              <select class="form-select form-select-sm" [(ngModel)]="addAppId">
+                <option [ngValue]="null">-- Chọn ứng dụng --</option>
+                <option *ngFor="let a of allApps" [ngValue]="a.id">{{ a.name }} ({{ a.code }})</option>
+              </select>
+            </td>
+            <td>
+              <button class="btn btn-sm btn-success py-0 px-2 me-1" (click)="confirmAddApp()" [disabled]="!addAppId" title="Thêm">
+                <i class="bi bi-check-lg"></i>
+              </button>
+            </td>
+          </tr>
+
+          <tr *ngIf="editApps.length === 0 && !showAddApp">
+            <td [attr.colspan]="canEdit ? 3 : 2" class="text-center text-muted small py-2">
+              Không có quyền ứng dụng
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div *ngIf="canEdit" class="px-3 py-2 border-top">
+      <button *ngIf="!showAddApp" class="btn btn-sm btn-outline-primary" (click)="openAddApp()">
+        <i class="bi bi-plus-lg me-1"></i>Thêm ứng dụng
+      </button>
+      <button *ngIf="showAddApp" class="btn btn-sm btn-outline-secondary" (click)="showAddApp = false; addAppId = null">
+        <i class="bi bi-x me-1"></i>Hủy
+      </button>
+    </div>
+  </div>
+
+  <!-- ========== DETAILS: Resources ========== -->
+  <div class="card mb-3">
+    <div class="card-header py-2 d-flex align-items-center gap-2">
+      <i class="bi bi-boxes text-success small"></i>
+      <span class="small fw-semibold text-muted">Quyền tài nguyên</span>
+      <span class="badge bg-success ms-auto">{{ editResources.length }}</span>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-sm mb-0">
+        <thead>
+          <tr>
+            <th>Tài nguyên</th>
+            <th>Actions</th>
+            <th>Ứng dụng</th>
+            <th *ngIf="canEdit" style="width:50px"></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let r of editResources; let i = index">
+            <td>
+              <div>{{ r.name }}</div>
+              <div class="small text-muted"><code>{{ r.code }}</code></div>
+            </td>
+            <td>
+              <input *ngIf="canEdit" class="form-control form-control-sm" style="min-width:130px"
+                     [(ngModel)]="r.actions" placeholder="read,create,...">
+              <code *ngIf="!canEdit" class="small text-primary">{{ r.actions || '—' }}</code>
+            </td>
+            <td class="small text-muted">{{ r.appCode || '—' }}</td>
+            <td *ngIf="canEdit">
+              <button class="btn btn-sm btn-outline-danger py-0 px-1" (click)="removeResource(i)" title="Xóa">
+                <i class="bi bi-trash3 small"></i>
+              </button>
+            </td>
+          </tr>
+
+          <!-- Add resource inline row -->
+          <tr *ngIf="canEdit && showAddResource">
+            <td>
+              <select class="form-select form-select-sm mb-1" [(ngModel)]="addResAppId"
+                      (ngModelChange)="onAddResAppChange()">
+                <option [ngValue]="null">-- Chọn app --</option>
+                <option *ngFor="let a of allApps" [ngValue]="a.id">{{ a.code }}</option>
+              </select>
+              <select class="form-select form-select-sm" [(ngModel)]="addResId"
+                      [disabled]="!addResAppId || loadingRes"
+                      (ngModelChange)="onAddResIdChange()">
+                <option [ngValue]="null">{{ loadingRes ? 'Đang tải...' : '-- Chọn resource --' }}</option>
+                <option *ngFor="let r of addResList" [ngValue]="r.id">{{ r.resourceName ?? r.resourceCode }}</option>
+              </select>
+            </td>
+            <td>
+              <div class="action-multiselect"
+                   [class.disabled]="addResAvailableActions.length === 0"
+                   (click)="toggleAddActionsDropdown($event)">
+                <ng-container *ngIf="addResSelectedList.length > 0; else addActPlaceholder">
+                  <span *ngFor="let act of addResSelectedList" class="action-chip">
+                    {{ act }}
+                    <span class="action-chip-remove" (click)="removeAddAction(act, $event)">×</span>
+                  </span>
+                </ng-container>
+                <ng-template #addActPlaceholder>
+                  <span class="action-placeholder">
+                    {{ addResAvailableActions.length === 0 ? 'Chọn resource trước' : 'Chọn action...' }}
+                  </span>
+                </ng-template>
+                <span class="action-caret"><i class="bi bi-chevron-down"></i></span>
+
+                <div class="action-dropdown-list" *ngIf="showAddActionsDropdown" (click)="$event.stopPropagation()">
+                  <div *ngFor="let act of addResAvailableActions"
+                       class="action-dropdown-item"
+                       [class.act-selected]="addResSelectedActions[act]"
+                       (click)="toggleAddAction(act, $event)">
+                    <i class="bi" [class.bi-check-square-fill]="addResSelectedActions[act]"
+                                  [class.bi-square]="!addResSelectedActions[act]"></i>
+                    {{ act }}
+                  </div>
+                </div>
+              </div>
+            </td>
+            <td></td>
+            <td class="align-top pt-2">
+              <button class="btn btn-sm btn-success py-0 px-2"
+                      (click)="confirmAddResource()"
+                      [disabled]="!addResId" title="Thêm">
+                <i class="bi bi-check-lg"></i>
+              </button>
+            </td>
+          </tr>
+
+          <tr *ngIf="editResources.length === 0 && !showAddResource">
+            <td [attr.colspan]="canEdit ? 4 : 3" class="text-center text-muted small py-2">
+              Không có quyền tài nguyên
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div *ngIf="canEdit" class="px-3 py-2 border-top">
+      <button *ngIf="!showAddResource" class="btn btn-sm btn-outline-success" (click)="openAddResource()">
+        <i class="bi bi-plus-lg me-1"></i>Thêm tài nguyên
+      </button>
+      <button *ngIf="showAddResource" class="btn btn-sm btn-outline-secondary"
+              (click)="showAddResource = false; addResId = null; addResSelectedActions = {}">
+        <i class="bi bi-x me-1"></i>Hủy
+      </button>
+    </div>
+  </div>
+
+  <!-- ========== APPROVE MODE: Note ========== -->
+  <div class="card mb-3" *ngIf="mode === 'approve' && detail.status === 'OFFICIAL'">
+    <div class="card-header py-2 small fw-semibold text-muted">
+      <i class="bi bi-chat-left-text me-1"></i>Ghi chú xét duyệt
+    </div>
+    <div class="card-body py-3">
+      <textarea class="form-control form-control-sm" rows="3" [(ngModel)]="approveNote"
+                placeholder="Nhập ghi chú (bắt buộc khi từ chối)..."></textarea>
+    </div>
+  </div>
+
+  <!-- ========== ACTION BUTTONS ========== -->
+  <div class="d-flex gap-2 mt-2 mb-5 flex-wrap">
+    <button class="btn btn-outline-secondary" (click)="goBack()">
+      <i class="bi bi-arrow-left me-1"></i>Quay lại
+    </button>
+
+    <!-- Hủy yêu cầu: view mode, DRAFT hoặc OFFICIAL, user là requester -->
+    <button class="btn btn-outline-danger"
+            *ngIf="mode === 'view' && (detail.status === 'DRAFT' || detail.status === 'OFFICIAL') && perm.has('user-permission','request')"
+            (click)="doCancel()"
+            [disabled]="cancelling || saving || submitting">
+      <span *ngIf="cancelling" class="spinner-border spinner-border-sm me-1"></span>
+      <i *ngIf="!cancelling" class="bi bi-x-circle me-1"></i>Hủy yêu cầu
+    </button>
+
+    <!-- View mode / DRAFT: Hủy thay đổi + Lưu nháp + Gửi -->
+    <ng-container *ngIf="canEdit">
+      <button class="btn btn-outline-secondary ms-auto" (click)="cancelEdit()" [disabled]="saving">
+        <i class="bi bi-x-lg me-1"></i>Hủy thay đổi
+      </button>
+      <button class="btn btn-warning" (click)="saveUpdate()" [disabled]="saving || submitting">
+        <span *ngIf="saving" class="spinner-border spinner-border-sm me-1"></span>
+        <i *ngIf="!saving" class="bi bi-floppy me-1"></i>Lưu nháp
+      </button>
+      <button class="btn btn-primary" (click)="submitRequest()" [disabled]="submitting || saving">
+        <span *ngIf="submitting" class="spinner-border spinner-border-sm me-1"></span>
+        <i *ngIf="!submitting" class="bi bi-send me-1"></i>Gửi yêu cầu
+      </button>
+    </ng-container>
+
+    <!-- Approve mode / OFFICIAL: Từ chối + Duyệt -->
+    <ng-container *ngIf="mode === 'approve' && detail.status === 'OFFICIAL'">
+      <button class="btn btn-danger ms-auto"
+              (click)="doReject()"
+              [disabled]="rejecting || approving || !approveNote.trim()"
+              *ngIf="perm.has('user-permission','reject')">
+        <span *ngIf="rejecting" class="spinner-border spinner-border-sm me-1"></span>
+        <i *ngIf="!rejecting" class="bi bi-x-circle me-1"></i>Từ chối
+      </button>
+      <button class="btn btn-success"
+              (click)="doApprove()"
+              [disabled]="approving || rejecting"
+              *ngIf="perm.has('user-permission','approve')">
+        <span *ngIf="approving" class="spinner-border spinner-border-sm me-1"></span>
+        <i *ngIf="!approving" class="bi bi-check-lg me-1"></i>Duyệt
+      </button>
+    </ng-container>
+  </div>
+
+</ng-container>
+
+<div *ngIf="!loading && !detail" class="text-center py-5 text-muted">
+  <i class="bi bi-exclamation-circle fs-2 mb-2 d-block"></i>
+  Không tìm thấy yêu cầu hoặc bạn không có quyền xem
+</div>

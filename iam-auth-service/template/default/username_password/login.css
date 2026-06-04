@@ -1,0 +1,342 @@
+*, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+:root {
+    --green-primary: #16b36f;
+    --green-dark:    #0e9058;
+    --green-light:   #f2fffb;
+    --green-border:  #16b36f;
+    --bg-left:       #e4f6ff;
+    --bg-left-end:   #f9feff;
+    --text-dark:     #1a1a2e;
+    --text-muted:    #6b7280;
+    --error-red:     #dc2626;
+    --error-bg:      #fef2f2;
+}
+
+html, body {
+    height: 100%;
+    font-family: 'Be Vietnam Pro', sans-serif;
+}
+
+body {
+    display: flex;
+    min-height: 100vh;
+    background: #fff;
+    overflow: hidden;
+}
+
+/* ══════════════════════════════════════
+   LEFT PANEL
+══════════════════════════════════════ */
+.left-panel {
+    width: 49.3%;
+    min-height: 100vh;
+    background: linear-gradient(180deg, var(--bg-left) 0%, var(--bg-left-end) 100%);
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    animation: slideUp 0.5s ease both;
+}
+
+/* Navbar */
+.navbar {
+    height: 128px;
+    background: var(--green-light);
+    display: flex;
+    align-items: center;
+    padding: 0 32px;
+    flex-shrink: 0;
+}
+
+.logo-wrap {
+    width: 243px;
+    display: flex;
+    align-items: center;
+}
+
+.logo-wrap img {
+    height: 80px;
+    width: auto;
+    object-fit: contain;
+}
+
+/* Sub-header bar */
+.subheader {
+    height: 20px;
+    background: var(--green-light);
+    flex-shrink: 0;
+}
+
+/* Main content */
+.main-content {
+    flex: 1;
+    background: var(--green-light);
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: center;
+    padding: 20px 40px 40px;
+}
+
+.welcome-title,
+.title-divider,
+.form-card {
+    width: 100%;
+    max-width: 520px;
+}
+
+/* Welcome title */
+.welcome-title {
+    font-size: 36px;
+    font-weight: 700;
+    color: var(--text-dark);
+    letter-spacing: -0.5px;
+    margin-bottom: 120px;
+    animation: slideUp 0.55s 0.05s ease both;
+}
+
+/* Divider dưới tiêu đề WELCOME BACK */
+.title-divider {
+    width: 100%;
+    height: 2px;
+    background: linear-gradient(90deg, var(--green-primary) 0%, rgba(22,179,111,0.1) 100%);
+    border-radius: 2px;
+    margin-bottom: 32px;
+}
+
+/* Form card */
+.form-card {
+    background: var(--green-light);
+    border-radius: 20px;
+    width: 60%;
+    margin: 0 auto;
+    animation: slideUp 0.55s 0.1s ease both;
+}
+
+/* Input group */
+.input-group {
+    margin-bottom: 20px;
+}
+
+.input-label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-muted);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+}
+
+.input-field {
+    width: 100%;
+    height: 72px;
+    background: var(--green-light);
+    border: 3px solid var(--green-border);
+    border-radius: 15px;
+    padding: 0 24px;
+    font-family: 'Be Vietnam Pro', sans-serif;
+    font-size: 18px;
+    font-weight: 500;
+    color: var(--text-dark);
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.input-field::placeholder {
+    color: #b0bec5;
+    font-weight: 400;
+}
+
+.input-field:focus {
+    border-color: var(--green-dark);
+    box-shadow: 0 0 0 4px rgba(22, 179, 111, 0.15);
+    animation: ringPulse 0.6s ease;
+}
+
+/* Input lỗi — viền đỏ khi có errorDesc */
+.input-field.is-error {
+    border-color: var(--error-red);
+    box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.1);
+}
+
+/* Error box */
+.error-box {
+    background: var(--error-bg);
+    border: 2px solid #fca5a5;
+    border-left: 5px solid var(--error-red);
+    border-radius: 10px;
+    padding: 12px 16px;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    animation: fadeIn 0.3s ease;
+}
+
+.error-icon {
+    flex-shrink: 0;
+    width: 22px;
+    height: 22px;
+    background: var(--error-red);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 1px;
+}
+
+.error-icon::after {
+    content: '!';
+    color: white;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.error-text {
+    font-size: 14px;
+    color: var(--error-red);
+    font-weight: 600;
+}
+
+.error-code {
+    font-size: 12px;
+    color: #ef4444;
+    font-weight: 400;
+    margin-top: 2px;
+    display: block;
+}
+
+/* Divider ngăn cách input và nút */
+.section-divider {
+    width: 100%;
+    height: 1.5px;
+    background: linear-gradient(90deg, rgba(22,179,111,0.15) 0%, rgba(22,179,111,0.5) 50%, rgba(22,179,111,0.15) 100%);
+    border-radius: 2px;
+    margin: 24px 0 20px;
+}
+
+/* Buttons row */
+.btn-row {
+    display: flex;
+    justify-content: center;
+    margin-top: 0;
+}
+
+/* Khi có 2 nút */
+.btn-row--two {
+    gap: 20px;
+    justify-content: center;
+}
+
+.btn-row--two .btn {
+    flex: 1;
+    max-width: 220px;
+}
+
+.btn {
+    width: 220px;
+    height: 72px;
+    border-radius: 15px;
+    font-family: 'Be Vietnam Pro', sans-serif;
+    font-size: 20px;
+    font-weight: 700;
+    cursor: pointer;
+    border: none;
+    transition: transform 0.15s, box-shadow 0.15s, background 0.2s;
+    letter-spacing: 0.01em;
+}
+
+.btn:active {
+    transform: scale(0.97);
+}
+
+.btn-filled {
+    background: var(--green-primary);
+    color: #fff;
+}
+
+.btn-filled:hover {
+    background: var(--green-dark);
+    box-shadow: 0 6px 20px rgba(22, 179, 111, 0.35);
+}
+
+/* Footer */
+.footer {
+    height: 145px;
+    background: var(--green-light);
+    display: flex;
+    align-items: center;
+    padding: 0 38px;
+    flex-shrink: 0;
+}
+
+.footer p {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-dark);
+}
+
+/* ══════════════════════════════════════
+   RIGHT PANEL
+══════════════════════════════════════ */
+.right-panel {
+    width: 50.7%;
+    min-height: 100vh;
+    position: relative;
+    overflow: hidden;
+}
+
+.right-panel img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.right-panel::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(22, 179, 111, 0.05) 0%, transparent 60%);
+    pointer-events: none;
+}
+
+/* ══════════════════════════════════════
+   ANIMATIONS
+══════════════════════════════════════ */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-6px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideUp {
+    from { opacity: 0; transform: translateY(24px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes ringPulse {
+    0%   { box-shadow: 0 0 0 0   rgba(22, 179, 111, 0.25); }
+    70%  { box-shadow: 0 0 0 8px rgba(22, 179, 111, 0); }
+    100% { box-shadow: 0 0 0 0   rgba(22, 179, 111, 0); }
+}
+
+/* ══════════════════════════════════════
+   RESPONSIVE
+══════════════════════════════════════ */
+@media (max-width: 900px) {
+    body {
+        flex-direction: column;
+        overflow: auto;
+    }
+    .left-panel, .right-panel {
+        width: 100%;
+        min-height: auto;
+    }
+    .right-panel { height: 300px; }
+    .main-content { padding: 32px 24px; }
+}

@@ -1,0 +1,24 @@
+cluster.name: iam-logs
+node.name: es-node-1
+network.host: 0.0.0.0
+
+# Token service cần thiết cho Kibana session tokens
+xpack.security.authc.token.enabled: true
+
+# ── LDAP realm — trỏ vào ldap-server chạy local (port 10389) ────────────────
+# user_search.base_dn : chỉ user có AUTH_APP_PERMISSION cho kibana-server mới có entry ở đây
+# group_search        : ES tìm group chứa userDN → map sang ES role qua role_mapping.yml
+# bind_password       : lưu trong keystore (es-keystore-init.sh), KHÔNG để ở đây
+
+xpack.security.authc.realms.ldap.ldap1.order: 1
+xpack.security.authc.realms.ldap.ldap1.url: "ldap://host.docker.internal:10389"
+xpack.security.authc.realms.ldap.ldap1.bind_dn: "uid=admin,ou=system"
+xpack.security.authc.realms.ldap.ldap1.bind_password: "${LDAP_BIND_PASSWORD}"
+xpack.security.authc.realms.ldap.ldap1.user_search.base_dn: "ou=log-app-service,ou=users,dc=iam,dc=bank,dc=vn"
+xpack.security.authc.realms.ldap.ldap1.user_search.filter: "(uid={0})"
+xpack.security.authc.realms.ldap.ldap1.user_search.scope: sub_tree
+xpack.security.authc.realms.ldap.ldap1.group_search.base_dn: "ou=groups,dc=iam,dc=bank,dc=vn"
+xpack.security.authc.realms.ldap.ldap1.group_search.filter: "(member={0})"
+xpack.security.authc.realms.ldap.ldap1.group_search.scope: sub_tree
+xpack.security.authc.realms.ldap.ldap1.files.role_mapping: "/usr/share/elasticsearch/config/role_mapping.yml"
+xpack.security.authc.realms.ldap.ldap1.metadata: ["uid", "cn", "mail", "employeeNumber", "title", "description"]

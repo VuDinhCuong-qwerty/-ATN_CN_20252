@@ -1,0 +1,88 @@
+.create-card {
+  background: #fff;
+  border: 1px solid #D5E3F5;
+  border-radius: 10px;
+  padding: 1rem 1.25rem;
+}
+
+.create-card-title {
+  font-size: 0.73rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #003B8E;
+  text-transform: uppercase;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #EAF0FB;
+}
+
+.addr-section {
+  background: #F8FBFF;
+  border: 1px solid #E0EBF8;
+  border-radius: 8px;
+  padding: 0.75rem;
+  height: 100%;
+}
+
+.role-chip {
+  border: 1px solid #C8D8F0;
+  border-radius: 8px;
+  padding: 0.4rem 0.75rem;
+  cursor: pointer;
+  background: #fff;
+  transition: background 0.15s, border-color 0.15s;
+  min-width: 110px;
+}
+
+.role-chip:hover {
+  background: #F0F4F9;
+  border-color: #003B8E;
+}
+
+.role-chip-selected {
+  background: #003B8E;
+  border-color: #003B8E;
+  color: #fff;
+}
+
+.role-chip-selected .text-muted {
+  color: rgba(255, 255, 255, 0.7) !important;
+}
+
+/* Autocomplete dropdown */
+.sugg-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 2000;
+  background: #fff;
+  border: 1px solid #C8D8F0;
+  border-top: none;
+  border-radius: 0 0 6px 6px;
+  max-height: 200px;
+  overflow-y: auto;
+  box-shadow: 0 6px 16px rgba(0, 59, 142, 0.12);
+}
+
+.sugg-item {
+  padding: 0.45rem 0.75rem;
+  font-size: 0.83rem;
+  cursor: pointer;
+  border-bottom: 1px solid #F0F4F9;
+  transition: background 0.1s;
+}
+
+.sugg-item:last-child { border-bottom: none; }
+
+.sugg-item:hover {
+  background: #EBF2FF;
+  color: #003B8E;
+}
+
+.sugg-empty {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.82rem;
+  color: #999;
+  font-style: italic;
+}

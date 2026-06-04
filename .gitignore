@@ -1,0 +1,126 @@
+# ============================================================
+#  Maven / Spring Boot
+# ============================================================
+target/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+*.class
+*.jar
+*.war
+*.nar
+*.ear
+*.zip
+*.tar.gz
+*.rar
+
+# Maven wrapper
+.mvn/wrapper/maven-wrapper.properties
+mvnw
+mvnw.cmd
+
+# Spring Boot devtools restart trigger
+.spring-boot-devtools.properties
+
+# ============================================================
+#  Node / Angular
+# ============================================================
+node_modules/
+dist/
+.angular/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm
+.yarn-integrity
+
+# Angular cache
+.cache/
+
+# Angular projects — explicit paths
+iam-web-service/node_modules/
+iam-web-service/dist/
+iam-web-service/.angular/
+iam-web-service/.cache/
+iam-web-service/package-lock.json
+
+demo-change-app/change-web-service/node_modules/
+demo-change-app/change-web-service/dist/
+demo-change-app/change-web-service/.angular/
+demo-change-app/change-web-service/.cache/
+demo-change-app/change-web-service/package-lock.json
+
+# ============================================================
+#  IDE / Editor
+# ============================================================
+.idea/
+*.iml
+*.iws
+*.ipr
+.classpath
+.project
+.settings/
+.factorypath
+
+.vscode/settings.json
+.vscode/launch.json
+*.code-workspace
+
+*.swp
+*.swo
+*~
+
+# ============================================================
+#  OS
+# ============================================================
+.DS_Store
+Thumbs.db
+desktop.ini
+ehthumbs.db
+
+# ============================================================
+#  Logs
+# ============================================================
+logs/
+*.log
+*.log.*
+
+# ============================================================
+#  Environment / Secrets
+# ============================================================
+.env
+.env.local
+.env.*.local
+application-local.yml
+application-local.properties
+application-secret*.yml
+application-secret*.properties
+**/src/main/resources/application-prod*.yml
+**/src/main/resources/application-prod*.properties
+
+# ============================================================
+#  Docker
+# ============================================================
+# Keep compose files, ignore local overrides
+docker-compose.override.yml
+docker-compose.local.yml
+
+# ============================================================
+#  Redis (local standalone)
+# ============================================================
+redis/data/
+redis/*.rdb
+redis/*.aof
+
+# ============================================================
+#  Misc build / runtime artifacts
+# ============================================================
+*.pid
+*.seed
+*.pid.lock
+*.orig
+*.bak
+ldap-server/.claude/
+demo-change-app/.claude/
+.claude/

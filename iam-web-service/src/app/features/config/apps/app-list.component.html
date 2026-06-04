@@ -1,0 +1,153 @@
+<nav aria-label="breadcrumb" class="mb-2">
+  <ol class="breadcrumb mb-0">
+    <li class="breadcrumb-item text-muted small">Quản lý cấu hình</li>
+    <li class="breadcrumb-item active small fw-semibold">Ứng dụng</li>
+  </ol>
+</nav>
+
+<div class="row mb-3">
+  <div class="col-12">
+    <h4><i class="bi bi-window me-2 text-info"></i>Quản lý Ứng dụng</h4>
+    <hr>
+  </div>
+</div>
+
+<!-- Search -->
+<div class="card mb-3">
+  <div class="card-body py-2">
+    <div class="row g-2 align-items-end">
+      <div class="col-md-3">
+        <label class="form-label small mb-1">Tên ứng dụng</label>
+        <input class="form-control form-control-sm" [(ngModel)]="searchName"
+               placeholder="Tìm theo tên..." (keyup.enter)="search()">
+      </div>
+      <div class="col-md-2">
+        <label class="form-label small mb-1">Service Code</label>
+        <input class="form-control form-control-sm" [(ngModel)]="searchServiceCode"
+               placeholder="core-banking..." (keyup.enter)="search()">
+      </div>
+      <div class="col-md-2">
+        <label class="form-label small mb-1">Loại</label>
+        <select class="form-select form-select-sm" [(ngModel)]="searchType">
+          <option value="">Tất cả</option>
+          <option value="INTERNAL">INTERNAL</option>
+          <option value="THIRD_PARTY_LDAP">THIRD_PARTY_LDAP</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label small mb-1">Trạng thái</label>
+        <select class="form-select form-select-sm" [(ngModel)]="searchStatus">
+          <option value="">Tất cả</option>
+          <option value="ACTIVE">ACTIVE</option>
+          <option value="INACTIVE">INACTIVE</option>
+        </select>
+      </div>
+      <div class="col-auto">
+        <button class="btn btn-primary btn-sm" (click)="search()">
+          <i class="bi bi-search me-1"></i>Tìm kiếm
+        </button>
+        <button class="btn btn-outline-secondary btn-sm ms-1" (click)="clearSearch()">Xoá</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Table -->
+<div class="card">
+  <div class="card-header py-2 small fw-semibold d-flex justify-content-between align-items-center">
+    <span>Tổng: <strong>{{ totalElements }}</strong> ứng dụng</span>
+    <span *ngIf="loading" class="spinner-border spinner-border-sm text-primary"></span>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-hover mb-0 app-table">
+      <thead>
+        <tr>
+          <th>Ứng dụng</th>
+          <th>Service Code</th>
+          <th>Loại</th>
+          <th>URL mặc định</th>
+          <th class="text-center">Trạng thái</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let app of apps" class="table-row-clickable" (click)="goToDetail(app)">
+
+          <!-- Tên + icon -->
+          <td>
+            <div class="d-flex align-items-center gap-2">
+              <div class="app-icon-wrap">
+                <img *ngIf="app.logoUrl" [src]="app.logoUrl" height="28" width="28"
+                     class="rounded" style="object-fit:contain" (error)="app.logoUrl=null">
+                <i *ngIf="!app.logoUrl" class="bi bi-window text-primary" style="font-size:1.2rem"></i>
+              </div>
+              <div>
+                <div class="fw-semibold app-name">{{ app.name }}</div>
+              </div>
+            </div>
+          </td>
+
+          <!-- Service Code -->
+          <td><code class="text-nowrap">{{ app.code ?? '—' }}</code></td>
+
+          <!-- Loại -->
+          <td>
+            <span class="badge bg-light text-dark border type-badge">
+              {{ app.type ?? '—' }}
+            </span>
+          </td>
+
+          <!-- URL -->
+          <td class="url-cell">
+            <span class="text-muted small text-truncate d-block" style="max-width:220px"
+                  [title]="app.defaultUrl">
+              {{ app.defaultUrl || '—' }}
+            </span>
+          </td>
+
+          <!-- Pill toggle -->
+          <td class="text-center" (click)="$event.stopPropagation()">
+            <button class="pill-toggle"
+                    [class.pill-on]="app.status === 'ACTIVE'"
+                    [class.pill-off]="app.status !== 'ACTIVE'"
+                    (click)="toggleStatusInList(app, $event)"
+                    [disabled]="togglingId === (app.id ?? app.appId)"
+                    [title]="app.status === 'ACTIVE' ? 'Đang hoạt động — click để tắt' : 'Đang tắt — click để bật'">
+              <span *ngIf="togglingId === (app.id ?? app.appId)" class="spinner-border spinner-border-sm" style="width:12px;height:12px;border-width:2px"></span>
+              <ng-container *ngIf="togglingId !== (app.id ?? app.appId)">
+                <span class="pill-knob"></span>
+                <span class="pill-label">{{ app.status === 'ACTIVE' ? 'ON' : 'OFF' }}</span>
+              </ng-container>
+            </button>
+          </td>
+        </tr>
+
+        <tr *ngIf="apps.length === 0 && !loading">
+          <td colspan="5" class="text-center text-muted py-4">
+            <i class="bi bi-inbox fs-4 d-block mb-1"></i>Không có dữ liệu
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  <div class="card-footer py-2 d-flex justify-content-between align-items-center small" *ngIf="totalPages > 1">
+    <span class="text-muted">Trang {{ currentPage + 1 }} / {{ totalPages }}</span>
+    <div class="btn-group btn-group-sm">
+      <button class="btn btn-outline-secondary" [disabled]="currentPage === 0" (click)="goPage(0)">«</button>
+      <button class="btn btn-outline-secondary" [disabled]="currentPage === 0" (click)="goPage(currentPage - 1)">‹</button>
+      <button *ngFor="let p of getVisiblePages()" class="btn"
+              [class.btn-primary]="p === currentPage"
+              [class.btn-outline-secondary]="p !== currentPage"
+              (click)="goPage(p)">{{ p + 1 }}</button>
+      <button class="btn btn-outline-secondary" [disabled]="currentPage >= totalPages - 1" (click)="goPage(currentPage + 1)">›</button>
+      <button class="btn btn-outline-secondary" [disabled]="currentPage >= totalPages - 1" (click)="goPage(totalPages - 1)">»</button>
+    </div>
+  </div>
+</div>
+
+<!-- FAB — tạo ứng dụng mới -->
+<button class="fab-btn btn btn-success shadow-lg" (click)="goToCreate()" title="Tạo ứng dụng mới"
+        *ngIf="perm.has('application','create')">
+  <i class="bi bi-window-plus fs-4"></i>
+</button>

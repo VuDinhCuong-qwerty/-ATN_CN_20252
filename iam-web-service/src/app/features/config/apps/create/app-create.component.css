@@ -1,0 +1,11 @@
+/* Shared classes in styles.css */
+
+.field-label {
+  display: block;
+  font-size: 0.73rem;
+  font-weight: 600;
+  color: #5A6E8C;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 4px;
+}

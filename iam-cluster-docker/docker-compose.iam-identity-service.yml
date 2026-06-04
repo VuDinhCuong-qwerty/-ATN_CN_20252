@@ -1,0 +1,39 @@
+services:
+  iam-identity-service:
+    image: iam-identity-service:latest
+    container_name: iam-identity-service
+    restart: unless-stopped
+    ports:
+      - "8081:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - DB_URL=jdbc:oracle:thin:@//host.docker.internal:1521/AUTHPDB1
+      - AUTH_ISSUER_URI=http://host.docker.internal:8888/ms-internal-iam/auth
+      - KAFKA_SERVERS=kafka-1:9092,kafka-2:9092,kafka-3:9092
+      - REDIS_HOST=redis
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - iam-internal-network
+    depends_on:
+      redis:
+        condition: service_healthy
+      iam-auth-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/iam-identity-service/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+# =============================================================================
+# Khởi động cùng cluster (Redis + Kafka + auth-service phải chạy trước)
+# =============================================================================
+# docker compose \
+#   -f docker-compose.yml \
+#   -f docker-compose.redis.yml \
+#   -f docker-compose.kafka.yml \
+#   -f docker-compose.iam-auth-service.yml \
+#   -f docker-compose.iam-identity-service.yml \
+#   up -d

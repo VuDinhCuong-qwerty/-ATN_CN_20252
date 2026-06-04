@@ -1,0 +1,60 @@
+/* Shared classes in styles.css */
+
+.detail-card {
+  background: #fff;
+  border: 1px solid #D5E3F5;
+  border-radius: 10px;
+  padding: 1rem 1.25rem;
+}
+
+.detail-card-title {
+  font-size: 0.73rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #003B8E;
+  text-transform: uppercase;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #EAF0FB;
+}
+
+.label-col {
+  width: 38%;
+  white-space: nowrap;
+}
+
+.addr-block {
+  background: #F8FBFF;
+  border: 1px solid #E0EBF8;
+  border-radius: 8px;
+  padding: 0.75rem;
+}
+
+.sugg-dropdown {
+  position: absolute;
+  top: 100%; left: 0; right: 0;
+  z-index: 2000;
+  background: #fff;
+  border: 1px solid #D5E3F5;
+  border-top: none;
+  border-radius: 0 0 6px 6px;
+  max-height: 180px;
+  overflow-y: auto;
+  box-shadow: 0 6px 16px rgba(0,59,142,.12);
+}
+
+.sugg-item {
+  padding: 0.4rem 0.75rem;
+  font-size: 0.83rem;
+  cursor: pointer;
+  border-bottom: 1px solid #F0F4F9;
+}
+.sugg-item:last-child { border-bottom: none; }
+.sugg-item:hover { background: #EBF2FF; color: #003B8E; }
+
+.sugg-empty {
+  padding: 0.45rem 0.75rem;
+  font-size: 0.82rem;
+  color: #8CA0BC;
+  font-style: italic;
+}

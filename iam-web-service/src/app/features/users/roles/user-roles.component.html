@@ -1,0 +1,134 @@
+<nav aria-label="breadcrumb" class="mb-2">
+  <ol class="breadcrumb mb-0">
+    <li class="breadcrumb-item text-muted small">Quản lý Users</li>
+    <li class="breadcrumb-item active small fw-semibold">Role</li>
+  </ol>
+</nav>
+
+<div class="d-flex align-items-center mb-3">
+  <h4><i class="bi bi-shield-person me-2 text-warning"></i>Gán / Thu hồi Role</h4>
+</div>
+
+<div *ngIf="message" class="alert alert-{{ messageType }} alert-dismissible" role="alert">
+  {{ message }}<button type="button" class="btn-close" (click)="message=''"></button>
+</div>
+
+<!-- Lookup -->
+<div class="card mb-3">
+  <div class="card-body py-2">
+    <div class="row g-2 align-items-center">
+      <div class="col-md-5" style="position:relative">
+        <label class="form-label small mb-1">Tìm kiếm nhân viên</label>
+        <div class="input-group input-group-sm">
+          <span class="input-group-text"><i class="bi bi-search"></i></span>
+          <input class="form-control" [(ngModel)]="searchInput"
+                 placeholder="Nhập mã nhân viên hoặc username..."
+                 (input)="onSearchInput()"
+                 (keydown.enter)="onEnter()"
+                 autocomplete="off">
+          <button class="btn btn-outline-secondary" *ngIf="searchInput" (click)="clearSearch()" title="Xóa">
+            <i class="bi bi-x"></i>
+          </button>
+        </div>
+        <!-- Autocomplete dropdown -->
+        <div *ngIf="showSuggestions && suggestions.length > 0"
+             class="border rounded bg-white shadow-sm"
+             style="position:absolute;z-index:1050;width:100%;left:0;top:100%;max-height:280px;overflow-y:auto">
+          <button *ngFor="let u of suggestions" type="button"
+                  class="d-flex align-items-center gap-2 w-100 px-3 py-2 border-0 bg-transparent text-start suggestion-item"
+                  (click)="selectSuggestion(u)">
+            <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                 style="width:34px;height:34px;background:#003B8E;color:#fff;font-size:13px;font-weight:700">
+              {{ (u.fullName || u.username || '?')[0] }}
+            </div>
+            <div class="overflow-hidden flex-grow-1">
+              <div class="small fw-semibold text-truncate">{{ u.fullName || u.username }}</div>
+              <div class="text-muted text-truncate" style="font-size:11px">
+                <code style="font-size:11px">{{ u.employeeCode }}</code>
+                &nbsp;·&nbsp;{{ u.username }}
+              </div>
+            </div>
+            <span class="badge flex-shrink-0"
+                  [class.bg-success]="u.status==='ACTIVE'"
+                  [class.bg-secondary]="u.status!=='ACTIVE'"
+                  style="font-size:10px">{{ u.status }}</span>
+          </button>
+        </div>
+      </div>
+      <div class="col-auto mt-3" *ngIf="loadingLookup">
+        <span class="spinner-border spinner-border-sm text-primary"></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<ng-container *ngIf="targetUser">
+  <!-- User info -->
+  <div class="alert alert-info d-flex align-items-center gap-2 py-2 mb-3">
+    <i class="bi bi-person-circle fs-5"></i>
+    <div>
+      <strong>{{ targetUser.fullName }}</strong>
+      &nbsp;·&nbsp;<code>{{ targetUser.employeeCode }}</code>
+      &nbsp;·&nbsp;{{ targetUser.username }}
+      <span class="badge ms-2"
+            [class.bg-success]="targetUser.status === 'ACTIVE'"
+            [class.bg-secondary]="targetUser.status !== 'ACTIVE'">
+        {{ targetUser.status }}
+      </span>
+    </div>
+  </div>
+
+  <div class="row g-3">
+    <!-- Current roles -->
+    <div class="col-md-6">
+      <div class="card h-100">
+        <div class="card-header small fw-semibold py-2">Roles hiện tại</div>
+        <div class="card-body p-2">
+          <div *ngIf="userRoles.length === 0" class="text-muted small text-center py-2">Chưa có role nào</div>
+          <div *ngFor="let r of userRoles"
+               class="d-flex align-items-center justify-content-between border rounded px-3 py-2 mb-1">
+            <div>
+              <span class="fw-semibold small">{{ r.roleName ?? r.name ?? r.code }}</span>
+              <small class="d-block text-muted">{{ r.roleCode ?? r.code }}</small>
+            </div>
+            <button class="btn btn-outline-danger btn-sm py-0 px-2"
+                    *ngIf="perm.has('role','revoke')"
+                    [disabled]="loadingAction"
+                    (click)="revokeRole(r.roleCode ?? r.code)"
+                    title="Thu hồi role">
+              <i class="bi bi-x"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Assign new role -->
+    <div class="col-md-6" *ngIf="perm.has('role','assign')">
+      <div class="card h-100">
+        <div class="card-header small fw-semibold py-2">Gán role mới</div>
+        <div class="card-body">
+          <label class="form-label small">Chọn role</label>
+          <select class="form-select form-select-sm mb-3" [(ngModel)]="selectedRoleCode">
+            <option value="">-- Chọn role --</option>
+            <option *ngFor="let r of availableRoles" [value]="r.code">{{ r.name ?? r.code }}</option>
+          </select>
+          <div *ngIf="availableRoles.length === 0 && userRoles.length > 0" class="text-muted small mb-2">
+            Đã gán tất cả các role có sẵn
+          </div>
+          <button class="btn btn-primary btn-sm px-4" (click)="assignRole()"
+                  [disabled]="!selectedRoleCode || loadingAction">
+            <span *ngIf="loadingAction" class="spinner-border spinner-border-sm me-1"></span>
+            <i *ngIf="!loadingAction" class="bi bi-plus-lg me-1"></i>
+            Gán role
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</ng-container>
+
+<div class="text-center text-muted py-5" *ngIf="!targetUser">
+  <i class="bi bi-search fs-2 d-block mb-2 opacity-50"></i>
+  Nhập mã nhân viên để tra cứu và quản lý role
+</div>

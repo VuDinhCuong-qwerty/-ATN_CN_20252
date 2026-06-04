@@ -1,0 +1,49 @@
+/* Shared modal/fab/table classes are in styles.css */
+
+.btn-xs {
+  font-size: 0.78rem;
+  padding: 0.2rem 0.5rem;
+  line-height: 1.4;
+}
+
+/* iOS-style pill toggle (status ON/OFF in table) */
+.pill-status {
+  display: inline-flex;
+  align-items: center;
+  width: 46px;
+  height: 24px;
+  border-radius: 12px;
+  padding: 3px;
+  cursor: pointer;
+  border: none;
+  outline: none;
+  transition: background 0.2s;
+  position: relative;
+}
+
+.pill-on  { background: #166534; }
+.pill-off { background: #94A3B8; }
+.pill-status:disabled { opacity: 0.55; cursor: not-allowed; }
+
+.pill-knob {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.22);
+  transition: transform 0.2s;
+  flex-shrink: 0;
+}
+
+.pill-on  .pill-knob { transform: translateX(22px); }
+.pill-off .pill-knob { transform: translateX(0); }
+
+.info-card {
+  background: #EEF3FB;
+  border: 1px solid #D5E3F5;
+  border-radius: 8px;
+  padding: 0.65rem 0.9rem;
+}
+
+/* Override modal-panel default width */
+.modal-panel { max-width: 480px; }

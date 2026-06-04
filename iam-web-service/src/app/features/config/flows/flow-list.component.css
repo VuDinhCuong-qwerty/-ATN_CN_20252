@@ -1,0 +1,67 @@
+/* Shared modal classes are in styles.css */
+
+.flow-info-card {
+  background: #EEF3FB;
+  border: 1px solid #D5E3F5;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+}
+
+.tree-panel {
+  background: #fff;
+  border: 1px solid #D5E3F5;
+  border-radius: 10px;
+  padding: 1rem 1.25rem;
+}
+
+.tree-panel-header {
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #EAF0FB;
+}
+
+.tree-row {
+  display: flex;
+  align-items: center;
+  min-height: 38px;
+  padding: 3px 0;
+  border-bottom: 1px solid #F0F4F9;
+}
+
+.tree-row:last-child { border-bottom: none; }
+
+.tree-indent {
+  width: 20px;
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 0.95rem;
+  color: #94A3B8;
+  flex-shrink: 0;
+  text-align: center;
+  line-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tree-connector {
+  width: 28px;
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 0.95rem;
+  color: #94A3B8;
+  flex-shrink: 0;
+  white-space: pre;
+}
+
+.node-name {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #0F2044;
+}
+
+/* Requirement badges */
+.req-REQUIRED    { background: #FEE2E2; color: #991B1B; font-size: 0.72rem; font-weight: 700; }
+.req-OPTIONAL    { background: #FEF3C7; color: #92400E; font-size: 0.72rem; font-weight: 700; }
+.req-ALTERNATIVE { background: #DBEAFE; color: #1E40AF; font-size: 0.72rem; font-weight: 700; }
+.req-DISABLED    { background: #F1F5F9; color: #475569; font-size: 0.72rem; font-weight: 700; }
+
+/* Override modal width */
+.modal-panel { max-width: 480px; }

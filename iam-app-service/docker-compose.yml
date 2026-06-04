@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  iam-app-service:
+    build: .
+    container_name: iam-app-service
+    ports:
+      - "8081:8081"
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      DB_URL: jdbc:oracle:thin:@iam-oracle:1521:xe
+      DB_USERNAME: iam
+      DB_PASSWORD: iam123
+      REDIS_HOST: iam-redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: iam123
+      KAFKA_SERVERS: iam-kafka:9092
+      AUTH_ISSUER_URI: http://iam-auth-service:8080/ms-internal-iam/auth
+    networks:
+      - iam-network
+
+networks:
+  iam-network:
+    external: true

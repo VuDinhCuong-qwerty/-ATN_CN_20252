@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="vi">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Chọn phương thức xác thực</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" th:href="@{/template/default/select_method/select.css}" />
+</head>
+<body>
+
+<!-- ════════════ LEFT PANEL ════════════ -->
+<div class="left-panel">
+
+    <!-- Navbar with Logo -->
+    <header class="navbar">
+        <div class="logo-wrap">
+            <img th:src="@{/template/default/username_password/img/logo.png}" alt="Logo" />
+        </div>
+    </header>
+
+    <!-- Sub-header bar -->
+    <div class="subheader"></div>
+
+    <!-- Main content area -->
+    <main class="main-content">
+        <h1 class="welcome-title">WELCOME BACK!</h1>
+        <div class="title-divider"></div>
+
+        <div class="form-card">
+            <p class="choose-label">Chọn phương thức xác thực</p>
+
+            <!-- One independent form per method — sessionToken is single-use -->
+            <div class="method-list" th:if="${methods != null}">
+                <th:block th:each="method : ${methods}">
+                    <form th:if="${method.type != currentMethodType}"
+                          th:action="@{/ms-internal-iam/auth/switch-method/confirm}"
+                          method="post">
+                        <input type="hidden" name="nodeId"       th:value="${method.nodeId}" />
+                        <input type="hidden" name="sessionToken" th:value="${sessionToken}" />
+                        <input type="hidden" name="clientId"     th:value="${clientId}" />
+                        <button type="submit" class="btn btn-method"
+                                th:text="${method.label}"></button>
+                    </form>
+                </th:block>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <p>Bản quyền thuộc về Đại học Bách khoa Hà Nội.</p>
+    </footer>
+
+</div>
+
+<!-- ════════════ RIGHT PANEL ════════════ -->
+<div class="right-panel">
+    <img th:src="@{/template/default/username_password/img/auth.png}" alt="Fintech illustration" />
+</div>
+
+<script th:src="@{/template/default/select_method/select.js}"></script>
+</body>
+</html>

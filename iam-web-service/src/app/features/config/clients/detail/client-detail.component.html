@@ -1,0 +1,290 @@
+<nav aria-label="breadcrumb" class="mb-2">
+  <ol class="breadcrumb mb-0">
+    <li class="breadcrumb-item text-muted small">Quản lý cấu hình</li>
+    <li class="breadcrumb-item small">
+      <a class="text-decoration-none text-primary" style="cursor:pointer" (click)="goBack()">OAuth2 Client</a>
+    </li>
+    <li class="breadcrumb-item active small fw-semibold">Thông tin chi tiết</li>
+  </ol>
+</nav>
+
+<div class="d-flex align-items-center gap-3 mb-3">
+  <button class="btn btn-outline-secondary btn-sm" (click)="goBack()">
+    <i class="bi bi-arrow-left me-1"></i>Quay lại
+  </button>
+  <h4 class="mb-0">
+    <i class="bi bi-plug me-2 text-primary"></i>
+    <code *ngIf="detail">{{ detail.clientId }}</code>
+    <span *ngIf="!detail && loading" class="text-muted">Đang tải...</span>
+  </h4>
+  <span *ngIf="detail" class="badge fs-6" [ngClass]="statusBadge(detail.enabled)">
+    {{ statusLabel(detail.enabled) }}
+  </span>
+</div>
+
+<!-- Loading -->
+<div *ngIf="loading" class="text-center py-5">
+  <span class="spinner-border text-primary"></span>
+</div>
+
+<ng-container *ngIf="detail && !loading">
+
+  <!-- Read-only header info -->
+  <div class="card mb-0 border-bottom-0" style="border-radius:12px 12px 0 0">
+    <div class="card-body py-2">
+      <div class="row g-2 small">
+        <div class="col-6 col-md-3">
+          <span class="text-muted d-block">Client ID</span>
+          <code>{{ detail.clientId }}</code>
+        </div>
+        <div class="col-6 col-md-3">
+          <span class="text-muted d-block">Ứng dụng</span>
+          {{ detail.app?.name ?? '—' }}
+          <span class="text-muted" *ngIf="detail.app?.serviceCode"> ({{ detail.app.serviceCode }})</span>
+        </div>
+        <div class="col-6 col-md-3">
+          <span class="text-muted d-block">Loại</span>
+          <span class="badge bg-secondary">{{ detail.clientType ?? '—' }}</span>
+        </div>
+        <div class="col-6 col-md-3">
+          <span class="text-muted d-block">Ngày tạo</span>
+          {{ detail.createdAt | date:'dd/MM/yyyy HH:mm' }}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <ul class="nav nav-tabs" style="border-bottom:none">
+    <li class="nav-item">
+      <button class="nav-link" [class.active]="activeTab==='detail'" (click)="activeTab='detail'">
+        <i class="bi bi-pencil-square me-1"></i>Thông tin & Chỉnh sửa
+      </button>
+    </li>
+    <li class="nav-item">
+      <button class="nav-link" [class.active]="activeTab==='scopes'" (click)="activeTab='scopes'">
+        <i class="bi bi-shield-check me-1"></i>Scopes
+        <span class="badge bg-primary ms-1">{{ scopeList.length }}</span>
+      </button>
+    </li>
+    <li class="nav-item">
+      <button class="nav-link" [class.active]="activeTab==='reset'" (click)="activeTab='reset'">
+        <i class="bi bi-arrow-repeat me-1"></i>Reset Secret
+      </button>
+    </li>
+  </ul>
+
+  <div class="tab-content-panel">
+
+    <!-- ======= Tab 1: Thông tin & Chỉnh sửa ======= -->
+    <ng-container *ngIf="activeTab==='detail'">
+      <div *ngIf="saveMessage" class="alert alert-{{ saveMessageType }} py-2 small mb-3">{{ saveMessage }}</div>
+
+      <div *ngIf="detail.warnings?.length" class="alert alert-warning py-2 small mb-3">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+        <strong>Cảnh báo:</strong>
+        <ul class="mb-0 mt-1 ps-3">
+          <li *ngFor="let w of detail.warnings">{{ w }}</li>
+        </ul>
+      </div>
+
+      <div class="row g-3">
+        <!-- Name -->
+        <div class="col-md-6">
+          <label class="form-label small">Tên <span class="text-danger">*</span></label>
+          <input class="form-control form-control-sm" [(ngModel)]="editForm.name" placeholder="Tên hiển thị">
+        </div>
+
+        <!-- Enabled switch -->
+        <div class="col-md-6 d-flex align-items-end pb-1">
+          <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" role="switch" id="editEnabled" [(ngModel)]="editForm.enabled">
+            <label class="form-check-label small" for="editEnabled">
+              <span [class]="editForm.enabled ? 'text-success fw-semibold' : 'text-muted'">
+                {{ editForm.enabled ? 'Đang hoạt động' : 'Đã tắt' }}
+              </span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Grant Types -->
+        <div class="col-12">
+          <label class="form-label small mb-1">Grant Types</label>
+          <div class="d-flex flex-wrap gap-3">
+            <div *ngFor="let g of grantTypeOptions" class="form-check">
+              <input class="form-check-input" type="checkbox" [id]="'gt_'+g" [(ngModel)]="editGrantTypes[g]">
+              <label class="form-check-label small" [for]="'gt_'+g">{{ g }}</label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Redirect URIs -->
+        <div class="col-12">
+          <label class="form-label small">Redirect URIs</label>
+          <textarea class="form-control form-control-sm" rows="2" [(ngModel)]="editForm.redirectUris"
+                    placeholder="https://app.example.com/callback,https://app2.example.com/callback"></textarea>
+          <small class="text-muted">Phân cách bằng dấu phẩy</small>
+        </div>
+
+        <!-- Default URL -->
+        <div class="col-md-6">
+          <label class="form-label small">Default URL</label>
+          <input class="form-control form-control-sm" [(ngModel)]="editForm.defaultUrl">
+        </div>
+
+        <!-- Post Logout Redirect -->
+        <div class="col-md-6">
+          <label class="form-label small">Post Logout Redirect</label>
+          <input class="form-control form-control-sm" [(ngModel)]="editForm.postLogoutRedirect">
+        </div>
+
+        <!-- Token Endpoint Auth -->
+        <div class="col-md-4">
+          <label class="form-label small">Token Endpoint Auth</label>
+          <select class="form-select form-select-sm" [(ngModel)]="editForm.tokenEndpointAuth">
+            <option *ngFor="let o of tokenEndpointAuthOptions" [value]="o">{{ o }}</option>
+          </select>
+        </div>
+
+        <!-- Access Token TTL -->
+        <div class="col-md-4">
+          <label class="form-label small">Access Token TTL (s)</label>
+          <input class="form-control form-control-sm" type="number" [(ngModel)]="editForm.accessTokenTtl">
+        </div>
+
+        <!-- Refresh Token TTL -->
+        <div class="col-md-4">
+          <label class="form-label small">Refresh Token TTL (s)</label>
+          <input class="form-control form-control-sm" type="number" [(ngModel)]="editForm.refreshTokenTtl">
+        </div>
+
+        <!-- ID Token TTL -->
+        <div class="col-md-4">
+          <label class="form-label small">ID Token TTL (s)</label>
+          <input class="form-control form-control-sm" type="number" [(ngModel)]="editForm.idTokenTtl">
+        </div>
+
+        <!-- Require PKCE -->
+        <div class="col-md-4 d-flex align-items-end pb-1">
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="editRequirePkce" [(ngModel)]="editForm.requirePkce">
+            <label class="form-check-label small" for="editRequirePkce">Bắt buộc PKCE</label>
+          </div>
+        </div>
+
+        <!-- Logo URI -->
+        <div class="col-12">
+          <label class="form-label small">Logo URI</label>
+          <input class="form-control form-control-sm" [(ngModel)]="editForm.logoUri">
+        </div>
+
+        <!-- Description -->
+        <div class="col-12">
+          <label class="form-label small">Mô tả</label>
+          <textarea class="form-control form-control-sm" rows="2" [(ngModel)]="editForm.description"></textarea>
+        </div>
+      </div>
+
+      <!-- Action buttons -->
+      <div class="mt-3 d-flex gap-2" *ngIf="perm.has('client','update')">
+        <button class="btn btn-primary btn-sm" (click)="save()" [disabled]="loadingSave">
+          <span *ngIf="loadingSave" class="spinner-border spinner-border-sm me-1"></span>
+          <i *ngIf="!loadingSave" class="bi bi-check-lg me-1"></i>Lưu thay đổi
+        </button>
+        <button class="btn btn-outline-secondary btn-sm" (click)="resetForm()" [disabled]="loadingSave">
+          <i class="bi bi-arrow-counterclockwise me-1"></i>Làm mới
+        </button>
+      </div>
+    </ng-container>
+
+    <!-- ======= Tab 2: Scopes ======= -->
+    <ng-container *ngIf="activeTab==='scopes'">
+      <div *ngIf="scopeMessage" class="alert alert-{{ scopeMessageType }} py-2 small mb-3">{{ scopeMessage }}</div>
+
+      <div *ngIf="loadingScope" class="text-center py-2 mb-2">
+        <span class="spinner-border spinner-border-sm text-primary me-2"></span>Đang xử lý...
+      </div>
+
+      <!-- Current scope list -->
+      <div class="mb-3">
+        <div class="text-muted small mb-2">
+          <i class="bi bi-shield-check me-1"></i>{{ scopeList.length }} scope đang active
+        </div>
+        <div *ngIf="scopeList.length === 0" class="text-muted fst-italic small py-2">
+          Chưa có scope nào
+        </div>
+        <div *ngFor="let s of scopeList" class="scope-row d-flex align-items-center justify-content-between">
+          <span class="font-monospace small fw-semibold">{{ s }}</span>
+          <button class="pill-toggle pill-on" [disabled]="loadingScope" (click)="removeScope(s)"
+                  title="Click để xoá scope này">
+            <span class="pill-knob"></span>
+            <span class="pill-label">ON</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Add new scope -->
+      <div class="add-scope-row">
+        <label class="form-label small mb-1">
+          <i class="bi bi-plus-circle me-1 text-success"></i>Thêm scope mới
+        </label>
+        <div class="d-flex gap-2 align-items-center">
+          <input class="form-control form-control-sm" style="max-width:280px"
+                 [(ngModel)]="newScopeInput"
+                 placeholder="vd: email, phone, address"
+                 (keydown.enter)="addScope()">
+          <button class="btn btn-success btn-sm" (click)="addScope()"
+                  [disabled]="loadingScope || !newScopeInput.trim()">
+            <i class="bi bi-plus-lg me-1"></i>Thêm
+          </button>
+        </div>
+        <small class="text-muted mt-1 d-block">Gợi ý: openid, profile, email, phone</small>
+      </div>
+    </ng-container>
+
+    <!-- ======= Tab 3: Reset Secret ======= -->
+    <ng-container *ngIf="activeTab==='reset'">
+      <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+
+          <!-- Confirm state -->
+          <ng-container *ngIf="!resetDone">
+            <div class="alert alert-warning small">
+              <i class="bi bi-exclamation-triangle-fill me-2"></i>
+              <strong>Lưu ý:</strong> Secret cũ sẽ bị vô hiệu hóa <strong>ngay lập tức</strong>.
+              Mọi client đang dùng secret cũ sẽ không thể xác thực. Thao tác này không thể hoàn tác.
+            </div>
+            <p class="small mb-3">
+              Client: <code>{{ detail?.clientId }}</code>
+              &nbsp;|&nbsp;Loại: <span class="badge bg-secondary">{{ detail?.clientType }}</span>
+            </p>
+            <div *ngIf="resetError" class="alert alert-danger py-2 small mb-3">
+              <i class="bi bi-x-circle-fill me-1"></i>{{ resetError }}
+            </div>
+            <button class="btn btn-warning text-white" (click)="confirmResetSecret()" [disabled]="resetting">
+              <span *ngIf="resetting" class="spinner-border spinner-border-sm me-2"></span>
+              <i *ngIf="!resetting" class="bi bi-arrow-repeat me-2"></i>
+              Xác nhận Reset Secret
+            </button>
+          </ng-container>
+
+          <!-- Success state -->
+          <ng-container *ngIf="resetDone">
+            <div class="alert alert-success small">
+              <i class="bi bi-check-circle-fill me-2"></i>
+              Reset thành công! Lưu lại secret bên dưới —
+              <strong>chỉ hiển thị một lần</strong>, không thể lấy lại sau khi đóng trang.
+            </div>
+            <div>
+              <label class="form-label small text-muted mb-1">New Client Secret</label>
+              <code class="d-block p-3 bg-light rounded border user-select-all small"
+                    style="word-break:break-all">{{ newSecret }}</code>
+            </div>
+          </ng-container>
+
+        </div>
+      </div>
+    </ng-container>
+
+  </div>
+</ng-container>

@@ -1,0 +1,342 @@
+<!-- Breadcrumb -->
+<nav aria-label="breadcrumb" class="mb-3">
+  <ol class="breadcrumb mb-0">
+    <li class="breadcrumb-item text-muted small">Quản lý Users</li>
+    <li class="breadcrumb-item small"><a routerLink="/users" class="text-decoration-none">Thông tin User</a></li>
+    <li class="breadcrumb-item active small">Tạo User mới</li>
+  </ol>
+</nav>
+
+<!-- Header -->
+<div class="d-flex align-items-center gap-2 mb-3">
+  <button class="btn btn-outline-secondary btn-sm" (click)="goBack()">
+    <i class="bi bi-arrow-left me-1"></i>Quay lại
+  </button>
+  <h5 class="mb-0 fw-semibold"><i class="bi bi-person-plus me-2 text-primary"></i>Tạo User mới</h5>
+</div>
+
+<!-- Alert -->
+<div *ngIf="message" class="alert alert-{{ messageType }} alert-dismissible mb-3" role="alert">
+  {{ message }}<button type="button" class="btn-close" (click)="message=''"></button>
+</div>
+
+<div class="row g-3">
+
+  <!-- Col 1: Thông tin cơ bản + CCCD -->
+  <div class="col-lg-6">
+
+    <!-- Thông tin cơ bản -->
+    <div class="create-card">
+      <div class="create-card-title"><i class="bi bi-person me-2"></i>Thông tin cơ bản</div>
+      <div class="mb-2">
+        <label class="form-label form-label-sm">Họ và tên <span class="text-danger">*</span></label>
+        <input class="form-control form-control-sm" [(ngModel)]="form.fullName" placeholder="Nguyễn Văn A">
+      </div>
+      <div class="row g-2 mb-2">
+        <div class="col-7">
+          <label class="form-label form-label-sm">Ngày sinh <span class="text-danger">*</span></label>
+          <input class="form-control form-control-sm" type="date" [(ngModel)]="form.dob">
+        </div>
+        <div class="col-5">
+          <label class="form-label form-label-sm">Giới tính <span class="text-danger">*</span></label>
+          <select class="form-select form-select-sm" [(ngModel)]="form.gender">
+            <option value="MALE">Nam</option>
+            <option value="FEMALE">Nữ</option>
+            <option value="OTHER">Khác</option>
+          </select>
+        </div>
+      </div>
+      <div class="row g-2 mb-2">
+        <div class="col-4">
+          <label class="form-label form-label-sm">Quốc tịch <span class="text-danger">*</span></label>
+          <input class="form-control form-control-sm" [(ngModel)]="form.nationality">
+        </div>
+        <div class="col-4">
+          <label class="form-label form-label-sm">Dân tộc <span class="text-danger">*</span></label>
+          <input class="form-control form-control-sm" [(ngModel)]="form.ethnic">
+        </div>
+        <div class="col-4">
+          <label class="form-label form-label-sm">Tôn giáo <span class="text-danger">*</span></label>
+          <input class="form-control form-control-sm" [(ngModel)]="form.religion">
+        </div>
+      </div>
+      <div class="mb-2">
+        <label class="form-label form-label-sm">Điện thoại <span class="text-danger">*</span></label>
+        <input class="form-control form-control-sm" [(ngModel)]="form.mobile" placeholder="0912345678">
+      </div>
+      <div class="mb-2">
+        <label class="form-label form-label-sm">Email <span class="text-danger">*</span></label>
+        <input class="form-control form-control-sm" type="email" [(ngModel)]="form.mail" placeholder="nva@bank.vn">
+      </div>
+      <div class="mb-0">
+        <label class="form-label form-label-sm">Avatar URL</label>
+        <input class="form-control form-control-sm" [(ngModel)]="form.avatarUrl" placeholder="https://...">
+      </div>
+    </div>
+
+    <!-- CCCD -->
+    <div class="create-card mt-3">
+      <div class="create-card-title"><i class="bi bi-person-vcard me-2"></i>CCCD / CMND</div>
+      <div class="mb-2">
+        <label class="form-label form-label-sm">Số CCCD <span class="text-danger">*</span></label>
+        <input class="form-control form-control-sm" [(ngModel)]="form.numberId" maxlength="12" placeholder="12 chữ số">
+      </div>
+      <div class="row g-2 mb-0">
+        <div class="col-5">
+          <label class="form-label form-label-sm">Ngày cấp <span class="text-danger">*</span></label>
+          <input class="form-control form-control-sm" type="date" [(ngModel)]="form.numberIdIssuedDate">
+        </div>
+        <div class="col-7">
+          <label class="form-label form-label-sm">Nơi cấp <span class="text-danger">*</span></label>
+          <input class="form-control form-control-sm" [(ngModel)]="form.numberIdIssuedPlace" placeholder="Cục cảnh sát ĐKQLCTND...">
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Col 2: Công việc + Roles -->
+  <div class="col-lg-6">
+
+    <!-- Thông tin công việc -->
+    <div class="create-card">
+      <div class="create-card-title"><i class="bi bi-building me-2"></i>Thông tin công việc</div>
+      <div class="mb-2">
+        <label class="form-label form-label-sm">Phòng ban <span class="text-danger">*</span></label>
+        <div class="position-relative" (click)="$event.stopPropagation()">
+          <input class="form-control form-control-sm"
+                 [value]="deptInputValue"
+                 (input)="onDeptInput($event)"
+                 placeholder="Nhập tên phòng ban..."
+                 autocomplete="off">
+          <div *ngIf="showDeptSugg" class="sugg-dropdown">
+            <div *ngIf="deptSugg.length === 0" class="sugg-empty">Không tìm thấy</div>
+            <div *ngFor="let d of deptSugg"
+                 class="sugg-item"
+                 [style.padding-left.px]="12 + d.depth * 16"
+                 (mousedown)="selectDept(d)">
+              <span *ngIf="d.depth > 0" class="text-muted me-1">└</span>{{ d.name }}
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="mb-2">
+        <label class="form-label form-label-sm">Chức vụ</label>
+        <select class="form-select form-select-sm" [(ngModel)]="form.position">
+          <option value="">-- Chọn chức vụ --</option>
+          <option *ngFor="let p of positions" [value]="p.code">{{ p.name }} ({{ p.code }})</option>
+        </select>
+      </div>
+      <div class="mb-0">
+        <label class="form-label form-label-sm">Ngày vào làm <span class="text-danger">*</span></label>
+        <input class="form-control form-control-sm" type="date" [(ngModel)]="form.joinDate">
+      </div>
+    </div>
+
+    <!-- Roles -->
+    <div class="create-card mt-3">
+      <div class="create-card-title">
+        <i class="bi bi-shield-check me-2"></i>Phân quyền Role <span class="text-danger">*</span>
+      </div>
+      <div *ngIf="roles.length === 0" class="text-muted small">Đang tải...</div>
+      <div class="d-flex flex-wrap gap-2">
+        <div *ngFor="let r of roles"
+             class="role-chip"
+             [class.role-chip-selected]="isRoleSelected(r.code)"
+             (click)="toggleRole(r.code)">
+          <input class="form-check-input me-1" type="checkbox"
+                 [checked]="isRoleSelected(r.code)"
+                 (click)="$event.stopPropagation()">
+          <span class="fw-semibold small">{{ r.name ?? r.code }}</span>
+          <small class="d-block text-muted ps-3 small">{{ r.code }}</small>
+        </div>
+      </div>
+      <div *ngIf="selectedRoleCodes.length > 0" class="mt-2">
+        <span class="text-muted small me-1">Đã chọn:</span>
+        <span *ngFor="let code of selectedRoleCodes" class="badge bg-primary me-1">{{ code }}</span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Địa chỉ (3 loại, tuỳ chọn) -->
+<div class="create-card mt-3">
+  <div class="create-card-title">
+    <i class="bi bi-geo-alt me-2"></i>Địa chỉ
+    <span class="text-muted small fw-normal">(tuỳ chọn — tích vào để thêm)</span>
+  </div>
+  <div class="row g-3">
+
+    <!-- Thường trú -->
+    <div class="col-md-4">
+      <div class="addr-section">
+        <div class="form-check mb-2">
+          <input class="form-check-input" type="checkbox" id="enablePermanent"
+                 [(ngModel)]="addrs['permanent'].enabled">
+          <label class="form-check-label fw-semibold small" for="enablePermanent">
+            <span class="badge bg-primary">Thường trú</span>
+          </label>
+        </div>
+        <ng-container *ngIf="addrs['permanent'].enabled">
+
+          <!-- Province autocomplete -->
+          <label class="form-label form-label-sm text-muted">Tỉnh / Thành phố</label>
+          <div class="position-relative mb-2" (click)="$event.stopPropagation()">
+            <input class="form-control form-control-sm"
+                   [value]="addrs['permanent'].provinceName"
+                   (input)="onProvinceInput('permanent', $event)"
+                   placeholder="Nhập tên tỉnh / thành phố..."
+                   autocomplete="off">
+            <div *ngIf="addrs['permanent'].showProvinceSugg" class="sugg-dropdown">
+              <div *ngIf="addrs['permanent'].provinceSugg.length === 0" class="sugg-empty">Không tìm thấy</div>
+              <div *ngFor="let p of addrs['permanent'].provinceSugg"
+                   class="sugg-item"
+                   (mousedown)="selectProvince('permanent', p)">{{ p.name }}</div>
+            </div>
+          </div>
+
+          <!-- Ward autocomplete (chỉ hiện sau khi chọn tỉnh) -->
+          <ng-container *ngIf="addrs['permanent'].provinceCode">
+            <label class="form-label form-label-sm text-muted">Phường / Xã</label>
+            <div class="position-relative mb-2" (click)="$event.stopPropagation()">
+              <input class="form-control form-control-sm"
+                     [value]="addrs['permanent'].wardName"
+                     (input)="onWardInput('permanent', $event)"
+                     placeholder="Nhập tên phường / xã..."
+                     autocomplete="off">
+              <div *ngIf="addrs['permanent'].showWardSugg" class="sugg-dropdown">
+                <div *ngIf="addrs['permanent'].wardSugg.length === 0" class="sugg-empty">Không tìm thấy</div>
+                <div *ngFor="let w of addrs['permanent'].wardSugg"
+                     class="sugg-item"
+                     (mousedown)="selectWard('permanent', w)">{{ w.name }}</div>
+              </div>
+            </div>
+          </ng-container>
+
+          <!-- Detail -->
+          <label class="form-label form-label-sm text-muted">Chi tiết</label>
+          <input class="form-control form-control-sm"
+                 [(ngModel)]="addrs['permanent'].detail"
+                 placeholder="Số nhà, đường, tổ...">
+        </ng-container>
+      </div>
+    </div>
+
+    <!-- Tạm trú -->
+    <div class="col-md-4">
+      <div class="addr-section">
+        <div class="form-check mb-2">
+          <input class="form-check-input" type="checkbox" id="enableTemporary"
+                 [(ngModel)]="addrs['temporary'].enabled">
+          <label class="form-check-label fw-semibold small" for="enableTemporary">
+            <span class="badge bg-info text-dark">Tạm trú</span>
+          </label>
+        </div>
+        <ng-container *ngIf="addrs['temporary'].enabled">
+
+          <label class="form-label form-label-sm text-muted">Tỉnh / Thành phố</label>
+          <div class="position-relative mb-2" (click)="$event.stopPropagation()">
+            <input class="form-control form-control-sm"
+                   [value]="addrs['temporary'].provinceName"
+                   (input)="onProvinceInput('temporary', $event)"
+                   placeholder="Nhập tên tỉnh / thành phố..."
+                   autocomplete="off">
+            <div *ngIf="addrs['temporary'].showProvinceSugg" class="sugg-dropdown">
+              <div *ngIf="addrs['temporary'].provinceSugg.length === 0" class="sugg-empty">Không tìm thấy</div>
+              <div *ngFor="let p of addrs['temporary'].provinceSugg"
+                   class="sugg-item"
+                   (mousedown)="selectProvince('temporary', p)">{{ p.name }}</div>
+            </div>
+          </div>
+
+          <ng-container *ngIf="addrs['temporary'].provinceCode">
+            <label class="form-label form-label-sm text-muted">Phường / Xã</label>
+            <div class="position-relative mb-2" (click)="$event.stopPropagation()">
+              <input class="form-control form-control-sm"
+                     [value]="addrs['temporary'].wardName"
+                     (input)="onWardInput('temporary', $event)"
+                     placeholder="Nhập tên phường / xã..."
+                     autocomplete="off">
+              <div *ngIf="addrs['temporary'].showWardSugg" class="sugg-dropdown">
+                <div *ngIf="addrs['temporary'].wardSugg.length === 0" class="sugg-empty">Không tìm thấy</div>
+                <div *ngFor="let w of addrs['temporary'].wardSugg"
+                     class="sugg-item"
+                     (mousedown)="selectWard('temporary', w)">{{ w.name }}</div>
+              </div>
+            </div>
+          </ng-container>
+
+          <label class="form-label form-label-sm text-muted">Chi tiết</label>
+          <input class="form-control form-control-sm"
+                 [(ngModel)]="addrs['temporary'].detail"
+                 placeholder="Số nhà, đường, tổ...">
+        </ng-container>
+      </div>
+    </div>
+
+    <!-- Quê quán -->
+    <div class="col-md-4">
+      <div class="addr-section">
+        <div class="form-check mb-2">
+          <input class="form-check-input" type="checkbox" id="enableBirth"
+                 [(ngModel)]="addrs['birth'].enabled">
+          <label class="form-check-label fw-semibold small" for="enableBirth">
+            <span class="badge bg-secondary">Quê quán</span>
+          </label>
+        </div>
+        <ng-container *ngIf="addrs['birth'].enabled">
+
+          <label class="form-label form-label-sm text-muted">Tỉnh / Thành phố</label>
+          <div class="position-relative mb-2" (click)="$event.stopPropagation()">
+            <input class="form-control form-control-sm"
+                   [value]="addrs['birth'].provinceName"
+                   (input)="onProvinceInput('birth', $event)"
+                   placeholder="Nhập tên tỉnh / thành phố..."
+                   autocomplete="off">
+            <div *ngIf="addrs['birth'].showProvinceSugg" class="sugg-dropdown">
+              <div *ngIf="addrs['birth'].provinceSugg.length === 0" class="sugg-empty">Không tìm thấy</div>
+              <div *ngFor="let p of addrs['birth'].provinceSugg"
+                   class="sugg-item"
+                   (mousedown)="selectProvince('birth', p)">{{ p.name }}</div>
+            </div>
+          </div>
+
+          <ng-container *ngIf="addrs['birth'].provinceCode">
+            <label class="form-label form-label-sm text-muted">Phường / Xã</label>
+            <div class="position-relative mb-2" (click)="$event.stopPropagation()">
+              <input class="form-control form-control-sm"
+                     [value]="addrs['birth'].wardName"
+                     (input)="onWardInput('birth', $event)"
+                     placeholder="Nhập tên phường / xã..."
+                     autocomplete="off">
+              <div *ngIf="addrs['birth'].showWardSugg" class="sugg-dropdown">
+                <div *ngIf="addrs['birth'].wardSugg.length === 0" class="sugg-empty">Không tìm thấy</div>
+                <div *ngFor="let w of addrs['birth'].wardSugg"
+                     class="sugg-item"
+                     (mousedown)="selectWard('birth', w)">{{ w.name }}</div>
+              </div>
+            </div>
+          </ng-container>
+
+          <label class="form-label form-label-sm text-muted">Chi tiết</label>
+          <input class="form-control form-control-sm"
+                 [(ngModel)]="addrs['birth'].detail"
+                 placeholder="Số nhà, đường, tổ...">
+        </ng-container>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Action buttons -->
+<div class="mt-3 d-flex gap-2">
+  <button class="btn btn-primary btn-sm" (click)="submit()" [disabled]="loading">
+    <span *ngIf="loading" class="spinner-border spinner-border-sm me-1"></span>
+    <i *ngIf="!loading" class="bi bi-check-lg me-1"></i>Tạo User
+  </button>
+  <button class="btn btn-outline-secondary btn-sm" (click)="goBack()" [disabled]="loading">
+    <i class="bi bi-x-lg me-1"></i>Hủy
+  </button>
+</div>

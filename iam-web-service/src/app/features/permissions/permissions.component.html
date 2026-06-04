@@ -1,0 +1,393 @@
+<nav aria-label="breadcrumb" class="mb-2">
+  <ol class="breadcrumb mb-0">
+    <li class="breadcrumb-item text-muted small">Quản lý Users</li>
+    <li class="breadcrumb-item active small fw-semibold">Phân quyền</li>
+  </ol>
+</nav>
+
+<!-- ==================== Alert ==================== -->
+<div *ngIf="message" class="alert alert-{{ messageType }} alert-floating" role="alert">{{ message }}</div>
+
+<!-- ==================== Page Header ==================== -->
+<div class="page-header mb-3">
+  <h4 class="mb-0"><i class="bi bi-key me-2 text-warning"></i>Phân quyền</h4>
+</div>
+
+<!-- ==================== Tab Bar ==================== -->
+<ul class="nav nav-tabs mb-0 border-bottom-0">
+  <li class="nav-item">
+    <button class="nav-link" [class.active]="activeTab === 'myperms'" (click)="switchTab('myperms')">
+      <i class="bi bi-shield-check me-1"></i>Danh sách quyền
+    </button>
+  </li>
+  <li class="nav-item"
+      *ngIf="perm.has('user-permission','request') || perm.has('user-permission','cancel')">
+    <button class="nav-link" [class.active]="activeTab === 'request'" (click)="switchTab('request')">
+      <i class="bi bi-send me-1"></i>Danh sách yêu cầu
+      <span class="badge bg-secondary ms-1">{{ requestTotal }}</span>
+    </button>
+  </li>
+  <li class="nav-item"
+      *ngIf="perm.has('user-permission','approve') || perm.has('user-permission','reject')">
+    <button class="nav-link" [class.active]="activeTab === 'approve'" (click)="switchTab('approve')">
+      <i class="bi bi-clipboard-check me-1"></i>Duyệt yêu cầu
+      <span class="badge bg-primary ms-1">{{ officialTotal }}</span>
+    </button>
+  </li>
+</ul>
+
+<div class="tab-content-panel">
+
+  <!-- ==================== Tab: Danh sách quyền ==================== -->
+  <ng-container *ngIf="activeTab === 'myperms'">
+    <!-- Search bar -->
+    <div class="row g-2 align-items-end mb-3">
+      <div class="col-md-4">
+        <label class="form-label small mb-1">Mã nhân viên</label>
+        <input class="form-control form-control-sm" [(ngModel)]="queryEmpCode"
+               placeholder="{{ empCode }}" (keydown.enter)="searchPerms()">
+      </div>
+      <div class="col-auto">
+        <button class="btn btn-primary btn-sm" (click)="searchPerms()" [disabled]="loadingMyPerms">
+          <span *ngIf="loadingMyPerms" class="spinner-border spinner-border-sm me-1"></span>
+          <i *ngIf="!loadingMyPerms" class="bi bi-search me-1"></i>Tra cứu
+        </button>
+        <button class="btn btn-outline-secondary btn-sm ms-1" (click)="queryEmpCode = empCode; searchPerms()">
+          <i class="bi bi-person me-1"></i>Của tôi
+        </button>
+      </div>
+    </div>
+
+    <!-- Sub-tabs -->
+    <ul class="nav nav-pills mb-3 perms-subtab">
+      <li class="nav-item">
+        <button class="nav-link" [class.active]="myPermsSubTab === 'app'" (click)="myPermsSubTab = 'app'">
+          <i class="bi bi-window me-1"></i>Quyền ứng dụng
+          <span class="badge ms-1" [class.bg-light]="myPermsSubTab !== 'app'"
+                [class.text-dark]="myPermsSubTab !== 'app'"
+                [class.bg-white]="myPermsSubTab === 'app'"
+                [class.text-primary]="myPermsSubTab === 'app'">{{ appPermissions.length }}</span>
+        </button>
+      </li>
+      <li class="nav-item">
+        <button class="nav-link" [class.active]="myPermsSubTab === 'resource'" (click)="myPermsSubTab = 'resource'">
+          <i class="bi bi-boxes me-1"></i>Quyền tài nguyên
+          <span class="badge ms-1" [class.bg-light]="myPermsSubTab !== 'resource'"
+                [class.text-dark]="myPermsSubTab !== 'resource'"
+                [class.bg-white]="myPermsSubTab === 'resource'"
+                [class.text-primary]="myPermsSubTab === 'resource'">{{ resourcePermissions.length }}</span>
+        </button>
+      </li>
+    </ul>
+
+    <!-- Sub-tab: Quyền ứng dụng -->
+    <ng-container *ngIf="myPermsSubTab === 'app'">
+      <div class="card">
+        <div class="table-responsive">
+          <table class="table table-sm table-hover mb-0">
+            <thead>
+              <tr>
+                <th>Ứng dụng</th>
+                <th>Mã dịch vụ</th>
+                <th>Loại</th>
+                <th>Nguồn cấp</th>
+                <th>Trạng thái</th>
+                <th>Thời gian cấp</th>
+                <th>Hết hạn</th>
+                <th>Tạm dừng</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let p of appPermissions">
+                <td class="fw-semibold">{{ p.appName ?? '—' }}</td>
+                <td><code class="small">{{ p.serviceCode ?? '—' }}</code></td>
+                <td><span class="badge bg-light text-dark border">{{ p.appType ?? '—' }}</span></td>
+                <td>
+                  <span class="badge"
+                        [class.bg-info]="p.grantSource === 'role'"
+                        [class.bg-warning]="p.grantSource === 'request'"
+                        [class.text-dark]="p.grantSource === 'request'"
+                        [class.bg-secondary]="!p.grantSource">
+                    {{ p.grantSource ?? '—' }}
+                  </span>
+                </td>
+                <td>
+                  <span class="badge"
+                        [class.bg-success]="p.status === 'ACTIVE'"
+                        [class.bg-secondary]="p.status !== 'ACTIVE'">
+                    {{ p.status ?? '—' }}
+                  </span>
+                </td>
+                <td class="small text-muted text-nowrap">{{ p.grantedAt | date:'dd/MM/yyyy HH:mm' }}</td>
+                <td class="small text-muted text-nowrap">
+                  <span *ngIf="p.expiredAt; else noExp">{{ p.expiredAt | date:'dd/MM/yyyy' }}</span>
+                  <ng-template #noExp><span class="text-muted">—</span></ng-template>
+                </td>
+                <td class="small text-muted text-nowrap">
+                  <ng-container *ngIf="p.inactiveFromDate; else noInactive">
+                    {{ p.inactiveFromDate | date:'dd/MM' }} – {{ p.inactiveToDate | date:'dd/MM/yy' }}
+                  </ng-container>
+                  <ng-template #noInactive><span class="text-muted">—</span></ng-template>
+                </td>
+              </tr>
+              <tr *ngIf="appPermissions.length === 0 && !loadingMyPerms">
+                <td colspan="8" class="text-center text-muted py-4 small">Chưa có quyền ứng dụng</td>
+              </tr>
+              <tr *ngIf="loadingMyPerms">
+                <td colspan="8" class="text-center py-4">
+                  <span class="spinner-border spinner-border-sm me-2"></span>Đang tải...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </ng-container>
+
+    <!-- Sub-tab: Quyền tài nguyên -->
+    <ng-container *ngIf="myPermsSubTab === 'resource'">
+      <div class="card">
+        <div class="table-responsive">
+          <table class="table table-sm table-hover mb-0">
+            <thead>
+              <tr>
+                <th>Tài nguyên</th>
+                <th>Mã</th>
+                <th>Loại</th>
+                <th>Action</th>
+                <th>Ứng dụng</th>
+                <th>Trạng thái</th>
+                <th>Thời gian cấp</th>
+                <th>Hết hạn</th>
+                <th>Tạm dừng</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let p of resourcePermissions">
+                <td class="fw-semibold">{{ p.resourceName ?? '—' }}</td>
+                <td><code class="small">{{ p.resourceCode ?? '—' }}</code></td>
+                <td><span class="badge bg-light text-dark border">{{ p.resourceType ?? '—' }}</span></td>
+                <td><code class="small text-primary">{{ p.action ?? '—' }}</code></td>
+                <td class="small text-muted">{{ p.appName ?? '—' }}</td>
+                <td>
+                  <span class="badge"
+                        [class.bg-success]="p.status === 'ACTIVE'"
+                        [class.bg-secondary]="p.status !== 'ACTIVE'">
+                    {{ p.status ?? '—' }}
+                  </span>
+                </td>
+                <td class="small text-muted text-nowrap">{{ p.grantedAt | date:'dd/MM/yyyy HH:mm' }}</td>
+                <td class="small text-muted text-nowrap">
+                  <span *ngIf="p.expiredAt; else noResExp">{{ p.expiredAt | date:'dd/MM/yyyy' }}</span>
+                  <ng-template #noResExp><span class="text-muted">—</span></ng-template>
+                </td>
+                <td class="small text-muted text-nowrap">
+                  <ng-container *ngIf="p.inactiveFromDate; else noResInactive">
+                    {{ p.inactiveFromDate | date:'dd/MM' }} – {{ p.inactiveToDate | date:'dd/MM/yy' }}
+                  </ng-container>
+                  <ng-template #noResInactive><span class="text-muted">—</span></ng-template>
+                </td>
+              </tr>
+              <tr *ngIf="resourcePermissions.length === 0 && !loadingMyPerms">
+                <td colspan="9" class="text-center text-muted py-4 small">Chưa có quyền tài nguyên</td>
+              </tr>
+              <tr *ngIf="loadingMyPerms">
+                <td colspan="9" class="text-center py-4">
+                  <span class="spinner-border spinner-border-sm me-2"></span>Đang tải...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </ng-container>
+  </ng-container>
+
+  <!-- ==================== Tab: Danh sách yêu cầu ==================== -->
+  <ng-container *ngIf="activeTab === 'request'">
+    <div class="row g-2 align-items-end mb-3">
+      <div class="col-md-2">
+        <label class="form-label small mb-1">Trạng thái</label>
+        <select class="form-select form-select-sm" [(ngModel)]="filterRequestStatus">
+          <option value="">Tất cả</option>
+          <option value="DRAFT">DRAFT</option>
+          <option value="OFFICIAL">OFFICIAL</option>
+          <option value="APPROVED">APPROVED</option>
+          <option value="REJECTED">REJECTED</option>
+          <option value="CANCELLED">CANCELLED</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label small mb-1">Từ ngày</label>
+        <input type="date" class="form-control form-control-sm" [(ngModel)]="filterRequestFrom">
+      </div>
+      <div class="col-md-2">
+        <label class="form-label small mb-1">Đến ngày</label>
+        <input type="date" class="form-control form-control-sm" [(ngModel)]="filterRequestTo">
+      </div>
+      <div class="col-auto">
+        <button class="btn btn-primary btn-sm" (click)="searchRequests()" [disabled]="loadingRequests">
+          <span *ngIf="loadingRequests" class="spinner-border spinner-border-sm me-1"></span>
+          <i *ngIf="!loadingRequests" class="bi bi-search me-1"></i>Tìm
+        </button>
+        <button class="btn btn-outline-secondary btn-sm ms-1" (click)="clearRequestFilter()">Xoá</button>
+      </div>
+      <div class="col-auto ms-auto">
+        <span class="text-muted small">Tổng: <strong>{{ requestTotal }}</strong></span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead>
+            <tr>
+              <th style="width:70px">#</th>
+              <th>Người duyệt</th>
+              <th>Lý do</th>
+              <th>Trạng thái</th>
+              <th>Ngày tạo</th>
+              <th>Ngày duyệt</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let req of myRequests" class="table-row-clickable" (click)="openRequestDetail(req)">
+              <td class="fw-semibold text-muted small">{{ req.requestId }}</td>
+              <td>
+                <div class="small">{{ req.reviewer?.fullName ?? req.reviewer?.username ?? '—' }}</div>
+                <div class="text-muted" style="font-size:0.75rem">{{ req.reviewer?.employeeCode }}</div>
+              </td>
+              <td class="small" style="max-width:200px">
+                <div class="text-truncate" [title]="req.reason">{{ req.reason ?? '—' }}</div>
+                <div *ngIf="req.note" class="text-muted" style="font-size:0.75rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px" [title]="req.note">{{ req.note }}</div>
+              </td>
+              <td><span class="badge" [class]="statusBadge(req.status)">{{ req.status }}</span></td>
+              <td class="small text-muted text-nowrap">{{ req.requestedAt | date:'dd/MM/yyyy HH:mm' }}</td>
+              <td class="small text-muted text-nowrap">
+                <span *ngIf="req.reviewedAt">{{ req.reviewedAt | date:'dd/MM/yyyy HH:mm' }}</span>
+                <span *ngIf="!req.reviewedAt">—</span>
+              </td>
+            </tr>
+            <tr *ngIf="myRequests.length === 0 && !loadingRequests">
+              <td colspan="6" class="text-center text-muted py-4">Chưa có yêu cầu nào</td>
+            </tr>
+            <tr *ngIf="loadingRequests">
+              <td colspan="6" class="text-center py-4">
+                <span class="spinner-border spinner-border-sm me-2"></span>Đang tải...
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Pagination -->
+    <nav *ngIf="requestTotalPages > 1" class="mt-3 d-flex justify-content-center">
+      <ul class="pagination pagination-sm mb-0">
+        <li class="page-item" [class.disabled]="requestPage === 0">
+          <button class="page-link" (click)="goToRequestPage(requestPage - 1)">‹</button>
+        </li>
+        <li *ngFor="let p of requestPages" class="page-item" [class.active]="p === requestPage">
+          <button class="page-link" (click)="goToRequestPage(p)">{{ p + 1 }}</button>
+        </li>
+        <li class="page-item" [class.disabled]="requestPage >= requestTotalPages - 1">
+          <button class="page-link" (click)="goToRequestPage(requestPage + 1)">›</button>
+        </li>
+      </ul>
+    </nav>
+  </ng-container>
+
+  <!-- ==================== Tab: Duyệt yêu cầu ==================== -->
+  <ng-container *ngIf="activeTab === 'approve'">
+    <div class="row g-2 align-items-end mb-3">
+      <div class="col-md-2">
+        <label class="form-label small mb-1">Trạng thái</label>
+        <select class="form-select form-select-sm" [(ngModel)]="filterOfficialStatus">
+          <option value="">Tất cả</option>
+          <option value="OFFICIAL">OFFICIAL</option>
+          <option value="APPROVED">APPROVED</option>
+          <option value="REJECTED">REJECTED</option>
+        </select>
+      </div>
+      <div class="col-auto">
+        <button class="btn btn-primary btn-sm" (click)="searchOfficial()" [disabled]="loadingOfficial">
+          <span *ngIf="loadingOfficial" class="spinner-border spinner-border-sm me-1"></span>
+          <i *ngIf="!loadingOfficial" class="bi bi-search me-1"></i>Tìm
+        </button>
+        <button class="btn btn-outline-secondary btn-sm ms-1" (click)="clearOfficialFilter()">Xoá</button>
+      </div>
+      <div class="col-auto ms-auto">
+        <span class="text-muted small">Tổng: <strong>{{ officialTotal }}</strong></span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead>
+            <tr>
+              <th style="width:70px">#</th>
+              <th>Người yêu cầu</th>
+              <th>Lý do</th>
+              <th>Trạng thái</th>
+              <th>Ngày gửi</th>
+              <th>Ngày duyệt</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let req of officialRequests" class="table-row-clickable" (click)="openOfficialDetail(req)">
+              <td class="fw-semibold text-muted small">{{ req.requestId }}</td>
+              <td>
+                <div class="fw-semibold small">{{ req.requester?.fullName ?? req.requester?.username ?? '—' }}</div>
+                <div class="text-muted" style="font-size:0.75rem">{{ req.requester?.employeeCode }}</div>
+              </td>
+              <td class="small" style="max-width:200px">
+                <div class="text-truncate" [title]="req.reason">{{ req.reason ?? '—' }}</div>
+              </td>
+              <td><span class="badge" [class]="statusBadge(req.status)">{{ req.status }}</span></td>
+              <td class="small text-muted text-nowrap">{{ req.requestedAt | date:'dd/MM/yyyy HH:mm' }}</td>
+              <td class="small text-muted text-nowrap">
+                <span *ngIf="req.reviewedAt">{{ req.reviewedAt | date:'dd/MM/yyyy HH:mm' }}</span>
+                <span *ngIf="!req.reviewedAt">—</span>
+              </td>
+            </tr>
+            <tr *ngIf="officialRequests.length === 0 && !loadingOfficial">
+              <td colspan="6" class="text-center text-muted py-4">Không có yêu cầu nào</td>
+            </tr>
+            <tr *ngIf="loadingOfficial">
+              <td colspan="6" class="text-center py-4">
+                <span class="spinner-border spinner-border-sm me-2"></span>Đang tải...
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Pagination -->
+    <nav *ngIf="officialTotalPages > 1" class="mt-3 d-flex justify-content-center">
+      <ul class="pagination pagination-sm mb-0">
+        <li class="page-item" [class.disabled]="officialPage === 0">
+          <button class="page-link" (click)="goToOfficialPage(officialPage - 1)">‹</button>
+        </li>
+        <li *ngFor="let p of officialPages" class="page-item" [class.active]="p === officialPage">
+          <button class="page-link" (click)="goToOfficialPage(p)">{{ p + 1 }}</button>
+        </li>
+        <li class="page-item" [class.disabled]="officialPage >= officialTotalPages - 1">
+          <button class="page-link" (click)="goToOfficialPage(officialPage + 1)">›</button>
+        </li>
+      </ul>
+    </nav>
+  </ng-container>
+
+</div>
+
+<!-- Floating create button — chỉ hiện ở tab yêu cầu -->
+<div class="fab-wrapper"
+     *ngIf="activeTab === 'request' && perm.has('user-permission','request')"
+     (click)="openCreate()">
+  <span class="fab-label">Tạo yêu cầu mới</span>
+  <button class="fab-btn btn btn-primary shadow-lg" title="Tạo yêu cầu mới">
+    <i class="bi bi-file-earmark-plus fs-5"></i>
+  </button>
+</div>

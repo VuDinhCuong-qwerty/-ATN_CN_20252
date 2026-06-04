@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  PIPELINE LOG:
+    log.info("...") trong code Java
+      → Logback chọn Appender phù hợp (CONSOLE + FLUENT_ASYNC)
+      → FLUENT_ASYNC đẩy vào queue → thread riêng gọi FLUENT
+      → FLUENT serialize thành JSON → gửi TCP đến Fluent Bit port 5044
+      → Fluent Bit forward vào Elasticsearch index "logs-iam"
+      → Kibana Data View "logs-iam*" hiển thị
+
+  ĐỂ THÊM FIELD VÀO MỖI RECORD:
+    Cách 1 — Static (giống nhau mọi log): thêm vào customFields bên dưới
+      <customFields>{"service": "iam-auth-service", "env": "dev"}</customFields>
+
+    Cách 2 — Dynamic (khác nhau theo request): dùng MDC trong code Java
+      MDC.put("userId", "123");   → tự động xuất hiện trong JSON gửi lên ES
+      MDC.put("requestId", uuid);
+      log.info("...");
+      MDC.clear();                → bắt buộc clear sau mỗi request
+      Dùng Filter/Interceptor để inject MDC tự động cho mọi request.
+-->
+<configuration>
+
+  <!--
+    APPENDER 1 — CONSOLE
+    In log ra terminal dạng text thuần (cho developer đọc khi chạy local).
+    Format: thời gian | thread | level | logger rút gọn | message
+    Không liên quan đến Fluent Bit — chỉ để debug trực tiếp.
+  -->
+  <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+    <encoder>
+      <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+    </encoder>
+  </appender>
+
+  <!--
+    APPENDER 2 — FLUENT_ASYNC
+    Bọc FLUENT bằng async queue để main thread không bị block chờ TCP gửi xong.
+    Luồng hoạt động:
+      main thread → ghi vào queue (512 slots, tức thì) → tiếp tục xử lý request
+      background thread → lấy từ queue → gọi FLUENT → gửi TCP
+
+    queueSize=512          : tối đa 512 log entries chờ trong queue
+    discardingThreshold=0  : KHÔNG discard log khi queue gần đầy
+                             (mặc định Logback discard khi queue > 80%)
+    neverBlock=true        : nếu queue đầy thì bỏ log thay vì block main thread
+                             → ưu tiên hiệu năng hơn độ đầy đủ của log
+  -->
+  <appender name="FLUENT_ASYNC" class="ch.qos.logback.classic.AsyncAppender">
+    <queueSize>512</queueSize>
+    <discardingThreshold>0</discardingThreshold>
+    <neverBlock>true</neverBlock>
+    <appender-ref ref="FLUENT"/>
+  </appender>
+
+  <!--
+    APPENDER 3 — FLUENT
+    Gửi log lên Fluent Bit qua TCP dạng JSON (Logstash format).
+    Mỗi log statement → 1 JSON object được gửi qua socket TCP.
+
+    destination       : địa chỉ Fluent Bit đang lắng nghe
+                        (khớp với Port 5044 trong fluent-bit.conf [INPUT])
+    reconnectionDelay : tự kết nối lại sau 10s nếu mất kết nối
+                        (Fluent Bit chưa start hoặc restart)
+
+    LogstashEncoder tự động thêm các field sau vào mỗi JSON record:
+      @timestamp   — thời điểm log (ISO 8601)
+      level        — INFO / WARN / ERROR / DEBUG
+      logger_name  — tên class gọi log, vd: "c.i.auth.service.AuthServiceImpl"
+      thread_name  — tên thread xử lý, vd: "http-nio-8888-exec-3"
+      message      — nội dung log.info("...")
+      stack_trace  — stack trace nếu là exception (tự động)
+
+    customFields  : field tĩnh thêm vào MỌI record của service này
+                    → Fluent Bit dùng field "service" để phân luồng (rewrite_tag)
+                    → Kibana dùng để filter log theo service
+  -->
+  <appender name="FLUENT" class="net.logstash.logback.appender.LogstashTcpSocketAppender">
+    <destination>localhost:5044</destination>
+    <reconnectionDelay>10 seconds</reconnectionDelay>
+    <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+      <customFields>{"service": "iam-auth-service"}</customFields>
+    </encoder>
+  </appender>
+
+  <!--
+    ROOT LOGGER
+    Tất cả log từ level INFO trở lên (INFO, WARN, ERROR) đi qua 2 appender:
+      CONSOLE      — in terminal
+      FLUENT_ASYNC — gửi Fluent Bit (bất đồng bộ)
+    DEBUG và TRACE bị lọc bỏ tại đây, không gửi lên Fluent Bit.
+  -->
+  <root level="INFO">
+    <appender-ref ref="CONSOLE"/>
+    <appender-ref ref="FLUENT_ASYNC"/>
+  </root>
+
+</configuration>

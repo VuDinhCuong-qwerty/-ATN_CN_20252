@@ -1,0 +1,140 @@
+<nav aria-label="breadcrumb" class="mb-2">
+  <ol class="breadcrumb mb-0">
+    <li class="breadcrumb-item text-muted small">Quản lý cấu hình</li>
+    <li class="breadcrumb-item active small fw-semibold">Auth Flow</li>
+  </ol>
+</nav>
+
+<div class="d-flex align-items-center mb-3">
+  <h4><i class="bi bi-diagram-3 me-2 text-primary"></i>Quản lý Auth Flow</h4>
+</div>
+
+<!-- Search bar -->
+<div class="search-bar mb-3">
+  <div class="row g-2 align-items-end">
+    <div class="col-md-5">
+      <label class="form-label small mb-1">Ứng dụng</label>
+      <select class="form-select form-select-sm" [(ngModel)]="selectedAppId" (ngModelChange)="onAppChange()">
+        <option value="">-- Chọn ứng dụng --</option>
+        <option *ngFor="let app of applications" [value]="app.id">{{ app.name }}</option>
+      </select>
+    </div>
+    <div class="col-auto">
+      <button class="btn btn-outline-secondary btn-sm" (click)="loadFlows()" [disabled]="loading || loadingDetail" title="Làm mới">
+        <i class="bi bi-arrow-clockwise"></i>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Loading spinner -->
+<div *ngIf="loading || loadingDetail" class="text-center py-5">
+  <span class="spinner-border spinner-border-sm me-2"></span>Đang tải...
+</div>
+
+<!-- No app selected -->
+<div *ngIf="!selectedAppId && !loading" class="text-center text-muted py-5">
+  <i class="bi bi-diagram-3 fs-1 d-block mb-2 opacity-25"></i>
+  Chọn ứng dụng để xem Auth Flow
+</div>
+
+<!-- No flow found -->
+<div *ngIf="selectedAppId && !loading && !loadingDetail && flows.length === 0" class="text-center py-5">
+  <i class="bi bi-diagram-3 fs-1 d-block mb-2 opacity-25 text-muted"></i>
+  <p class="text-muted mb-3">Ứng dụng này chưa có Auth Flow nào</p>
+  <button *ngIf="perm.has('auth-flow','create')" class="btn btn-primary btn-sm" (click)="openCreate()">
+    <i class="bi bi-plus-lg me-1"></i>Tạo Auth Flow mới
+  </button>
+</div>
+
+<!-- Flow content -->
+<ng-container *ngIf="activeFlow && !loading && !loadingDetail">
+
+  <!-- Flow info card -->
+  <div class="flow-info-card mb-3">
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+      <span class="fw-semibold fs-6">{{ activeFlow.alias }}</span>
+      <span class="badge" [ngClass]="activeFlow.status === 'ACTIVE' ? 'bg-success' : 'bg-secondary'">
+        {{ activeFlow.status }}
+      </span>
+      <span class="badge" [ngClass]="activeFlow.isBuiltIn ? 'bg-warning text-dark' : 'bg-light text-dark border'">
+        {{ activeFlow.isBuiltIn ? 'Built-in' : 'Custom' }}
+      </span>
+      <span *ngIf="activeFlow.description" class="text-muted small ms-1">— {{ activeFlow.description }}</span>
+    </div>
+  </div>
+
+  <!-- Tree panel -->
+  <div class="tree-panel">
+    <div class="tree-panel-header mb-2">
+      <i class="bi bi-diagram-2 me-1 text-primary"></i>
+      <span class="small fw-semibold text-primary">Luồng xác thực</span>
+      <span class="text-muted small ms-2">({{ flatNodes.length }} bước)</span>
+    </div>
+
+    <!-- Empty executions -->
+    <div *ngIf="flatNodes.length === 0" class="text-center text-muted py-4 small">
+      <i class="bi bi-inbox d-block fs-4 mb-1 opacity-50"></i>Chưa có bước xác thực nào
+    </div>
+
+    <!-- Tree rows -->
+    <div *ngFor="let fn of flatNodes" class="tree-row">
+      <!-- Ancestor continuation lines -->
+      <span *ngFor="let cont of fn.continues" class="tree-indent">
+        <span class="tree-vline" [class.invisible]="!cont">│</span>
+      </span>
+      <!-- Branch connector (only for non-root) -->
+      <span *ngIf="fn.depth > 0" class="tree-connector">{{ fn.isLast ? '└─' : '├─' }}</span>
+      <!-- Node content -->
+      <span class="badge me-2 flex-shrink-0" [ngClass]="reqClass(fn.node.requirement)">
+        {{ fn.node.requirement ?? '—' }}
+      </span>
+      <span class="node-name">{{ fn.node.clientMethodName ?? '—' }}</span>
+      <i *ngIf="fn.node.isDefault" class="bi bi-star-fill text-warning ms-2 small" title="Mặc định"></i>
+      <span *ngIf="fn.node.status === 'INACTIVE'" class="badge bg-secondary ms-2 small">INACTIVE</span>
+    </div>
+  </div>
+
+  <!-- Legend -->
+  <div class="mt-3 d-flex gap-2 flex-wrap">
+    <span class="small text-muted me-1">Chú thích:</span>
+    <span class="badge req-REQUIRED small">REQUIRED</span>
+    <span class="badge req-OPTIONAL small">OPTIONAL</span>
+    <span class="badge req-ALTERNATIVE small">ALTERNATIVE</span>
+    <span class="badge req-DISABLED small">DISABLED</span>
+    <span class="ms-2 small text-muted"><i class="bi bi-star-fill text-warning"></i> = Mặc định</span>
+  </div>
+</ng-container>
+
+<!-- ===== Modal: Tạo Auth Flow mới ===== -->
+<div class="modal-overlay" *ngIf="showCreateModal" (click)="closeCreate()">
+  <div class="modal-panel" (click)="$event.stopPropagation()">
+    <div class="modal-header-bar">
+      <h6 class="mb-0 fw-semibold"><i class="bi bi-plus-circle me-2"></i>Tạo Auth Flow mới</h6>
+      <button class="btn-close" (click)="closeCreate()"></button>
+    </div>
+    <div class="modal-body-area">
+      <div *ngIf="createMessage" class="alert alert-{{ createMessageType }} py-2 small">{{ createMessage }}</div>
+      <div class="row g-3">
+        <div class="col-12">
+          <label class="form-label small">Alias <span class="text-danger">*</span></label>
+          <input class="form-control form-control-sm" [(ngModel)]="createForm.alias"
+                 placeholder="vd: browser-login-flow">
+          <div class="form-text">Tên định danh duy nhất cho flow trong ứng dụng này.</div>
+        </div>
+        <div class="col-12">
+          <label class="form-label small">Mô tả</label>
+          <textarea class="form-control form-control-sm" rows="2" [(ngModel)]="createForm.description"
+                    placeholder="Mô tả ngắn về luồng xác thực..."></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer-bar">
+      <button class="btn btn-sm btn-outline-secondary" (click)="closeCreate()" [disabled]="loadingCreate">Hủy</button>
+      <button class="btn btn-sm btn-primary" (click)="submitCreate()" [disabled]="loadingCreate">
+        <span *ngIf="loadingCreate" class="spinner-border spinner-border-sm me-1"></span>
+        <i *ngIf="!loadingCreate" class="bi bi-plus-lg me-1"></i>Tạo Flow
+      </button>
+    </div>
+  </div>
+</div>

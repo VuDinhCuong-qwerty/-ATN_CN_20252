@@ -1,0 +1,46 @@
+/* Shared modal/fab/alert/table classes are in styles.css */
+
+.scope-row {
+  padding: 0.6rem 0.9rem;
+  background: #fff;
+  border: 1px solid #D5E3F5;
+  border-radius: 8px;
+  margin-bottom: 0.5rem;
+  transition: background 0.1s;
+}
+
+.scope-row:hover { background: #F0F4F9; }
+
+.add-scope-row {
+  padding: 1rem;
+  background: #F8FAFD;
+  border: 1px dashed #C8D8F0;
+  border-radius: 8px;
+}
+
+/* Pill toggle for scope ON/OFF */
+.pill-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: none;
+  border-radius: 999px;
+  padding: 3px 10px 3px 4px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+  min-width: 60px;
+}
+
+.pill-toggle:disabled { opacity: 0.5; cursor: not-allowed; }
+.pill-on  { background: #166534; color: #fff; }
+.pill-on:hover:not(:disabled) { background: #dc3545; }
+
+.pill-knob {
+  width: 18px;
+  height: 18px;
+  background: rgba(255,255,255,0.9);
+  border-radius: 50%;
+  flex-shrink: 0;
+}

@@ -1,0 +1,15 @@
+server.name: "kibana"
+server.host: "0.0.0.0"
+server.publicBaseUrl: "http://localhost:5601"
+
+# Encryption key cho saved objects — bất kỳ chuỗi 32+ ký tự đều được
+xpack.encryptedSavedObjects.encryptionKey: "iam-banking-kibana-enc-key-32chars"
+
+# ── Authentication providers ────────────────────────────────────────────────
+# basic.basic1: Kibana dùng basic auth — ES tự động route sang LDAP realm cho
+# user không phải built-in (elastic). Login bằng username/password IAM.
+
+xpack.security.authc.providers:
+  basic.basic1:
+    order: 0
+    description: "Đăng nhập bằng tài khoản IAM"

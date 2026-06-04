@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="vi">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Kết quả yêu cầu cấp quyền</title>
+</head>
+<body style="margin:0;padding:0;background-color:#F0F4F9;font-family:Arial,Helvetica,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background-color:#F0F4F9;padding:30px 0;">
+  <tr>
+    <td align="center">
+      <table width="600" cellpadding="0" cellspacing="0"
+             style="background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+
+        <!-- Header -->
+        <tr>
+          <td style="background:linear-gradient(135deg,#003B8E,#002868);padding:28px 32px;text-align:center;">
+            <img src="cid:logo" alt="IAM Banking" width="48" height="48"
+                 style="display:inline-block;vertical-align:middle;margin-right:12px;"
+                 onerror="this.style.display='none'"/>
+            <span style="color:#ffffff;font-size:20px;font-weight:700;vertical-align:middle;">IAM Banking System</span>
+          </td>
+        </tr>
+
+        <!-- Result banner -->
+        <tr th:if="${approved}">
+          <td style="background:#d4edda;padding:12px 32px;border-bottom:1px solid #c3e6cb;text-align:center;">
+            <span style="font-size:24px;">&#10003;</span>
+            <strong style="font-size:14px;color:#155724;margin-left:8px;">Yêu cầu đã được PHÊ DUYỆT</strong>
+          </td>
+        </tr>
+        <tr th:unless="${approved}">
+          <td style="background:#f8d7da;padding:12px 32px;border-bottom:1px solid #f5c6cb;text-align:center;">
+            <span style="font-size:24px;">&#10005;</span>
+            <strong style="font-size:14px;color:#721c24;margin-left:8px;">Yêu cầu đã bị TỪ CHỐI</strong>
+          </td>
+        </tr>
+
+        <!-- Body -->
+        <tr>
+          <td style="padding:32px;">
+            <p style="margin:0 0 20px;font-size:14px;color:#555;line-height:1.7;" th:if="${approved}">
+              Yêu cầu cấp quyền <strong>#<span th:text="${requestId}">12345</span></strong>
+              của bạn đã được <strong style="color:#155724;">phê duyệt</strong>.
+              Quyền truy cập của bạn đã được cập nhật trong hệ thống.
+            </p>
+            <p style="margin:0 0 20px;font-size:14px;color:#555;line-height:1.7;" th:unless="${approved}">
+              Yêu cầu cấp quyền <strong>#<span th:text="${requestId}">12345</span></strong>
+              của bạn đã bị <strong style="color:#721c24;">từ chối</strong>.
+              Bạn có thể gửi lại yêu cầu mới nếu cần thiết.
+            </p>
+
+            <!-- Detail info -->
+            <table width="100%" cellpadding="0" cellspacing="0"
+                   style="background:#F0F4F9;border-radius:6px;margin-bottom:24px;overflow:hidden;">
+              <tr>
+                <td style="padding:14px 20px;border-bottom:1px solid #C8D8F0;">
+                  <span style="font-size:12px;color:#888;text-transform:uppercase;letter-spacing:.5px;">Mã yêu cầu</span><br/>
+                  <strong style="font-size:15px;color:#003B8E;font-family:monospace;">
+                    #<span th:text="${requestId}">12345</span>
+                  </strong>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:14px 20px;border-bottom:1px solid #C8D8F0;">
+                  <span style="font-size:12px;color:#888;text-transform:uppercase;letter-spacing:.5px;">Người yêu cầu (mã NV)</span><br/>
+                  <strong style="font-size:15px;color:#333;font-family:monospace;" th:text="${requestedBy}">EMP001</strong>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:14px 20px;">
+                  <span style="font-size:12px;color:#888;text-transform:uppercase;letter-spacing:.5px;">Người duyệt (mã NV)</span><br/>
+                  <strong style="font-size:15px;color:#333;font-family:monospace;" th:text="${reviewedBy}">EMP_CAB</strong>
+                </td>
+              </tr>
+            </table>
+
+            <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
+              <tr>
+                <td align="center">
+                  <a th:href="${portalUrl + '/users/permissions'}" href="#"
+                     style="display:inline-block;background:#003B8E;color:#ffffff;text-decoration:none;
+                            padding:12px 30px;border-radius:6px;font-size:14px;font-weight:700;">
+                    Xem danh sách yêu cầu
+                  </a>
+                </td>
+              </tr>
+            </table>
+
+            <div style="border-top:1px solid #E8EFF9;padding-top:16px;">
+              <p style="margin:0;font-size:13px;color:#888;line-height:1.6;">
+                Email này được gửi tự động. Vui lòng không trả lời.
+                Nếu có thắc mắc, hãy liên hệ bộ phận IT.
+              </p>
+            </div>
+          </td>
+        </tr>
+
+        <!-- Footer -->
+        <tr>
+          <td style="background:#F0F4F9;padding:16px 32px;text-align:center;border-top:1px solid #E8EFF9;">
+            <p style="margin:0;font-size:12px;color:#aaa;">
+              &copy; 2026 IAM Banking System &nbsp;|&nbsp;
+              <a th:href="${portalUrl}" style="color:#003B8E;text-decoration:none;">Truy cập hệ thống</a>
+            </p>
+          </td>
+        </tr>
+
+      </table>
+    </td>
+  </tr>
+</table>
+</body>
+</html>

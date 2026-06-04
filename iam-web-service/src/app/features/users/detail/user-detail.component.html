@@ -1,0 +1,417 @@
+<!-- Breadcrumb -->
+<nav aria-label="breadcrumb" class="mb-3">
+  <ol class="breadcrumb mb-0">
+    <ng-container *ngIf="!selfProfile">
+      <li class="breadcrumb-item text-muted small">Quản lý Users</li>
+      <li class="breadcrumb-item small"><a routerLink="/users" class="text-decoration-none">Thông tin User</a></li>
+      <li class="breadcrumb-item active small">Thông tin Chi tiết</li>
+    </ng-container>
+    <ng-container *ngIf="selfProfile">
+      <li class="breadcrumb-item active small">Thông tin cá nhân</li>
+    </ng-container>
+  </ol>
+</nav>
+
+<!-- Page header -->
+<div class="d-flex align-items-center gap-2 mb-3">
+  <button class="btn btn-outline-secondary btn-sm" (click)="goBack()">
+    <i class="bi bi-arrow-left me-1"></i>Quay lại
+  </button>
+  <h5 class="mb-0 fw-semibold"><i class="bi bi-person-lines-fill me-2 text-primary"></i>Thông tin Chi tiết User</h5>
+</div>
+
+<!-- Alert -->
+<div *ngIf="message" class="alert alert-{{ messageType }} alert-dismissible mb-3" role="alert">
+  {{ message }}<button type="button" class="btn-close" (click)="message=''"></button>
+</div>
+
+<!-- Loading -->
+<div *ngIf="loading" class="text-center py-5">
+  <span class="spinner-border text-primary"></span>
+  <div class="text-muted mt-2 small">Đang tải...</div>
+</div>
+
+<!-- Content -->
+<ng-container *ngIf="!loading && detailUser">
+
+  <div class="row g-3">
+
+    <!-- Col 1 -->
+    <div class="col-lg-6">
+
+      <!-- Thông tin cơ bản -->
+      <div class="detail-card">
+        <div class="detail-card-title">
+          <i class="bi bi-person me-2"></i>Thông tin cơ bản
+        </div>
+        <table class="table table-sm table-borderless mb-0">
+          <tbody>
+            <tr>
+              <td class="label-col text-muted">Mã NV</td>
+              <td><code>{{ detailUser.employeeCode }}</code></td>
+            </tr>
+            <tr>
+              <td class="text-muted">Username</td>
+              <td><strong>{{ detailUser.username }}</strong></td>
+            </tr>
+            <tr>
+              <td class="text-muted">Họ tên</td>
+              <td>
+                <ng-container *ngIf="canEditFull; else viewFullName">
+                  <input class="form-control form-control-sm" [(ngModel)]="editForm.fullName">
+                </ng-container>
+                <ng-template #viewFullName>{{ detailUser.fullName }}</ng-template>
+              </td>
+            </tr>
+            <tr>
+              <td class="text-muted">Tên hiển thị</td>
+              <td>
+                <ng-container *ngIf="canEditPersonal; else viewDisplayName">
+                  <input class="form-control form-control-sm" [(ngModel)]="editForm.displayName">
+                </ng-container>
+                <ng-template #viewDisplayName>{{ detailUser.displayName ?? '—' }}</ng-template>
+              </td>
+            </tr>
+            <tr>
+              <td class="text-muted">Ngày sinh</td>
+              <td>
+                <ng-container *ngIf="canEditFull; else viewDob">
+                  <input class="form-control form-control-sm" type="date" [(ngModel)]="editForm.dob">
+                </ng-container>
+                <ng-template #viewDob>{{ detailUser.dob | date:'dd/MM/yyyy' }}</ng-template>
+              </td>
+            </tr>
+            <tr>
+              <td class="text-muted">Giới tính</td>
+              <td>
+                <ng-container *ngIf="canEditFull; else viewGender">
+                  <select class="form-select form-select-sm" [(ngModel)]="editForm.gender">
+                    <option value="MALE">Nam</option>
+                    <option value="FEMALE">Nữ</option>
+                    <option value="OTHER">Khác</option>
+                  </select>
+                </ng-container>
+                <ng-template #viewGender>
+                  {{ detailUser.gender === 'MALE' ? 'Nam' : detailUser.gender === 'FEMALE' ? 'Nữ' : (detailUser.gender ?? '—') }}
+                </ng-template>
+              </td>
+            </tr>
+            <tr>
+              <td class="text-muted">Trạng thái</td>
+              <td>
+                <span class="badge"
+                      [class.bg-success]="detailUser.status === 'ACTIVE'"
+                      [class.bg-warning]="detailUser.status === 'ON_LEAVE'"
+                      [class.bg-secondary]="detailUser.status !== 'ACTIVE' && detailUser.status !== 'ON_LEAVE'">
+                  {{ detailUser.status }}
+                </span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Liên hệ -->
+      <div class="detail-card mt-3">
+        <div class="detail-card-title">
+          <i class="bi bi-telephone me-2"></i>Liên hệ
+        </div>
+        <table class="table table-sm table-borderless mb-0">
+          <tbody>
+            <tr>
+              <td class="label-col text-muted">Email hệ thống</td>
+              <td>{{ detailUser.email ?? '—' }}</td>
+            </tr>
+            <tr>
+              <td class="text-muted">Email cá nhân</td>
+              <td>
+                <ng-container *ngIf="canEditPersonal; else viewEmailPersonal">
+                  <input class="form-control form-control-sm" type="email" [(ngModel)]="editForm.emailPersonal">
+                </ng-container>
+                <ng-template #viewEmailPersonal>{{ detailUser.emailPersonal ?? '—' }}</ng-template>
+              </td>
+            </tr>
+            <tr>
+              <td class="text-muted">Điện thoại</td>
+              <td>
+                <ng-container *ngIf="canEditFull; else viewMobile">
+                  <input class="form-control form-control-sm" [(ngModel)]="editForm.mobile">
+                </ng-container>
+                <ng-template #viewMobile>{{ detailUser.mobile ?? '—' }}</ng-template>
+              </td>
+            </tr>
+            <tr *ngIf="canEditPersonal">
+              <td class="text-muted">Avatar URL</td>
+              <td>
+                <input class="form-control form-control-sm" [(ngModel)]="editForm.avatarUrl" placeholder="https://...">
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- CCCD / CMND -->
+      <div class="detail-card mt-3">
+        <div class="detail-card-title">
+          <i class="bi bi-person-vcard me-2"></i>CCCD / CMND
+        </div>
+        <table class="table table-sm table-borderless mb-0">
+          <tbody>
+            <tr>
+              <td class="label-col text-muted">Số CCCD</td>
+              <td>
+                <ng-container *ngIf="canEditFull; else viewCccd">
+                  <input class="form-control form-control-sm" [(ngModel)]="editForm.cccd" maxlength="12">
+                </ng-container>
+                <ng-template #viewCccd><code>{{ detailUser.numberId ?? '—' }}</code></ng-template>
+              </td>
+            </tr>
+            <tr>
+              <td class="text-muted">Ngày cấp</td>
+              <td>
+                <ng-container *ngIf="canEditFull; else viewCccdDate">
+                  <input class="form-control form-control-sm" type="date" [(ngModel)]="editForm.cccdIssuedDate">
+                </ng-container>
+                <ng-template #viewCccdDate>{{ detailUser.numberIdIssuedDate | date:'dd/MM/yyyy' }}</ng-template>
+              </td>
+            </tr>
+            <tr>
+              <td class="text-muted">Nơi cấp</td>
+              <td>
+                <ng-container *ngIf="canEditFull; else viewCccdPlace">
+                  <input class="form-control form-control-sm" [(ngModel)]="editForm.cccdIssuedPlace">
+                </ng-container>
+                <ng-template #viewCccdPlace>{{ detailUser.numberIdIssuedPlace ?? '—' }}</ng-template>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+
+    <!-- Col 2 -->
+    <div class="col-lg-6">
+
+      <!-- Thông tin cá nhân -->
+      <div class="detail-card">
+        <div class="detail-card-title">
+          <i class="bi bi-globe me-2"></i>Thông tin cá nhân
+        </div>
+        <table class="table table-sm table-borderless mb-0">
+          <tbody>
+            <tr>
+              <td class="label-col text-muted">Quốc tịch</td>
+              <td>
+                <ng-container *ngIf="canEditFull; else viewNationality">
+                  <input class="form-control form-control-sm" [(ngModel)]="editForm.nationality">
+                </ng-container>
+                <ng-template #viewNationality>{{ detailUser.nationality ?? '—' }}</ng-template>
+              </td>
+            </tr>
+            <tr>
+              <td class="text-muted">Dân tộc</td>
+              <td>
+                <ng-container *ngIf="canEditFull; else viewEthnic">
+                  <input class="form-control form-control-sm" [(ngModel)]="editForm.ethnic">
+                </ng-container>
+                <ng-template #viewEthnic>{{ detailUser.ethnic ?? '—' }}</ng-template>
+              </td>
+            </tr>
+            <tr>
+              <td class="text-muted">Tôn giáo</td>
+              <td>
+                <ng-container *ngIf="canEditFull; else viewReligion">
+                  <input class="form-control form-control-sm" [(ngModel)]="editForm.religion">
+                </ng-container>
+                <ng-template #viewReligion>{{ detailUser.religion ?? '—' }}</ng-template>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Thông tin công việc -->
+      <div class="detail-card mt-3">
+        <div class="detail-card-title">
+          <i class="bi bi-building me-2"></i>Thông tin công việc
+        </div>
+        <table class="table table-sm table-borderless mb-0">
+          <tbody>
+            <tr>
+              <td class="label-col text-muted">Phòng ban</td>
+              <td>
+                <ng-container *ngIf="canEditFull; else viewDept">
+                  <select class="form-select form-select-sm" [(ngModel)]="editForm.departmentId">
+                    <option value="">-- Chọn --</option>
+                    <option *ngFor="let d of flatDepartments" [value]="'' + d.id">{{ d.name }}</option>
+                  </select>
+                </ng-container>
+                <ng-template #viewDept>{{ departmentPath }}</ng-template>
+              </td>
+            </tr>
+            <tr>
+              <td class="text-muted">Chức vụ</td>
+              <td>
+                <ng-container *ngIf="canEditFull; else viewPosition">
+                  <select class="form-select form-select-sm" [(ngModel)]="editForm.position">
+                    <option value="">-- Chọn --</option>
+                    <option *ngFor="let p of positions" [value]="p.code ?? p.id">{{ p.name ?? p.code }}</option>
+                  </select>
+                </ng-container>
+                <ng-template #viewPosition>{{ detailUser.position ?? '—' }}</ng-template>
+              </td>
+            </tr>
+            <tr>
+              <td class="text-muted">Ngày vào làm</td>
+              <td>
+                <ng-container *ngIf="canEditFull; else viewJoinDate">
+                  <input class="form-control form-control-sm" type="date" [(ngModel)]="editForm.joinDate">
+                </ng-container>
+                <ng-template #viewJoinDate>{{ detailUser.joinDate | date:'dd/MM/yyyy' }}</ng-template>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Roles -->
+      <div class="detail-card mt-3" *ngIf="detailUser.roles?.length">
+        <div class="detail-card-title">
+          <i class="bi bi-shield-check me-2"></i>Role
+        </div>
+        <table class="table table-sm table-bordered mb-0">
+          <thead class="table-light">
+            <tr>
+              <th style="width:140px">Mã Role</th>
+              <th>Tên Role</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let r of detailUser.roles">
+              <td><code>{{ r.roleCode }}</code></td>
+              <td>{{ r.roleName ?? '—' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Địa chỉ read-only -->
+  <div class="detail-card mt-3" *ngIf="!canEditPersonal && detailUser.addresses?.length">
+    <div class="detail-card-title"><i class="bi bi-geo-alt me-2"></i>Địa chỉ</div>
+    <table class="table table-sm table-bordered mb-0">
+      <thead class="table-light">
+        <tr>
+          <th style="width:120px">Loại</th>
+          <th>Tỉnh / Thành phố</th>
+          <th>Phường / Xã</th>
+          <th>Chi tiết</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let addr of detailUser.addresses">
+          <td>
+            <span class="badge"
+                  [class.bg-primary]="addr.type==='PERMANENT'"
+                  [class.bg-info]="addr.type==='TEMPORARY'"
+                  [class.bg-secondary]="addr.type!=='PERMANENT'&&addr.type!=='TEMPORARY'">
+              {{ addr.type==='PERMANENT' ? 'Thường trú' : addr.type==='TEMPORARY' ? 'Tạm trú' : 'Quê quán' }}
+            </span>
+          </td>
+          <td>{{ addr.provinceName ?? addr.provinceCode ?? '—' }}</td>
+          <td>{{ addr.wardName ?? addr.wardCode ?? '—' }}</td>
+          <td>{{ addr.detail ?? '—' }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Địa chỉ editable -->
+  <div class="detail-card mt-3" *ngIf="canEditPersonal">
+    <div class="detail-card-title"><i class="bi bi-geo-alt me-2"></i>Địa chỉ</div>
+    <div *ngFor="let addr of addressForms; let i = index"
+         class="addr-block mb-2">
+      <!-- Header row: checkbox + type badge -->
+      <div class="d-flex align-items-center gap-2 mb-2">
+        <div class="form-check mb-0">
+          <input class="form-check-input" type="checkbox" [(ngModel)]="addr.enabled" [id]="'addrEn'+i">
+        </div>
+        <label [for]="'addrEn'+i" class="mb-0" style="cursor:pointer">
+          <span class="badge"
+                [class.bg-primary]="addr.type==='PERMANENT'"
+                [class.bg-info]="addr.type==='TEMPORARY'"
+                [class.bg-secondary]="addr.type==='BIRTH'">
+            {{ getAddrTypeLabel(addr.type) }}
+          </span>
+        </label>
+        <span *ngIf="addr.enabled && !addr.wardCode" class="text-muted small ms-1">
+          <i class="bi bi-exclamation-circle me-1 text-warning"></i>Chưa chọn đủ tỉnh/xã
+        </span>
+      </div>
+
+      <!-- Fields (chỉ hiện khi enabled) -->
+      <ng-container *ngIf="addr.enabled">
+        <div class="row g-2" (click)="$event.stopPropagation()">
+          <!-- Tỉnh -->
+          <div class="col-sm-5">
+            <label class="form-label small text-muted mb-1">Tỉnh / Thành phố</label>
+            <div class="position-relative">
+              <input class="form-control form-control-sm"
+                     [value]="addr.provinceName"
+                     (input)="onAddrProvinceInput(i, $event)"
+                     placeholder="Nhập tên tỉnh..." autocomplete="off">
+              <div *ngIf="addr.showProvinceSugg" class="sugg-dropdown">
+                <div *ngIf="addr.provinceSugg.length===0" class="sugg-empty">Không tìm thấy</div>
+                <div *ngFor="let p of addr.provinceSugg" class="sugg-item"
+                     (mousedown)="selectAddrProvince(i, p)">{{ p.provinceName }}</div>
+              </div>
+            </div>
+          </div>
+          <!-- Phường/Xã -->
+          <div class="col-sm-5">
+            <label class="form-label small text-muted mb-1">Phường / Xã</label>
+            <div class="position-relative">
+              <input class="form-control form-control-sm"
+                     [value]="addr.wardName"
+                     (input)="onAddrWardInput(i, $event)"
+                     placeholder="Nhập tên phường/xã..." autocomplete="off"
+                     [disabled]="!addr.provinceCode">
+              <div *ngIf="addr.showWardSugg" class="sugg-dropdown">
+                <div *ngIf="addr.wardSugg.length===0" class="sugg-empty">Không tìm thấy</div>
+                <div *ngFor="let w of addr.wardSugg" class="sugg-item"
+                     (mousedown)="selectAddrWard(i, w)">{{ w.wardName }}</div>
+              </div>
+            </div>
+          </div>
+          <!-- Chi tiết -->
+          <div class="col-12">
+            <label class="form-label small text-muted mb-1">Chi tiết (số nhà, đường…)</label>
+            <input class="form-control form-control-sm" [(ngModel)]="addr.detail"
+                   placeholder="VD: Số 12, Đường Lê Lợi">
+          </div>
+        </div>
+      </ng-container>
+    </div>
+  </div>
+
+  <!-- Action buttons -->
+  <div class="mt-3 d-flex align-items-center gap-2" *ngIf="canEdit">
+    <button class="btn btn-primary btn-sm" (click)="save()" [disabled]="loadingUpdate">
+      <span *ngIf="loadingUpdate" class="spinner-border spinner-border-sm me-1"></span>
+      <i *ngIf="!loadingUpdate" class="bi bi-check-lg me-1"></i>Lưu thay đổi
+    </button>
+    <button class="btn btn-outline-secondary btn-sm" (click)="resetForm()">
+      <i class="bi bi-arrow-counterclockwise me-1"></i>Làm mới
+    </button>
+    <span class="text-muted small ms-1" *ngIf="canEditFull">
+      <i class="bi bi-shield-fill-check text-success me-1"></i>Admin — toàn bộ thông tin
+    </span>
+    <span class="text-muted small ms-1" *ngIf="canEditPersonal">
+      <i class="bi bi-person-circle text-primary me-1"></i>Tên hiển thị, email cá nhân, avatar
+    </span>
+  </div>
+
+</ng-container>

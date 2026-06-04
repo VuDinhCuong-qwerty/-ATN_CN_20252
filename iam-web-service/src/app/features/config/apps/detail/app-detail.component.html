@@ -1,0 +1,204 @@
+<nav aria-label="breadcrumb" class="mb-2">
+  <ol class="breadcrumb mb-0">
+    <li class="breadcrumb-item">
+      <a href="javascript:void(0)" class="text-decoration-none small" (click)="back()">Quản lý cấu hình</a>
+    </li>
+    <li class="breadcrumb-item">
+      <a href="javascript:void(0)" class="text-decoration-none small" (click)="back()">Ứng dụng</a>
+    </li>
+    <li class="breadcrumb-item active small fw-semibold">Thông tin chi tiết</li>
+  </ol>
+</nav>
+
+<!-- Page header -->
+<div class="d-flex align-items-center justify-content-between mb-3">
+  <div class="d-flex align-items-center gap-2">
+    <button class="btn btn-outline-secondary btn-sm" (click)="back()">
+      <i class="bi bi-arrow-left me-1"></i>Quay lại
+    </button>
+    <h5 class="mb-0 ms-1">
+      <i class="bi bi-window me-2 text-info"></i>
+      {{ detail?.name ?? 'Chi tiết ứng dụng' }}
+    </h5>
+  </div>
+  <div class="d-flex align-items-center gap-2" *ngIf="detail">
+    <span class="badge px-3 py-2 fs-6"
+          [class.bg-success]="detail.status === 'ACTIVE'"
+          [class.bg-secondary]="detail.status !== 'ACTIVE'">
+      <i class="bi bi-circle-fill me-1" style="font-size:0.55rem;vertical-align:middle"></i>
+      {{ detail.status === 'ACTIVE' ? 'Đang hoạt động' : 'Không hoạt động' }}
+    </span>
+    <button class="btn btn-sm"
+            [class.btn-outline-warning]="detail.status === 'ACTIVE'"
+            [class.btn-outline-success]="detail.status !== 'ACTIVE'"
+            (click)="toggleStatus()" [disabled]="loadingToggle"
+            *ngIf="perm.has('application','update')">
+      <span *ngIf="loadingToggle" class="spinner-border spinner-border-sm me-1"></span>
+      <i *ngIf="!loadingToggle" class="bi me-1"
+         [class.bi-power]="detail.status === 'ACTIVE'"
+         [class.bi-play-fill]="detail.status !== 'ACTIVE'"></i>
+      {{ detail.status === 'ACTIVE' ? 'Tắt ứng dụng' : 'Bật ứng dụng' }}
+    </button>
+  </div>
+</div>
+
+<!-- Loading -->
+<div *ngIf="loading" class="text-center py-5">
+  <span class="spinner-border text-primary"></span>
+  <div class="text-muted small mt-2">Đang tải dữ liệu...</div>
+</div>
+
+<!-- Detail card -->
+<div class="card" *ngIf="!loading && detail">
+  <div class="card-header py-2 d-flex align-items-center justify-content-between">
+    <span class="fw-semibold small">Thông tin ứng dụng</span>
+    <span class="text-muted small">ID: <code>{{ appId }}</code></span>
+  </div>
+  <div class="card-body p-4">
+    <div class="row g-3">
+
+      <!-- Tên ứng dụng -->
+      <div class="col-md-6">
+        <label class="field-label">Tên ứng dụng <span class="text-danger">*</span></label>
+        <ng-container *ngIf="perm.has('application','update'); else viewName">
+          <input class="form-control form-control-sm" [(ngModel)]="editForm.name" placeholder="VD: Core Banking">
+        </ng-container>
+        <ng-template #viewName>
+          <div class="field-val fw-semibold">{{ detail.name ?? '—' }}</div>
+        </ng-template>
+      </div>
+
+      <!-- Service Code -->
+      <div class="col-md-6">
+        <label class="field-label">Service Code <span class="text-danger">*</span></label>
+        <ng-container *ngIf="perm.has('application','update'); else viewCode">
+          <input class="form-control form-control-sm" [(ngModel)]="editForm.serviceCode" placeholder="VD: core-banking">
+        </ng-container>
+        <ng-template #viewCode>
+          <code class="field-val">{{ detail.serviceCode ?? '—' }}</code>
+        </ng-template>
+      </div>
+
+      <!-- Loại -->
+      <div class="col-md-4">
+        <label class="field-label">Loại ứng dụng <span class="text-danger">*</span></label>
+        <ng-container *ngIf="perm.has('application','update'); else viewType">
+          <select class="form-select form-select-sm" [(ngModel)]="editForm.appType">
+            <option value="INTERNAL">INTERNAL</option>
+            <option value="THIRD_PARTY_LDAP">THIRD_PARTY_LDAP</option>
+          </select>
+        </ng-container>
+        <ng-template #viewType>
+          <span class="badge bg-light text-dark border">{{ detail.appType ?? '—' }}</span>
+        </ng-template>
+      </div>
+
+      <!-- ACR Level -->
+      <div class="col-md-4">
+        <label class="field-label">ACR Level</label>
+        <ng-container *ngIf="perm.has('application','update'); else viewAcr">
+          <input type="number" class="form-control form-control-sm" [(ngModel)]="editForm.acrLevel" min="1" max="3">
+        </ng-container>
+        <ng-template #viewAcr>
+          <div class="field-val">{{ detail.acrLevel ?? '—' }}</div>
+        </ng-template>
+      </div>
+
+      <!-- Phòng ban -->
+      <div class="col-md-4">
+        <label class="field-label">Phòng ban <span class="text-danger">*</span></label>
+        <ng-container *ngIf="perm.has('application','update'); else viewDept">
+          <select class="form-select form-select-sm" [(ngModel)]="editForm.departmentId">
+            <option [ngValue]="null">-- Chọn phòng ban --</option>
+            <option *ngFor="let d of flatDepartments" [ngValue]="d.id">{{ d.label }}</option>
+          </select>
+        </ng-container>
+        <ng-template #viewDept>
+          <div class="field-val">{{ detail.department?.name ?? '—' }}</div>
+        </ng-template>
+      </div>
+
+      <!-- Mô tả -->
+      <div class="col-12">
+        <label class="field-label">Mô tả</label>
+        <ng-container *ngIf="perm.has('application','update'); else viewDesc">
+          <textarea class="form-control form-control-sm" rows="2" [(ngModel)]="editForm.description"
+                    placeholder="Mô tả ngắn về ứng dụng..."></textarea>
+        </ng-container>
+        <ng-template #viewDesc>
+          <div class="field-val">{{ detail.description || '—' }}</div>
+        </ng-template>
+      </div>
+
+      <!-- Logo URL -->
+      <div class="col-md-6">
+        <label class="field-label">Logo URL <span class="text-danger">*</span></label>
+        <ng-container *ngIf="perm.has('application','update'); else viewLogo">
+          <input class="form-control form-control-sm" [(ngModel)]="editForm.logoUri" placeholder="https://...">
+        </ng-container>
+        <ng-template #viewLogo>
+          <div class="field-val text-truncate small text-muted">{{ detail.logoUri || '—' }}</div>
+        </ng-template>
+      </div>
+
+      <!-- Default URL -->
+      <div class="col-md-6">
+        <label class="field-label">Default URL <span class="text-danger">*</span></label>
+        <ng-container *ngIf="perm.has('application','update'); else viewUrl">
+          <input class="form-control form-control-sm" [(ngModel)]="editForm.defaultUrl" placeholder="https://...">
+        </ng-container>
+        <ng-template #viewUrl>
+          <div class="field-val text-truncate small text-muted">{{ detail.defaultUrl || '—' }}</div>
+        </ng-template>
+      </div>
+
+      <!-- Group ID -->
+      <div class="col-md-4">
+        <label class="field-label">Group ID</label>
+        <ng-container *ngIf="perm.has('application','update'); else viewGroupId">
+          <input type="number" class="form-control form-control-sm" [(ngModel)]="editForm.groupId">
+        </ng-container>
+        <ng-template #viewGroupId>
+          <div class="field-val">{{ detail.groupId ?? '—' }}</div>
+        </ng-template>
+      </div>
+
+      <!-- Group Name (readonly) -->
+      <div class="col-md-4">
+        <div class="field-label">Tên Group</div>
+        <div class="field-val">{{ detail.groupName ?? '—' }}</div>
+      </div>
+
+      <!-- Ngày tạo -->
+      <div class="col-md-4">
+        <div class="field-label">Ngày tạo</div>
+        <div class="field-val text-muted small">{{ detail.createdAt | date:'dd/MM/yyyy HH:mm' }}</div>
+      </div>
+
+      <!-- Cập nhật -->
+      <div class="col-md-4">
+        <div class="field-label">Cập nhật lần cuối</div>
+        <div class="field-val text-muted small">{{ detail.updatedAt | date:'dd/MM/yyyy HH:mm' }}</div>
+      </div>
+
+    </div>
+
+    <!-- Message -->
+    <div *ngIf="message" class="alert alert-{{ messageType }} py-2 small mt-3 mb-0">
+      <i class="bi me-1" [class.bi-check-circle]="messageType==='success'" [class.bi-exclamation-triangle]="messageType==='danger'"></i>
+      {{ message }}
+    </div>
+
+    <!-- Buttons -->
+    <div class="mt-3 d-flex align-items-center gap-2" *ngIf="perm.has('application','update')">
+      <button class="btn btn-primary btn-sm" (click)="save()" [disabled]="loadingSave">
+        <span *ngIf="loadingSave" class="spinner-border spinner-border-sm me-1"></span>
+        <i *ngIf="!loadingSave" class="bi bi-check-lg me-1"></i>Lưu thay đổi
+      </button>
+      <button class="btn btn-outline-secondary btn-sm" (click)="resetForm()">
+        <i class="bi bi-arrow-counterclockwise me-1"></i>Làm mới
+      </button>
+    </div>
+
+  </div>
+</div>

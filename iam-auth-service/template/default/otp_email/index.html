@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="vi">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Xác nhận OTP</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" th:href="@{/template/default/otp_email/otp.css}" />
+</head>
+<body>
+
+<!-- ════════════ LEFT PANEL ════════════ -->
+<div class="left-panel">
+
+    <!-- Navbar with Logo -->
+    <header class="navbar">
+        <div class="logo-wrap">
+            <img th:src="@{/template/default/otp_email/img/logo.png}" alt="Logo" />
+        </div>
+    </header>
+
+    <!-- Sub-header bar -->
+    <div class="subheader"></div>
+
+    <!-- Main content area -->
+    <main class="main-content">
+        <h1 class="welcome-title">WELCOME BACK!</h1>
+        <!-- Divider dưới tiêu đề -->
+        <div class="title-divider"></div>
+
+        <div class="form-card">
+
+            <!-- OTP Form -->
+            <form th:action="@{/ms-internal-iam/auth/login}" method="post" id="otpForm">
+
+                <!-- Hidden fields -->
+                <!-- sessionToken is an HMAC of the server-side authSessionId; the real ID never leaves the server -->
+                <input type="hidden" name="sessionToken" th:value="${sessionToken}" />
+                <input type="hidden" name="type"         th:value="${type}" />
+                <input type="hidden" name="clientId"      th:value="${clientId}" />
+
+                <!-- OTP input -->
+                <div class="input-group">
+                    <label class="input-label" for="otp">Mã OTP</label>
+                    <input
+                            id="otp"
+                            class="input-field otp-input"
+                            type="text"
+                            name="payload[otp]"
+                            placeholder="Nhập mã OTP"
+                            maxlength="9"
+                            autocomplete="one-time-code"
+                            required
+                    />
+                    <!-- Countdown gửi lại -->
+                    <div class="otp-hint">
+                        Mã OTP đã được gửi.
+                        <span id="countdown-wrap">Gửi lại sau <strong id="countdown">60</strong>s</span>
+                    </div>
+                </div>
+
+                <!-- Error message -->
+                <div class="error-box" th:if="${errorDesc}">
+                    <div class="error-icon"></div>
+                    <div>
+                        <p class="error-text" th:text="${errorDesc}"></p>
+                        <small class="error-code" th:if="${errorCode}" th:text="'(' + ${errorCode} + ')'"></small>
+                    </div>
+                </div>
+
+                <!-- Divider ngăn cách -->
+                <div class="section-divider"></div>
+
+                <!-- Buttons: 2 nút khi không có cách khác, 3 nút khi có -->
+                <div class="btn-row btn-row--two" th:if="${availableMethods == null or availableMethods.isEmpty()}">
+                    <button type="submit" class="btn btn-outline">Xác nhận</button>
+                    <button type="button" class="btn btn-filled" id="resendBtn" disabled onclick="resendOtp()">
+                        Gửi lại
+                    </button>
+                </div>
+
+                <div class="btn-row btn-row--three" th:if="${availableMethods != null and !availableMethods.isEmpty()}">
+                    <button type="submit" class="btn btn-outline">Xác nhận</button>
+                    <button type="button" class="btn btn-filled" id="resendBtn" disabled onclick="resendOtp()">
+                        Gửi lại
+                    </button>
+                    <button type="submit" class="btn btn-outline" form="switchMethodForm">Cách khác</button>
+                </div>
+
+            </form>
+
+            <!-- Form switch method — chỉ render khi sessionToken không null -->
+            <form th:if="${sessionToken != null}"
+                  id="switchMethodForm"
+                  th:action="@{/ms-internal-iam/auth/switch-method}"
+                  method="post">
+                <input type="hidden" name="clientId"     th:value="${clientId}" />
+                <input type="hidden" name="sessionToken" th:value="${sessionToken}" />
+            </form>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <p>Bản quyền thuộc về Đại học Bách khoa Hà Nội.</p>
+    </footer>
+
+</div>
+
+<!-- ════════════ RIGHT PANEL ════════════ -->
+<div class="right-panel">
+    <img th:src="@{/template/default/otp_email/img/auth.png}" alt="Fintech illustration" />
+</div>
+
+<script th:src="@{/template/default/otp_email/otp.js}"></script>
+</body>
+</html>

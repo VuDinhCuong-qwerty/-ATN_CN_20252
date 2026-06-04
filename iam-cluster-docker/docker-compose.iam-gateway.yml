@@ -1,0 +1,46 @@
+services:
+  iam-gateway:
+    image: iam-gateway:latest
+    container_name: iam-gateway
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      AUTH_ISSUER_URI: http://iam-auth-service:8888/ms-internal-iam/auth
+      AUTH_TOKEN_ENDPOINT: http://iam-auth-service:8888/ms-internal-iam/auth/token
+      IDENTITY_URI: http://iam-identity-service:8080
+      APP_URI: http://iam-app-service:8080
+      GATEWAY_CLIENT_ID: iam-gateway-user
+      GATEWAY_CLIENT_SECRET: 9917e921-9f81-49c2-a2a7-3bccfcdff11b
+      CORS_ORIGIN: http://localhost:4200
+    networks:
+      - iam-internal-network
+    depends_on:
+      - iam-auth-service
+      - iam-identity-service
+      - iam-app-service
+
+networks:
+  iam-internal-network:
+    external: true
+
+# =============================================================================
+# NOTE: host port 8090 conflicts with kafka-ui (docker-compose.kafka-ui.yml).
+# Do NOT run kafka-ui and iam-gateway on the same host at the same time,
+# or change one of the host port mappings.
+# =============================================================================
+#
+# Build + deploy:
+#   cd iam-gateway && mvn clean package -DskipTests
+#   docker build -t iam-gateway:latest .
+#
+# Start gateway alongside the full cluster:
+#   docker compose \
+#     -f docker-compose.yml \
+#     -f docker-compose.redis.yml \
+#     -f docker-compose.kafka.yml \
+#     -f docker-compose.iam-auth-service.yml \
+#     -f docker-compose.iam-identity-service.yml \
+#     -f docker-compose.iam-app-service.yml \
+#     -f docker-compose.iam-gateway.yml \
+#     up -d

@@ -1,0 +1,440 @@
+<nav aria-label="breadcrumb" class="mb-2">
+  <ol class="breadcrumb mb-0">
+    <li class="breadcrumb-item text-muted small">Quản lý cấu hình</li>
+    <li class="breadcrumb-item active small fw-semibold">Quyền mặc định</li>
+  </ol>
+</nav>
+
+<div class="d-flex align-items-center mb-3">
+  <h4><i class="bi bi-shield-check me-2 text-primary"></i>Quyền mặc định</h4>
+</div>
+
+<!-- Tabs -->
+<ul class="nav nav-tabs mb-3">
+  <li class="nav-item">
+    <button class="nav-link" [class.active]="activeTab === 'app'" (click)="switchTab('app')">
+      <i class="bi bi-app-indicator me-1"></i>Theo ứng dụng
+    </button>
+  </li>
+  <li class="nav-item">
+    <button class="nav-link" [class.active]="activeTab === 'resource'" (click)="switchTab('resource')">
+      <i class="bi bi-grid-3x3-gap me-1"></i>Theo tài nguyên
+    </button>
+  </li>
+</ul>
+
+<!-- ===== TAB: App Permissions ===== -->
+<div *ngIf="activeTab === 'app'">
+
+  <!-- Search bar -->
+  <div class="search-bar mb-3">
+    <div class="row g-2 align-items-end">
+      <div class="col-md-3">
+        <label class="form-label small mb-1">Role</label>
+        <select class="form-select form-select-sm" [(ngModel)]="filterApp.roleId">
+          <option value="">-- Tất cả --</option>
+          <option *ngFor="let r of roles" [value]="r.code">{{ r.name ?? r.code }}</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label small mb-1">Mã chức danh</label>
+        <input class="form-control form-control-sm" [(ngModel)]="filterApp.positionCode" placeholder="VD: POS001">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label small mb-1">Ứng dụng</label>
+        <select class="form-select form-select-sm" [(ngModel)]="filterApp.applicationId">
+          <option value="">-- Tất cả --</option>
+          <option *ngFor="let a of applications" [value]="a.id">{{ a.name }}</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label small mb-1">Trạng thái</label>
+        <select class="form-select form-select-sm" [(ngModel)]="filterApp.status">
+          <option value="">-- Tất cả --</option>
+          <option value="ACTIVE">ACTIVE</option>
+          <option value="INACTIVE">INACTIVE</option>
+        </select>
+      </div>
+      <div class="col-auto">
+        <button class="btn btn-primary btn-sm" (click)="searchAppPerms()">
+          <i class="bi bi-search me-1"></i>Tìm
+        </button>
+        <button class="btn btn-outline-secondary btn-sm ms-1" (click)="clearAppFilter()" title="Xoá bộ lọc">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading -->
+  <div *ngIf="loadingApp" class="text-center py-4">
+    <span class="spinner-border spinner-border-sm me-2"></span>Đang tải...
+  </div>
+
+  <!-- Table -->
+  <div *ngIf="!loadingApp" class="table-panel">
+    <table class="table table-sm table-hover mb-0">
+      <thead>
+        <tr>
+          <th>Role</th>
+          <th>Chức danh</th>
+          <th>Ứng dụng</th>
+          <th class="text-center">Trạng thái</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let item of appPerms">
+          <td>
+            <div class="fw-medium small">{{ item.roleName ?? item.roleId }}</div>
+            <div class="text-muted" style="font-size:0.75rem">{{ item.roleId }}</div>
+          </td>
+          <td>
+            <div class="small">{{ item.positionName ?? item.positionCode }}</div>
+            <div *ngIf="item.positionName" class="text-muted" style="font-size:0.75rem">{{ item.positionCode }}</div>
+          </td>
+          <td class="small">{{ item.applicationName ?? item.applicationId }}</td>
+          <td class="text-center" style="width:90px">
+            <ng-container *ngIf="perm.has('default-permission','create'); else appStatusBadge">
+              <button class="pill-status"
+                      [ngClass]="item.status === 'ACTIVE' ? 'pill-on' : 'pill-off'"
+                      (click)="toggleAppPermStatus(item)"
+                      [disabled]="togglingAppPermId === item.id"
+                      [title]="item.status === 'ACTIVE' ? 'Đang bật — click để tắt' : 'Đang tắt — click để bật'">
+                <span class="pill-knob"></span>
+              </button>
+            </ng-container>
+            <ng-template #appStatusBadge>
+              <span class="badge" [ngClass]="item.status === 'ACTIVE' ? 'bg-success' : 'bg-secondary'">
+                {{ item.status }}
+              </span>
+            </ng-template>
+          </td>
+        </tr>
+        <tr *ngIf="appPerms.length === 0">
+          <td colspan="4" class="text-center text-muted py-4">
+            <i class="bi bi-inbox d-block fs-4 mb-1 opacity-50"></i>Không có dữ liệu
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  <div *ngIf="!loadingApp && appPermsTotal > appPermsSize"
+       class="d-flex align-items-center justify-content-between mt-2 small text-muted px-1">
+    <span>{{ appPermsTotal }} bản ghi &middot; Trang {{ appPermsPage + 1 }}/{{ totalAppPages() }}</span>
+    <div class="d-flex gap-1">
+      <button class="btn btn-outline-secondary btn-sm py-0 px-2"
+              (click)="goAppPage(appPermsPage - 1)" [disabled]="appPermsPage === 0">‹</button>
+      <button class="btn btn-outline-secondary btn-sm py-0 px-2"
+              (click)="goAppPage(appPermsPage + 1)" [disabled]="appPermsPage >= totalAppPages() - 1">›</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- ===== TAB: Resource Permissions ===== -->
+<div *ngIf="activeTab === 'resource'">
+
+  <!-- Search bar -->
+  <div class="search-bar mb-3">
+    <div class="row g-2 align-items-end">
+      <div class="col-md-2">
+        <label class="form-label small mb-1">Role</label>
+        <select class="form-select form-select-sm" [(ngModel)]="filterResource.roleId">
+          <option value="">-- Tất cả --</option>
+          <option *ngFor="let r of roles" [value]="r.id">{{ r.name ?? r.code }}</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label small mb-1">Mã chức danh</label>
+        <input class="form-control form-control-sm" [(ngModel)]="filterResource.positionCode" placeholder="VD: POS001">
+      </div>
+      <div class="col-md-2">
+        <label class="form-label small mb-1">Ứng dụng (lọc tài nguyên)</label>
+        <select class="form-select form-select-sm" [(ngModel)]="filterResAppId"
+                (ngModelChange)="onFilterResAppChange()">
+          <option value="">-- Tất cả --</option>
+          <option *ngFor="let a of applications" [value]="a.id">{{ a.name }}</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label small mb-1">Tài nguyên</label>
+        <select class="form-select form-select-sm" [(ngModel)]="filterResource.resourceId"
+                [disabled]="!filterResAppId">
+          <option value="">-- Tất cả --</option>
+          <option *ngFor="let r of filterResResources" [value]="r.id">
+            {{ r.resourceName ?? r.resourceCode }}
+          </option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label small mb-1">Trạng thái</label>
+        <select class="form-select form-select-sm" [(ngModel)]="filterResource.status">
+          <option value="">-- Tất cả --</option>
+          <option value="ACTIVE">ACTIVE</option>
+          <option value="INACTIVE">INACTIVE</option>
+        </select>
+      </div>
+      <div class="col-auto">
+        <button class="btn btn-primary btn-sm" (click)="searchResourcePerms()">
+          <i class="bi bi-search me-1"></i>Tìm
+        </button>
+        <button class="btn btn-outline-secondary btn-sm ms-1" (click)="clearResourceFilter()" title="Xoá bộ lọc">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading -->
+  <div *ngIf="loadingResource" class="text-center py-4">
+    <span class="spinner-border spinner-border-sm me-2"></span>Đang tải...
+  </div>
+
+  <!-- Table -->
+  <div *ngIf="!loadingResource" class="table-panel">
+    <table class="table table-sm table-hover mb-0">
+      <thead>
+        <tr>
+          <th>Role</th>
+          <th>Chức danh</th>
+          <th>Tài nguyên</th>
+          <th>Actions</th>
+          <th>Trạng thái</th>
+          <th>Thời gian</th>
+          <th *ngIf="perm.has('default-permission','create')" class="text-end">Hành động</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let item of resourcePerms">
+          <td>
+            <div class="fw-medium small">{{ item.roleName ?? item.roleId }}</div>
+            <div class="text-muted" style="font-size:0.72rem">ID: {{ item.roleId }}</div>
+          </td>
+          <td>
+            <div class="small">{{ item.positionName ?? item.positionCode }}</div>
+            <div *ngIf="item.positionName" class="text-muted" style="font-size:0.72rem">{{ item.positionCode }}</div>
+          </td>
+          <td>
+            <div class="small fw-medium">{{ item.resourceName ?? item.resourceCode }}</div>
+            <div *ngIf="item.resourceName" class="text-muted" style="font-size:0.72rem">{{ item.resourceCode }}</div>
+          </td>
+          <td>
+            <div class="d-flex flex-wrap gap-1">
+              <span *ngFor="let a of parseActions(item.actions)"
+                    class="badge bg-light text-dark border" style="font-size:0.72rem">{{ a }}</span>
+            </div>
+          </td>
+          <td>
+            <span class="badge" [ngClass]="item.status === 'ACTIVE' ? 'bg-success' : 'bg-secondary'">
+              {{ item.status }}
+            </span>
+          </td>
+          <td style="white-space:nowrap">
+            <div class="text-muted" style="font-size:0.72rem">
+              <span class="me-1 text-secondary">Tạo:</span>{{ item.createdAt | date:'dd/MM/yy HH:mm' }}
+            </div>
+            <div *ngIf="item.updatedAt && item.updatedAt !== item.createdAt"
+                 class="text-muted" style="font-size:0.72rem">
+              <span class="me-1 text-secondary">Sửa:</span>{{ item.updatedAt | date:'dd/MM/yy HH:mm' }}
+            </div>
+          </td>
+          <td *ngIf="perm.has('default-permission','create')" class="text-end">
+            <button class="btn btn-xs btn-outline-primary" (click)="openEditResource(item)" title="Sửa">
+              <i class="bi bi-pencil"></i>
+            </button>
+          </td>
+        </tr>
+        <tr *ngIf="resourcePerms.length === 0">
+          <td [attr.colspan]="perm.has('default-permission','create') ? 7 : 6"
+              class="text-center text-muted py-4">
+            <i class="bi bi-inbox d-block fs-4 mb-1 opacity-50"></i>Không có dữ liệu
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  <div *ngIf="!loadingResource && resourcePermsTotal > resourcePermsSize"
+       class="d-flex align-items-center justify-content-between mt-2 small text-muted px-1">
+    <span>{{ resourcePermsTotal }} bản ghi &middot; Trang {{ resourcePermsPage + 1 }}/{{ totalResourcePages() }}</span>
+    <div class="d-flex gap-1">
+      <button class="btn btn-outline-secondary btn-sm py-0 px-2"
+              (click)="goResourcePage(resourcePermsPage - 1)" [disabled]="resourcePermsPage === 0">‹</button>
+      <button class="btn btn-outline-secondary btn-sm py-0 px-2"
+              (click)="goResourcePage(resourcePermsPage + 1)" [disabled]="resourcePermsPage >= totalResourcePages() - 1">›</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- FAB -->
+<button *ngIf="perm.has('default-permission','create')" class="btn btn-primary fab-btn"
+        (click)="activeTab === 'app' ? openCreateApp() : openCreateResource()"
+        title="Thêm quyền mặc định">
+  <i class="bi bi-plus-lg fs-5"></i>
+</button>
+
+<!-- ===== Modal: Tạo App Permission ===== -->
+<div class="modal-overlay" *ngIf="showCreateAppModal" (click)="closeCreateApp()">
+  <div class="modal-panel" (click)="$event.stopPropagation()">
+    <div class="modal-header-bar">
+      <h6 class="mb-0 fw-semibold"><i class="bi bi-plus-circle me-2"></i>Thêm quyền mặc định — Ứng dụng</h6>
+      <button class="btn-close" (click)="closeCreateApp()"></button>
+    </div>
+    <div class="modal-body-area">
+      <div *ngIf="createAppMessage" class="alert alert-{{ createAppMessageType }} py-2 small">
+        {{ createAppMessage }}
+      </div>
+      <div class="row g-3">
+        <div class="col-12">
+          <label class="form-label small">Role <span class="text-danger">*</span></label>
+          <select class="form-select form-select-sm" [(ngModel)]="createAppForm.roleId">
+            <option value="">-- Chọn role --</option>
+            <option *ngFor="let r of roles" [value]="r.code">{{ r.name }} ({{ r.code }})</option>
+          </select>
+        </div>
+        <div class="col-12">
+          <label class="form-label small">Mã chức danh <span class="text-danger">*</span></label>
+          <input class="form-control form-control-sm" [(ngModel)]="createAppForm.positionCode"
+                 placeholder="VD: POS001">
+        </div>
+        <div class="col-12">
+          <label class="form-label small">Ứng dụng <span class="text-danger">*</span></label>
+          <select class="form-select form-select-sm" [(ngModel)]="createAppForm.applicationId">
+            <option value="">-- Chọn ứng dụng --</option>
+            <option *ngFor="let a of applications" [value]="a.id">{{ a.name }}</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer-bar">
+      <button class="btn btn-sm btn-outline-secondary" (click)="closeCreateApp()" [disabled]="loadingCreateApp">Hủy</button>
+      <button class="btn btn-sm btn-primary" (click)="submitCreateApp()" [disabled]="loadingCreateApp">
+        <span *ngIf="loadingCreateApp" class="spinner-border spinner-border-sm me-1"></span>
+        <i *ngIf="!loadingCreateApp" class="bi bi-plus-lg me-1"></i>Thêm
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Modal: Tạo Resource Permission ===== -->
+<div class="modal-overlay" *ngIf="showCreateResourceModal" (click)="closeCreateResource()">
+  <div class="modal-panel" (click)="$event.stopPropagation()">
+    <div class="modal-header-bar">
+      <h6 class="mb-0 fw-semibold"><i class="bi bi-plus-circle me-2"></i>Thêm quyền mặc định — Tài nguyên</h6>
+      <button class="btn-close" (click)="closeCreateResource()"></button>
+    </div>
+    <div class="modal-body-area">
+      <div *ngIf="createResourceMessage" class="alert alert-{{ createResourceMessageType }} py-2 small">
+        {{ createResourceMessage }}
+      </div>
+      <div class="row g-3">
+        <div class="col-12">
+          <label class="form-label small">Role <span class="text-danger">*</span></label>
+          <select class="form-select form-select-sm" [(ngModel)]="createResForm.roleId">
+            <option value="">-- Chọn role --</option>
+            <option *ngFor="let r of roles" [value]="r.id">{{ r.name }} ({{ r.code }})</option>
+          </select>
+        </div>
+        <div class="col-12">
+          <label class="form-label small">Mã chức danh <span class="text-danger">*</span></label>
+          <input class="form-control form-control-sm" [(ngModel)]="createResForm.positionCode"
+                 placeholder="VD: POS001">
+        </div>
+        <div class="col-12">
+          <label class="form-label small">Ứng dụng (để lọc tài nguyên) <span class="text-danger">*</span></label>
+          <select class="form-select form-select-sm" [(ngModel)]="createResForm.appId"
+                  (ngModelChange)="onCreateResAppChange()">
+            <option value="">-- Chọn ứng dụng --</option>
+            <option *ngFor="let a of applications" [value]="a.id">{{ a.name }}</option>
+          </select>
+        </div>
+        <div class="col-12">
+          <label class="form-label small">Tài nguyên <span class="text-danger">*</span></label>
+          <select class="form-select form-select-sm" [(ngModel)]="createResForm.resourceId"
+                  (ngModelChange)="onCreateResResourceChange()"
+                  [disabled]="!createResForm.appId">
+            <option value="">-- Chọn tài nguyên --</option>
+            <option *ngFor="let r of createResResources" [value]="r.id">
+              {{ r.resourceName ?? r.resourceCode }} ({{ r.resourceCode }})
+            </option>
+          </select>
+        </div>
+        <div class="col-12" *ngIf="createResForm.resourceId">
+          <label class="form-label small">Actions <span class="text-danger">*</span></label>
+          <div *ngIf="createResActions.length === 0" class="text-muted small fst-italic">
+            Tài nguyên này chưa cấu hình actions.
+          </div>
+          <div class="d-flex flex-wrap gap-3 mt-1">
+            <div *ngFor="let a of createResActions" class="form-check">
+              <input class="form-check-input" type="checkbox" [id]="'ca-' + a"
+                     [checked]="createResSelectedActions.includes(a)"
+                     (change)="toggleResAction(a)">
+              <label class="form-check-label small fw-medium" [for]="'ca-' + a">{{ a }}</label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer-bar">
+      <button class="btn btn-sm btn-outline-secondary" (click)="closeCreateResource()" [disabled]="loadingCreateResource">Hủy</button>
+      <button class="btn btn-sm btn-primary" (click)="submitCreateResource()" [disabled]="loadingCreateResource">
+        <span *ngIf="loadingCreateResource" class="spinner-border spinner-border-sm me-1"></span>
+        <i *ngIf="!loadingCreateResource" class="bi bi-plus-lg me-1"></i>Thêm
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Modal: Sửa Resource Permission ===== -->
+<div class="modal-overlay" *ngIf="showEditResourceModal" (click)="closeEditResource()">
+  <div class="modal-panel" (click)="$event.stopPropagation()">
+    <div class="modal-header-bar">
+      <h6 class="mb-0 fw-semibold"><i class="bi bi-pencil me-2"></i>Sửa quyền tài nguyên</h6>
+      <button class="btn-close" (click)="closeEditResource()"></button>
+    </div>
+    <div class="modal-body-area">
+      <div *ngIf="editResourceMessage" class="alert alert-{{ editResourceMessageType }} py-2 small">
+        {{ editResourceMessage }}
+      </div>
+      <div class="info-card mb-3">
+        <div class="small"><span class="text-muted">Role:</span>
+          <strong class="ms-1">{{ editResourceItem?.roleName ?? editResourceItem?.roleId }}</strong>
+        </div>
+        <div class="small mt-1"><span class="text-muted">Chức danh:</span>
+          <span class="ms-1">{{ editResourceItem?.positionName ?? editResourceItem?.positionCode }}</span>
+        </div>
+        <div class="small mt-1"><span class="text-muted">Tài nguyên:</span>
+          <span class="ms-1">{{ editResourceItem?.resourceName ?? editResourceItem?.resourceCode }}</span>
+        </div>
+      </div>
+      <div class="row g-3">
+        <div class="col-12">
+          <label class="form-label small">Trạng thái</label>
+          <select class="form-select form-select-sm" [(ngModel)]="editResStatus">
+            <option value="ACTIVE">ACTIVE</option>
+            <option value="INACTIVE">INACTIVE</option>
+          </select>
+        </div>
+        <div class="col-12">
+          <label class="form-label small">
+            Actions (cách nhau bằng dấu phẩy) <span class="text-danger">*</span>
+          </label>
+          <input class="form-control form-control-sm" [(ngModel)]="editResActionsText"
+                 placeholder="VD: read,write,delete">
+          <div class="form-text">Chỉ chữ cái, số và dấu gạch dưới.</div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer-bar">
+      <button class="btn btn-sm btn-outline-secondary" (click)="closeEditResource()" [disabled]="loadingEditResource">Hủy</button>
+      <button class="btn btn-sm btn-primary" (click)="submitEditResource()" [disabled]="loadingEditResource">
+        <span *ngIf="loadingEditResource" class="spinner-border spinner-border-sm me-1"></span>
+        <i *ngIf="!loadingEditResource" class="bi bi-save me-1"></i>Lưu
+      </button>
+    </div>
+  </div>
+</div>

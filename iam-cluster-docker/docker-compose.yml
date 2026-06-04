@@ -1,0 +1,10 @@
+volumes:
+  redis_data:
+  redis_insight_data:
+  kafka_1_data:
+  kafka_2_data:
+  kafka_3_data:
+
+networks:
+  iam-internal-network:
+    driver: bridge

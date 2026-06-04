@@ -1,0 +1,198 @@
+<ng-container *ngIf="isLoggedIn">
+
+<!-- ==================== Header ==================== -->
+<header class="app-header">
+  <div class="d-flex align-items-center gap-2 ms-2">
+    <button class="btn btn-link text-white header-toggle p-0" (click)="toggleSidebar()" title="Toggle menu">
+      <i class="bi bi-list fs-4"></i>
+    </button>
+    <div class="header-brand">
+      <img src="logo.png" alt="Logo" class="header-logo" onerror="this.style.display='none'">
+      <div class="header-divider"></div>
+      <span class="header-title">IAM Banking Portal</span>
+    </div>
+  </div>
+
+  <div class="user-menu-wrapper pe-3" *ngIf="isLoggedIn" (click)="$event.stopPropagation()">
+    <button class="user-trigger" (click)="toggleUserMenu($event)">
+      <div class="avatar-circle">{{ userInitial }}</div>
+      <span class="username-text">{{ userInfo?.username }}</span>
+    </button>
+    <div class="user-dropdown" *ngIf="userMenuOpen">
+      <div class="dropdown-header-info">
+        <div class="dh-name">{{ userInfo?.username }}</div>
+        <div class="dh-role">{{ userInfo?.role ?? 'IAM User' }}</div>
+      </div>
+      <button class="dropdown-item-action" (click)="openMyProfile()">
+        <i class="bi bi-person-circle"></i>Thông tin cá nhân
+      </button>
+      <button class="dropdown-item-action" (click)="openChangePw()">
+        <i class="bi bi-shield-lock"></i>Đổi mật khẩu
+      </button>
+      <hr class="dropdown-divider my-1">
+      <button class="dropdown-item-logout" (click)="logout()">
+        <i class="bi bi-box-arrow-right"></i>Đăng xuất
+      </button>
+    </div>
+  </div>
+</header>
+
+<!-- ==================== Sidebar ==================== -->
+<nav class="sidebar" [class.collapsed]="!sidebarOpen">
+  <div class="sidebar-nav" *ngIf="isLoggedIn">
+
+    <!-- Quản lý User (collapsible) -->
+    <ng-container *ngIf="perm.hasAnyResource('user','role','user-credential','user-lifecycle','user-permission')">
+      <button class="nav-link-item config-toggle mt-1" (click)="toggleUser()">
+        <span class="d-flex align-items-center gap-2"><i class="bi bi-people"></i>Quản lý User</span>
+        <i class="bi toggle-icon" [class.bi-chevron-down]="!userExpanded" [class.bi-chevron-up]="userExpanded"></i>
+      </button>
+      <div class="sub-nav" *ngIf="userExpanded">
+        <a class="nav-link-item" routerLink="/users" routerLinkActive="active"
+           [routerLinkActiveOptions]="{exact: true}"
+           *ngIf="perm.hasResource('user')">
+          <i class="bi bi-person-badge"></i><span>Thông tin user</span>
+        </a>
+        <a class="nav-link-item" routerLink="/users/lifecycle" routerLinkActive="active"
+           *ngIf="perm.hasResource('user-lifecycle')">
+          <i class="bi bi-arrow-repeat"></i><span>Biến động nhân sự</span>
+        </a>
+        <a class="nav-link-item" routerLink="/users/permissions" routerLinkActive="active"
+           *ngIf="perm.hasResource('user-permission')">
+          <i class="bi bi-key"></i><span>Phân quyền</span>
+        </a>
+        <a class="nav-link-item" routerLink="/users/roles" routerLinkActive="active"
+           *ngIf="perm.has('role','read') || perm.has('role','assign') || perm.has('role','revoke')">
+          <i class="bi bi-person-check"></i><span>Role</span>
+        </a>
+        <a class="nav-link-item" routerLink="/users/credentials" routerLinkActive="active"
+           *ngIf="perm.has('user-credential','reset-password')">
+          <i class="bi bi-key-fill"></i><span>Đặt lại mật khẩu</span>
+        </a>
+      </div>
+    </ng-container>
+
+    <!-- Quản lý cấu hình (collapsible) -->
+    <ng-container *ngIf="perm.hasAnyResource('application','client','auth-flow','default-permission')">
+      <button class="nav-link-item config-toggle mt-2" (click)="toggleConfig()">
+        <span class="d-flex align-items-center gap-2"><i class="bi bi-gear"></i>Quản lý cấu hình</span>
+        <i class="bi toggle-icon" [class.bi-chevron-down]="!configExpanded" [class.bi-chevron-up]="configExpanded"></i>
+      </button>
+      <div class="sub-nav" *ngIf="configExpanded">
+        <a class="nav-link-item" routerLink="/config/apps" routerLinkActive="active"
+           *ngIf="perm.has('application','read')">
+          <i class="bi bi-window"></i><span>Ứng dụng</span>
+        </a>
+        <a class="nav-link-item" routerLink="/config/resources" routerLinkActive="active"
+           *ngIf="perm.has('application','read')">
+          <i class="bi bi-boxes"></i><span>Tài nguyên</span>
+        </a>
+        <a class="nav-link-item" routerLink="/config/clients" routerLinkActive="active"
+           *ngIf="perm.has('client','read')">
+          <i class="bi bi-plug"></i><span>OAuth2 Client</span>
+        </a>
+        <a class="nav-link-item" routerLink="/config/flows" routerLinkActive="active"
+           *ngIf="perm.has('auth-flow','read')">
+          <i class="bi bi-diagram-3"></i><span>Auth Flow</span>
+        </a>
+        <a class="nav-link-item" routerLink="/config/default-perms" routerLinkActive="active"
+           *ngIf="perm.has('default-permission','read')">
+          <i class="bi bi-shield-check"></i><span>Quyền mặc định</span>
+        </a>
+      </div>
+    </ng-container>
+
+  </div>
+  <div class="sidebar-footer">
+    <i class="bi bi-shield-lock me-1"></i> IAM Banking System
+  </div>
+</nav>
+
+<!-- ==================== Main content ==================== -->
+</ng-container>
+
+<div class="main-content" [class.full]="!isLoggedIn || !sidebarOpen">
+  <router-outlet />
+</div>
+
+<ng-container *ngIf="isLoggedIn">
+<!-- ==================== Modal: Đổi mật khẩu ==================== -->
+<div class="app-modal-overlay" *ngIf="showChangePwModal" (click)="closeChangePw()">
+  <div class="app-modal-panel" (click)="$event.stopPropagation()">
+    <div class="app-modal-header">
+      <span class="fw-semibold"><i class="bi bi-shield-lock me-2"></i>Đổi Mật Khẩu</span>
+      <button class="btn-close" (click)="closeChangePw()"></button>
+    </div>
+    <div class="app-modal-body">
+      <!-- Mật khẩu hiện tại -->
+      <div class="mb-3">
+        <label class="form-label small fw-semibold">Mật khẩu hiện tại <span class="text-danger">*</span></label>
+        <div class="input-group">
+          <input class="form-control" [type]="showOldPass ? 'text' : 'password'"
+                 [(ngModel)]="changePwForm.oldpass" placeholder="Nhập mật khẩu hiện tại"
+                 [disabled]="loadingChangePw || changePwMessageType==='success'">
+          <button class="btn btn-outline-secondary" type="button"
+                  (click)="showOldPass = !showOldPass"
+                  [disabled]="loadingChangePw || changePwMessageType==='success'">
+            <i class="bi" [class.bi-eye]="!showOldPass" [class.bi-eye-slash]="showOldPass"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Mật khẩu mới -->
+      <div class="mb-2">
+        <label class="form-label small fw-semibold">Mật khẩu mới <span class="text-danger">*</span></label>
+        <div class="input-group">
+          <input class="form-control" [type]="showNewPass ? 'text' : 'password'"
+                 [(ngModel)]="changePwForm.newPass" placeholder="Nhập mật khẩu mới"
+                 [disabled]="loadingChangePw || changePwMessageType==='success'">
+          <button class="btn btn-outline-secondary" type="button"
+                  (click)="showNewPass = !showNewPass"
+                  [disabled]="loadingChangePw || changePwMessageType==='success'">
+            <i class="bi" [class.bi-eye]="!showNewPass" [class.bi-eye-slash]="showNewPass"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Policy list -->
+      <div class="pw-policy-box mb-3">
+        <div *ngFor="let p of pwPolicies" class="pw-policy-item" [class.met]="p.met">
+          <i class="bi" [class.bi-check-circle-fill]="p.met" [class.bi-x-circle-fill]="!p.met"></i>
+          {{ p.label }}
+        </div>
+      </div>
+
+      <!-- Xác nhận mật khẩu mới -->
+      <div class="mb-3">
+        <label class="form-label small fw-semibold">Xác nhận mật khẩu mới <span class="text-danger">*</span></label>
+        <div class="input-group">
+          <input class="form-control" [type]="showConfirmPass ? 'text' : 'password'"
+                 [(ngModel)]="changePwForm.confirmNewPass" placeholder="Nhập lại mật khẩu mới"
+                 [disabled]="loadingChangePw || changePwMessageType==='success'">
+          <button class="btn btn-outline-secondary" type="button"
+                  (click)="showConfirmPass = !showConfirmPass"
+                  [disabled]="loadingChangePw || changePwMessageType==='success'">
+            <i class="bi" [class.bi-eye]="!showConfirmPass" [class.bi-eye-slash]="showConfirmPass"></i>
+          </button>
+        </div>
+      </div>
+
+      <div *ngIf="changePwMessage" class="alert alert-{{ changePwMessageType }} small py-2 mb-0">
+        <span *ngIf="changePwMessageType==='success'" class="spinner-border spinner-border-sm me-2"></span>
+        {{ changePwMessage }}
+      </div>
+    </div>
+    <div class="app-modal-footer">
+      <button class="btn btn-outline-secondary btn-sm" (click)="closeChangePw()"
+              [disabled]="loadingChangePw || changePwMessageType==='success'">Hủy</button>
+      <button class="btn btn-primary btn-sm" (click)="submitChangePassword()"
+              [disabled]="loadingChangePw || changePwMessageType==='success'">
+        <span *ngIf="loadingChangePw" class="spinner-border spinner-border-sm me-1"></span>
+        Đổi mật khẩu
+      </button>
+    </div>
+  </div>
+</div>
+
+
+</ng-container>

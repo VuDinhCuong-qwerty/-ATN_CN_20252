@@ -1,0 +1,810 @@
+<div class="page-container">
+
+  <!-- Breadcrumb -->
+  <div class="breadcrumb">
+    <a routerLink="/changes"><i class="bi bi-list-task"></i> Danh sách</a>
+    <i class="bi bi-chevron-right"></i>
+    <span>{{ editMode ? 'Chỉnh sửa Change' : 'Chi tiết Change' }}</span>
+  </div>
+
+  @if (loading) {
+    <div class="loading-state"><div class="spinner spinner-lg"></div><span>Đang tải...</span></div>
+  } @else if (error) {
+    <div class="alert alert-error"><i class="bi bi-exclamation-triangle-fill"></i>{{ error }}</div>
+  } @else if (cr) {
+
+    <!-- Status bar (always visible) -->
+    <div class="status-bar card">
+      <div class="status-left">
+        <div class="page-icon"><i class="bi bi-file-earmark-text"></i></div>
+        <div>
+          <div class="cr-title">{{ editMode ? editName || cr.changeName : cr.changeName }}</div>
+          <div class="cr-meta">
+            <span class="cr-id">{{ shortId(cr.changeId) }}</span>
+            <span>·</span>
+            <span>Tạo bởi <strong>{{ cr.createdBy }}</strong></span>
+            @if (cr.createdByCode) { <span class="emp-code">{{ cr.createdByCode }}</span> }
+            <span>·</span>
+            <span class="cr-date">{{ fmtDate(cr.createdAt) }}</span>
+          </div>
+        </div>
+      </div>
+      <span class="badge-status badge-{{ cr.status }} status-badge-lg">
+        {{ STATUS_LABELS[cr.status] || cr.status }}
+      </span>
+    </div>
+
+    <!-- Action feedback -->
+    @if (actionSuccess) {
+      <div class="alert alert-success" style="margin-bottom:16px">
+        <i class="bi bi-check-circle-fill"></i>{{ actionSuccess }}
+      </div>
+    }
+    @if (actionError) {
+      <div class="alert alert-error" style="margin-bottom:16px">
+        <i class="bi bi-exclamation-triangle-fill"></i>{{ actionError }}
+      </div>
+    }
+
+    <!-- ══════════════════════════════════════════════════════════════════ -->
+    <!-- EDIT MODE                                                          -->
+    <!-- ══════════════════════════════════════════════════════════════════ -->
+    @if (editMode) {
+
+      @if (editError) {
+        <div class="alert alert-error" style="margin-bottom:16px">
+          <i class="bi bi-exclamation-triangle-fill"></i>{{ editError }}
+        </div>
+      }
+
+      <!-- Section 1: Thông tin chung -->
+      <div class="section-card">
+        <div class="section-hdr">
+          <div class="section-icon"><i class="bi bi-file-text"></i></div>
+          <span class="section-title">Thông tin chung</span>
+        </div>
+        <div class="section-body">
+          <div class="form-row-2">
+            <div class="form-group">
+              <label class="form-label">Tên Change <span class="req">*</span></label>
+              <input class="form-control" [(ngModel)]="editName" placeholder="Tên change...">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Thời gian Go-Live dự kiến <span class="req">*</span></label>
+              <input type="datetime-local" class="form-control" [(ngModel)]="editGoliveAt">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Mô tả nội dung</label>
+            <textarea class="form-control" [(ngModel)]="editContent" rows="4"
+                      placeholder="Mô tả chi tiết nội dung thay đổi, phạm vi tác động, rủi ro..."></textarea>
+          </div>
+          <div class="form-group" style="margin-bottom:0">
+            <label class="form-label">Git Link / Ticket</label>
+            <div class="input-with-icon">
+              <i class="bi bi-link-45deg input-icon"></i>
+              <input class="form-control form-control-icon" [(ngModel)]="editGitLink"
+                     placeholder="https://github.com/org/repo/pull/123">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 2: Jobs -->
+      <div class="section-card">
+        <div class="section-hdr">
+          <div class="section-icon"><i class="bi bi-gear"></i></div>
+          <span class="section-title">Danh sách Job Go-Live</span>
+          <button class="btn btn-outline btn-sm ms-auto" (click)="addEditJob()">
+            <i class="bi bi-plus"></i> Thêm job
+          </button>
+        </div>
+        <div class="section-body" style="padding:0">
+          @if (editJobs.length === 0) {
+            <div class="edit-empty-hint">
+              <i class="bi bi-list-ol"></i> Chưa có job. Nhấn "+ Thêm job" để thêm.
+            </div>
+          } @else {
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th style="width:44px">#</th>
+                  <th>Tên Job</th>
+                  <th style="width:220px">Link</th>
+                  <th style="width:150px">Loại</th>
+                  <th style="width:52px"></th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (job of editActiveJobs; track job; let i = $index) {
+                  <tr>
+                    <td class="txt-center txt-muted">{{ i + 1 }}</td>
+                    <td>
+                      <input class="form-control form-control-sm" [(ngModel)]="job.name" placeholder="Tên job...">
+                    </td>
+                    <td>
+                      <input class="form-control form-control-sm" [(ngModel)]="job.link" placeholder="https://...">
+                    </td>
+                    <td>
+                      <select class="form-control form-control-sm" [(ngModel)]="job.jobType">
+                        @for (jt of JOB_TYPES; track jt.value) {
+                          <option [value]="jt.value">{{ jt.label }}</option>
+                        }
+                      </select>
+                    </td>
+                    <td>
+                      <button class="btn btn-icon btn-danger btn-sm" (click)="removeEditJob(job)" title="Xóa">
+                        <i class="bi bi-trash"></i>
+                      </button>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          }
+        </div>
+      </div>
+
+      <!-- Section 3: Checklist -->
+      <div class="section-card">
+        <div class="section-hdr">
+          <div class="section-icon"><i class="bi bi-check2-square"></i></div>
+          <span class="section-title">Checklist thực thi</span>
+          <button class="btn btn-outline btn-sm ms-auto" (click)="addEditStep()">
+            <i class="bi bi-plus"></i> Thêm bước
+          </button>
+        </div>
+        <div class="section-body">
+          <div class="tab-nav">
+            <button class="tab-btn" [class.active]="editActivePhase === 'PRE'" (click)="editActivePhase = 'PRE'">
+              <i class="bi bi-arrow-up-circle"></i> Trước go-live
+              @if (editPreCount > 0) { <span class="tab-cnt">{{ editPreCount }}</span> }
+            </button>
+            <button class="tab-btn" [class.active]="editActivePhase === 'DURING'" (click)="editActivePhase = 'DURING'">
+              <i class="bi bi-play-circle"></i> Trong go-live
+              @if (editDuringCount > 0) { <span class="tab-cnt">{{ editDuringCount }}</span> }
+            </button>
+            <button class="tab-btn" [class.active]="editActivePhase === 'ROLLBACK'" (click)="editActivePhase = 'ROLLBACK'">
+              <i class="bi bi-arrow-counterclockwise"></i> Rollback
+              @if (editRollbackCount > 0) { <span class="tab-cnt">{{ editRollbackCount }}</span> }
+            </button>
+          </div>
+
+          @if (editActiveChecklist.length === 0) {
+            <div class="edit-empty-hint">
+              <i class="bi bi-clipboard-check"></i> Chưa có bước nào. Nhấn "+ Thêm bước" để thêm.
+            </div>
+          } @else {
+            <div class="step-list">
+              @for (step of editActiveChecklist; track step; let i = $index) {
+                <div class="step-card">
+                  <div class="step-card-hdr">
+                    <span class="step-num">{{ i + 1 }}</span>
+                    <input class="form-control" [(ngModel)]="step.stepText" placeholder="Mô tả bước thực thi...">
+                    <button class="btn btn-icon btn-danger btn-sm" (click)="removeEditStep(step)" title="Xóa bước">
+                      <i class="bi bi-trash"></i>
+                    </button>
+                  </div>
+                  <div class="step-card-assignee">
+                    <span class="assignee-label"><i class="bi bi-person-fill"></i> Người thực hiện</span>
+                    @if (!step.assigneeResult) {
+                      <div class="assignee-search">
+                        <input class="form-control form-control-sm" [(ngModel)]="step.assigneeQuery"
+                               placeholder="Nhập username để tìm..."
+                               (keyup.enter)="searchEditAssignee(step)">
+                        <button class="btn btn-outline btn-sm" (click)="searchEditAssignee(step)"
+                                [disabled]="step.searchingAssignee">
+                          @if (step.searchingAssignee) {
+                            <span class="spinner" style="width:12px;height:12px;border-width:2px"></span>
+                          } @else { <i class="bi bi-search"></i> }
+                        </button>
+                        @if (step.notFoundAssignee) {
+                          <span class="assignee-not-found"><i class="bi bi-x-circle"></i> Không tìm thấy</span>
+                        }
+                      </div>
+                    } @else {
+                      <div class="assignee-result">
+                        <div class="assignee-avatar">{{ step.assigneeResult.fullName.charAt(0) }}</div>
+                        <div class="assignee-info">
+                          <span class="assignee-name">{{ step.assigneeResult.fullName }}</span>
+                          <span class="assignee-code">
+                            &#64;{{ step.assigneeResult.username }}
+                            @if (step.assigneeResult.employeeCode) { · {{ step.assigneeResult.employeeCode }} }
+                          </span>
+                        </div>
+                        <button class="btn btn-icon btn-ghost btn-sm" (click)="clearEditAssignee(step)"
+                                title="Đổi người thực hiện">
+                          <i class="bi bi-pencil-square" style="font-size:12px"></i>
+                        </button>
+                      </div>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- Section 4: Change Team -->
+      <div class="section-card">
+        <div class="section-hdr">
+          <div class="section-icon"><i class="bi bi-people"></i></div>
+          <span class="section-title">Change Team</span>
+        </div>
+        <div class="section-body">
+          <div class="team-grid">
+
+            <!-- DEV -->
+            <div class="team-slot">
+              <div class="slot-role slot-dev">
+                <i class="bi bi-code-slash"></i> Developer
+                <span class="lead-badge">★ Lead</span>
+              </div>
+              @if (!editDevSlot.result) {
+                <div class="slot-search">
+                  <input class="form-control" [(ngModel)]="editDevSlot.query" placeholder="Nhập username..."
+                         (keyup.enter)="searchEditSlot(editDevSlot)">
+                  <button class="btn btn-outline btn-sm" (click)="searchEditSlot(editDevSlot)" [disabled]="editDevSlot.searching">
+                    @if (editDevSlot.searching) { <span class="spinner" style="width:14px;height:14px;border-width:2px"></span> }
+                    @else { <i class="bi bi-search"></i> }
+                    Tìm
+                  </button>
+                </div>
+                @if (editDevSlot.notFound) {
+                  <p class="slot-err"><i class="bi bi-x-circle"></i> Không tìm thấy user</p>
+                }
+              } @else {
+                <div class="slot-result">
+                  <div class="slot-avatar">{{ editDevSlot.result.fullName.charAt(0) }}</div>
+                  <div class="slot-info">
+                    <div class="slot-name">{{ editDevSlot.result.fullName }}</div>
+                    <div class="slot-username">&#64;{{ editDevSlot.result.username }}</div>
+                    <div class="slot-username">{{ editDevSlot.result.employeeCode }}</div>
+                  </div>
+                  <button class="btn btn-icon btn-ghost" (click)="clearEditSlot(editDevSlot)" title="Xóa">
+                    <i class="bi bi-x-lg"></i>
+                  </button>
+                </div>
+              }
+            </div>
+
+            <!-- TESTER -->
+            <div class="team-slot">
+              <div class="slot-role slot-tester"><i class="bi bi-bug"></i> Tester</div>
+              @if (!editTesterSlot.result) {
+                <div class="slot-search">
+                  <input class="form-control" [(ngModel)]="editTesterSlot.query" placeholder="Nhập username..."
+                         (keyup.enter)="searchEditSlot(editTesterSlot)">
+                  <button class="btn btn-outline btn-sm" (click)="searchEditSlot(editTesterSlot)" [disabled]="editTesterSlot.searching">
+                    @if (editTesterSlot.searching) { <span class="spinner" style="width:14px;height:14px;border-width:2px"></span> }
+                    @else { <i class="bi bi-search"></i> }
+                    Tìm
+                  </button>
+                </div>
+                @if (editTesterSlot.notFound) {
+                  <p class="slot-err"><i class="bi bi-x-circle"></i> Không tìm thấy user</p>
+                }
+              } @else {
+                <div class="slot-result">
+                  <div class="slot-avatar slot-avatar-tester">{{ editTesterSlot.result.fullName.charAt(0) }}</div>
+                  <div class="slot-info">
+                    <div class="slot-name">{{ editTesterSlot.result.fullName }}</div>
+                    <div class="slot-username">&#64;{{ editTesterSlot.result.username }}</div>
+                    <div class="slot-username">{{ editTesterSlot.result.employeeCode }}</div>
+                  </div>
+                  <button class="btn btn-icon btn-ghost" (click)="clearEditSlot(editTesterSlot)" title="Xóa">
+                    <i class="bi bi-x-lg"></i>
+                  </button>
+                </div>
+              }
+            </div>
+
+            <!-- BA -->
+            <div class="team-slot">
+              <div class="slot-role slot-ba"><i class="bi bi-briefcase"></i> Business Analyst</div>
+              @if (!editBaSlot.result) {
+                <div class="slot-search">
+                  <input class="form-control" [(ngModel)]="editBaSlot.query" placeholder="Nhập username..."
+                         (keyup.enter)="searchEditSlot(editBaSlot)">
+                  <button class="btn btn-outline btn-sm" (click)="searchEditSlot(editBaSlot)" [disabled]="editBaSlot.searching">
+                    @if (editBaSlot.searching) { <span class="spinner" style="width:14px;height:14px;border-width:2px"></span> }
+                    @else { <i class="bi bi-search"></i> }
+                    Tìm
+                  </button>
+                </div>
+                @if (editBaSlot.notFound) {
+                  <p class="slot-err"><i class="bi bi-x-circle"></i> Không tìm thấy user</p>
+                }
+              } @else {
+                <div class="slot-result">
+                  <div class="slot-avatar slot-avatar-ba">{{ editBaSlot.result.fullName.charAt(0) }}</div>
+                  <div class="slot-info">
+                    <div class="slot-name">{{ editBaSlot.result.fullName }}</div>
+                    <div class="slot-username">&#64;{{ editBaSlot.result.username }}</div>
+                    <div class="slot-username">{{ editBaSlot.result.employeeCode }}</div>
+                  </div>
+                  <button class="btn btn-icon btn-ghost" (click)="clearEditSlot(editBaSlot)" title="Xóa">
+                    <i class="bi bi-x-lg"></i>
+                  </button>
+                </div>
+              }
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 5: CAB Approvers -->
+      <div class="section-card">
+        <div class="section-hdr">
+          <div class="section-icon"><i class="bi bi-person-check"></i></div>
+          <span class="section-title">Danh sách CAB</span>
+          <span class="section-hint">Cần ít nhất 1 người có vai trò CAB</span>
+          <button class="btn btn-outline btn-sm ms-auto" (click)="addEditApprover()">
+            <i class="bi bi-plus"></i> Thêm CAB
+          </button>
+        </div>
+        <div class="section-body">
+          @if (editApproverSlots.length === 0) {
+            <div class="edit-empty-hint">
+              <i class="bi bi-person-check"></i> Chưa có người phê duyệt. Nhấn "+ Thêm CAB".
+            </div>
+          } @else {
+            <div class="approver-list">
+              @for (slot of editActiveApprovers; track slot; let i = $index) {
+                <div class="approver-row">
+                  <span class="approver-num">{{ i + 1 }}</span>
+                  @if (!slot.result) {
+                    <input class="form-control" style="flex:1" [(ngModel)]="slot.query"
+                           placeholder="Username CAB..." (keyup.enter)="searchEditApprover(slot)">
+                    <button class="btn btn-outline btn-sm" (click)="searchEditApprover(slot)" [disabled]="slot.searching">
+                      @if (slot.searching) { <span class="spinner" style="width:14px;height:14px;border-width:2px"></span> }
+                      @else { <i class="bi bi-search"></i> }
+                      Tìm
+                    </button>
+                    @if (slot.notFound) {
+                      <span class="slot-err-inline"><i class="bi bi-x-circle"></i> Không tìm thấy</span>
+                    }
+                  } @else {
+                    <div class="approver-found">
+                      <div class="slot-avatar" style="width:32px;height:32px;font-size:13px">{{ slot.result.fullName.charAt(0) }}</div>
+                      <div>
+                        <div style="font-size:14px;font-weight:600">{{ slot.result.fullName }}</div>
+                        <div style="font-size:12px;color:var(--text-muted)">&#64;{{ slot.result.username }} · {{ slot.result.employeeCode }}</div>
+                      </div>
+                      <button class="btn btn-icon btn-ghost btn-sm" (click)="slot.result = null; slot.query = ''">
+                        <i class="bi bi-x-lg"></i>
+                      </button>
+                    </div>
+                  }
+                  <button class="btn btn-icon btn-danger btn-sm" (click)="removeEditApprover(slot)" title="Xóa dòng">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </div>
+              }
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- Edit action bar -->
+      <div class="edit-action-bar">
+        <button class="btn btn-ghost" (click)="cancelEdit()" [disabled]="saving">
+          <i class="bi bi-x-lg"></i> Hủy
+        </button>
+        <button class="btn btn-primary" (click)="saveEdit()" [disabled]="saving">
+          @if (saving) { <span class="spinner" style="width:14px;height:14px;border-width:2px"></span> }
+          @else { <i class="bi bi-floppy"></i> }
+          Lưu thay đổi
+        </button>
+      </div>
+
+      <!-- Cancel confirm dialog (inline) -->
+      @if (showCancelConfirm) {
+        <div class="cancel-confirm-overlay" (click)="dismissCancelConfirm()">
+          <div class="cancel-confirm-box" (click)="$event.stopPropagation()">
+            <div class="cancel-confirm-icon"><i class="bi bi-exclamation-triangle-fill"></i></div>
+            <div class="cancel-confirm-body">
+              <div class="cancel-confirm-title">Hủy chỉnh sửa?</div>
+              <div class="cancel-confirm-desc">Các thay đổi chưa lưu sẽ bị mất.</div>
+            </div>
+            <div class="cancel-confirm-actions">
+              <button class="btn btn-ghost btn-sm" (click)="dismissCancelConfirm()">Tiếp tục sửa</button>
+              <button class="btn btn-danger btn-sm" (click)="confirmCancelEdit()">Hủy thay đổi</button>
+            </div>
+          </div>
+        </div>
+      }
+
+    <!-- ══════════════════════════════════════════════════════════════════ -->
+    <!-- VIEW MODE                                                          -->
+    <!-- ══════════════════════════════════════════════════════════════════ -->
+    } @else {
+
+
+      <!-- Info section -->
+      <div class="section-card">
+        <div class="section-hdr">
+          <div class="section-icon"><i class="bi bi-info-circle"></i></div>
+          <span class="section-title">Thông tin chung</span>
+        </div>
+        <div class="section-body">
+          <div class="detail-row">
+            <span class="detail-lbl">Tên Change</span>
+            <span class="detail-val">{{ cr.changeName }}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-lbl">Mã Change</span>
+            <span class="detail-val"><span class="cr-id">{{ shortId(cr.changeId) }}</span></span>
+          </div>
+          @if (cr.goliveAt) {
+            <div class="detail-row">
+              <span class="detail-lbl">Thời gian Go-Live</span>
+              <span class="detail-val">{{ fmtDate(cr.goliveAt) }}</span>
+            </div>
+          }
+          @if (cr.gitLink) {
+            <div class="detail-row">
+              <span class="detail-lbl">Git / Ticket Link</span>
+              <span class="detail-val">
+                <a [href]="cr.gitLink" target="_blank" rel="noopener" class="link-ext">
+                  {{ cr.gitLink }} <i class="bi bi-box-arrow-up-right"></i>
+                </a>
+              </span>
+            </div>
+          }
+          @if (cr.content) {
+            <div class="detail-row">
+              <span class="detail-lbl">Mô tả</span>
+              <span class="detail-val content-block">{{ cr.content }}</span>
+            </div>
+          }
+          <div class="detail-row">
+            <span class="detail-lbl">Ngày tạo</span>
+            <span class="detail-val">{{ fmtDate(cr.createdAt) }}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-lbl">Cập nhật lần cuối</span>
+            <span class="detail-val">{{ fmtDate(cr.updatedAt) }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Golive Jobs -->
+      @if ((cr.jobs?.length ?? 0) > 0) {
+        <div class="section-card">
+          <div class="section-hdr">
+            <div class="section-icon"><i class="bi bi-gear"></i></div>
+            <span class="section-title">Danh sách Job Go-Live</span>
+            <span class="badge-count">{{ cr.jobs!.length }} jobs</span>
+          </div>
+          <div class="section-body" style="padding:0">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th style="width:44px">#</th>
+                  <th>Tên Job</th>
+                  <th style="width:120px">Loại</th>
+                  <th>Link</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (job of cr.jobs!; track job.id) {
+                  <tr>
+                    <td class="txt-center txt-muted">{{ job.orderNum }}</td>
+                    <td><strong>{{ job.name }}</strong></td>
+                    <td><span class="job-type-badge">{{ JOB_TYPE_LABELS[job.jobType] || job.jobType }}</span></td>
+                    <td>
+                      @if (job.link) {
+                        <a [href]="job.link" target="_blank" rel="noopener" class="link-ext">
+                          {{ job.link }} <i class="bi bi-box-arrow-up-right"></i>
+                        </a>
+                      } @else { <span class="txt-muted">—</span> }
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+      }
+
+      <!-- Checklist -->
+      @if ((cr.checklistItems?.length ?? 0) > 0) {
+        <div class="section-card">
+          <div class="section-hdr">
+            <div class="section-icon"><i class="bi bi-check2-square"></i></div>
+            <span class="section-title">Checklist thực thi</span>
+          </div>
+          <div class="section-body">
+            <div class="tab-nav">
+              <button class="tab-btn" [class.active]="activePhase === 'PRE'" (click)="activePhase = 'PRE'">
+                Trước golive @if (preCount > 0) { <span class="tab-cnt">{{ preCount }}</span> }
+              </button>
+              <button class="tab-btn" [class.active]="activePhase === 'DURING'" (click)="activePhase = 'DURING'">
+                Trong khi golive @if (duringCount > 0) { <span class="tab-cnt">{{ duringCount }}</span> }
+              </button>
+              <button class="tab-btn" [class.active]="activePhase === 'ROLLBACK'" (click)="activePhase = 'ROLLBACK'">
+                Rollback @if (rollbackCount > 0) { <span class="tab-cnt">{{ rollbackCount }}</span> }
+              </button>
+            </div>
+
+            @if (checklistByPhase.length === 0) {
+              <p style="color:var(--text-muted);font-size:13px;padding:8px 0">Không có bước nào.</p>
+            } @else {
+              <div class="checklist-view">
+                @for (item of checklistByPhase; track item.id) {
+                  <div class="checklist-item-row"
+                       [class.cl-done]="item.taskStatus === 'SUCCESS'"
+                       [class.cl-fail]="item.taskStatus === 'FAIL'">
+                    <div class="cl-num">{{ item.orderNum }}</div>
+                    <div class="cl-body">
+                      <span class="cl-text">{{ item.stepText }}</span>
+                      @if (item.assignedTo) {
+                        <span class="cl-assignee">
+                          <i class="bi bi-person"></i> {{ item.assignedTo }}
+                          @if (item.assignedToCode) {
+                            <span class="emp-code-sm">{{ item.assignedToCode }}</span>
+                          }
+                        </span>
+                      }
+                    </div>
+                    <div class="cl-status">
+                      <span [class]="taskStatusClass(item.taskStatus)">
+                        {{ TASK_STATUS_LABELS[item.taskStatus || 'READY'] }}
+                      </span>
+                      @if (canUpdateItem(item)) {
+                        <button class="btn btn-success btn-xs"
+                                [disabled]="updatingItemId === item.id"
+                                (click)="updateChecklistItem(item, 'SUCCESS')">
+                          @if (updatingItemId === item.id) {
+                            <span class="spinner" style="width:12px;height:12px;border-width:2px"></span>
+                          } @else { <i class="bi bi-check2"></i> }
+                          OK
+                        </button>
+                        <button class="btn btn-danger btn-xs"
+                                [disabled]="updatingItemId === item.id"
+                                (click)="updateChecklistItem(item, 'FAIL')">
+                          <i class="bi bi-x"></i> Fail
+                        </button>
+                      }
+                    </div>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        </div>
+      }
+
+      <!-- Change Team -->
+      @if ((cr.teamMembers?.length ?? 0) > 0) {
+        <div class="section-card">
+          <div class="section-hdr">
+            <div class="section-icon"><i class="bi bi-people"></i></div>
+            <span class="section-title">Change Team</span>
+            <span class="badge-count">{{ cr.teamMembers!.length }} thành viên</span>
+          </div>
+          <div class="section-body">
+            <div class="team-view-grid">
+              @for (m of cr.teamMembers!; track m.id) {
+                <div class="team-member-card">
+                  <div class="tm-avatar">{{ m.fullName.charAt(0) }}</div>
+                  <div class="tm-info">
+                    <div class="tm-name-row">
+                      <span class="tm-name">{{ m.fullName }}</span>
+                      @if (m.isLead === 1) {
+                        <span class="tm-lead-badge"><i class="bi bi-star-fill"></i> Lead</span>
+                      }
+                    </div>
+                    <div class="tm-username">&#64;{{ m.username }}
+                      @if (m.employeeCode) {
+                        <span class="emp-code-inline">{{ m.employeeCode }}</span>
+                      }
+                    </div>
+                    <div class="tm-role">{{ MEMBER_LABELS[m.memberRole] || m.memberRole }}</div>
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+        </div>
+      }
+
+      <!-- Approvers -->
+      @if ((cr.approvers?.length ?? 0) > 0) {
+        <div class="section-card">
+          <div class="section-hdr">
+            <div class="section-icon"><i class="bi bi-person-check"></i></div>
+            <span class="section-title">Danh sách CAB</span>
+          </div>
+          <div class="section-body" style="padding:0">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Họ tên</th>
+                  <th>Username</th>
+                  <th>Mã NV</th>
+                  <th style="width:120px">Trạng thái</th>
+                  <th>Ghi chú</th>
+                  <th style="width:160px">Thời gian duyệt</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (a of cr.approvers!; track a.id; let i = $index) {
+                  <tr>
+                    <td class="txt-center txt-muted">{{ i + 1 }}</td>
+                    <td><strong>{{ a.fullName }}</strong></td>
+                    <td class="txt-muted">&#64;{{ a.username }}</td>
+                    <td class="txt-muted">{{ a.employeeCode }}</td>
+                    <td>
+                      <span [class]="approverStatusClass(a)">{{ approverStatusLabel(a) }}</span>
+                    </td>
+                    <td class="txt-muted">{{ a.note || '—' }}</td>
+                    <td class="txt-muted">{{ fmtDate(a.decidedAt) }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+      }
+
+      <!-- Bottom action bar -->
+      @if (canEdit || canSubmit || canApprove || canExecute || canUpdateResult) {
+        <div class="bottom-action-bar">
+          @if (actionError) {
+            <span class="bottom-error"><i class="bi bi-exclamation-triangle-fill"></i> {{ actionError }}</span>
+          }
+          <div class="bottom-btns">
+            @if (canEdit) {
+              <button class="btn btn-ghost" (click)="enterEditMode()">
+                <i class="bi bi-pencil-square"></i> Chỉnh sửa
+              </button>
+            }
+            @if (canSubmit) {
+              <button class="btn btn-outline" (click)="submit()" [disabled]="acting">
+                <i class="bi bi-send"></i> Gửi duyệt
+              </button>
+            }
+            @if (canApprove) {
+              <button class="btn btn-danger" (click)="showRejectModal = true; actionError = ''">
+                <i class="bi bi-x-circle"></i> Từ chối
+              </button>
+              <button class="btn btn-success" (click)="showApproveModal = true; actionError = ''">
+                <i class="bi bi-check-circle"></i> Phê duyệt
+              </button>
+            }
+            @if (canExecute) {
+              <button class="btn btn-primary" (click)="showExecuteConfirm = true; actionError = ''">
+                <i class="bi bi-play-circle"></i> Bắt đầu Go-Live
+              </button>
+            }
+            @if (canUpdateResult) {
+              <button class="btn btn-warning" (click)="showResultModal = true; actionError = ''">
+                <i class="bi bi-flag"></i> Ghi nhận kết quả
+              </button>
+            }
+          </div>
+        </div>
+      }
+
+    } <!-- end @else (view mode) -->
+
+  } @else {
+    <div class="alert alert-info"><i class="bi bi-info-circle"></i> Không tìm thấy change request.</div>
+  }
+
+</div>
+
+<!-- ── Approve Modal ── -->
+@if (showApproveModal) {
+  <div class="modal-overlay" (click)="showApproveModal = false">
+    <div class="modal-panel" (click)="$event.stopPropagation()">
+      <div class="modal-hdr">
+        <i class="bi bi-check-circle-fill" style="color:#059669"></i>
+        Xác nhận Phê duyệt
+      </div>
+      <div class="modal-body">
+        <p style="color:var(--text-muted);font-size:14px;margin-bottom:14px">
+          Bạn xác nhận phê duyệt change request <strong>{{ cr?.changeName }}</strong>?
+        </p>
+        <div class="form-group" style="margin-bottom:0">
+          <label class="form-label">Ghi chú (tùy chọn)</label>
+          <textarea class="form-control" [(ngModel)]="approveNote" rows="3" placeholder="Ghi chú thêm..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" (click)="showApproveModal = false" [disabled]="acting">Hủy</button>
+        <button class="btn btn-success" (click)="confirmApprove()" [disabled]="acting">
+          @if (acting) { <span class="spinner" style="width:14px;height:14px;border-width:2px"></span> }
+          @else { <i class="bi bi-check-circle"></i> }
+          Phê duyệt
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ── Reject Modal ── -->
+@if (showRejectModal) {
+  <div class="modal-overlay" (click)="showRejectModal = false">
+    <div class="modal-panel" (click)="$event.stopPropagation()">
+      <div class="modal-hdr">
+        <i class="bi bi-x-circle-fill" style="color:#DC2626"></i>
+        Từ chối yêu cầu
+      </div>
+      <div class="modal-body">
+        <p style="color:var(--text-muted);font-size:14px;margin-bottom:14px">
+          Change sẽ quay lại trạng thái <strong>Bản nháp</strong> sau khi từ chối.
+        </p>
+        <div class="form-group" style="margin-bottom:0">
+          <label class="form-label">Lý do từ chối</label>
+          <textarea class="form-control" [(ngModel)]="rejectNote" rows="3" placeholder="Mô tả lý do..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" (click)="showRejectModal = false" [disabled]="acting">Hủy</button>
+        <button class="btn btn-danger" (click)="confirmReject()" [disabled]="acting">
+          @if (acting) { <span class="spinner" style="width:14px;height:14px;border-width:2px"></span> }
+          @else { <i class="bi bi-x-circle"></i> }
+          Từ chối
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ── Execute Confirm ── -->
+@if (showExecuteConfirm) {
+  <div class="modal-overlay" (click)="showExecuteConfirm = false">
+    <div class="modal-panel" (click)="$event.stopPropagation()">
+      <div class="modal-hdr">
+        <i class="bi bi-play-circle-fill" style="color:#2563EB"></i>
+        Bắt đầu Go-Live
+      </div>
+      <div class="modal-body">
+        <p style="font-size:14px;color:var(--text-muted)">
+          Xác nhận bắt đầu thực thi go-live cho <strong>{{ cr?.changeName }}</strong>?<br>
+          Trạng thái sẽ chuyển thành <strong>Đang golive</strong>.
+        </p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" (click)="showExecuteConfirm = false" [disabled]="acting">Hủy</button>
+        <button class="btn btn-primary" (click)="confirmExecute()" [disabled]="acting">
+          @if (acting) { <span class="spinner" style="width:14px;height:14px;border-width:2px"></span> }
+          @else { <i class="bi bi-play-circle"></i> }
+          Bắt đầu
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ── Result Modal ── -->
+@if (showResultModal) {
+  <div class="modal-overlay" (click)="showResultModal = false">
+    <div class="modal-panel" (click)="$event.stopPropagation()">
+      <div class="modal-hdr">
+        <i class="bi bi-flag-fill" style="color:#D97706"></i>
+        Ghi nhận kết quả Go-Live
+      </div>
+      <div class="modal-body">
+        <p style="font-size:14px;color:var(--text-muted)">
+          Xác nhận kết thúc go-live cho <strong>{{ cr?.changeName }}</strong>?<br>
+          Kết quả (SUCCESS/FAIL) được tự động tính từ trạng thái checklist.
+        </p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" (click)="showResultModal = false" [disabled]="acting">Hủy</button>
+        <button class="btn btn-primary" (click)="confirmResult()" [disabled]="acting">
+          @if (acting) { <span class="spinner" style="width:14px;height:14px;border-width:2px"></span> }
+          @else { <i class="bi bi-check2"></i> }
+          Xác nhận
+        </button>
+      </div>
+    </div>
+  </div>
+}

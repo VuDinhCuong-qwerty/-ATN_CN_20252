@@ -1,0 +1,492 @@
+<nav aria-label="breadcrumb" class="mb-2">
+  <ol class="breadcrumb mb-0">
+    <li class="breadcrumb-item text-muted small">Quản lý Users</li>
+    <li class="breadcrumb-item active small fw-semibold">Biến động nhân sự</li>
+  </ol>
+</nav>
+
+<div class="d-flex align-items-center mb-3">
+  <h4><i class="bi bi-arrow-repeat me-2 text-info"></i>Biến động nhân sự</h4>
+</div>
+
+<!-- Alert -->
+<div *ngIf="message" class="alert alert-floating alert-{{ messageType }} alert-dismissible" role="alert">
+  {{ message }}<button type="button" class="btn-close" (click)="message=''"></button>
+</div>
+
+<!-- Tab bar -->
+<ul class="nav nav-tabs mb-0">
+  <li class="nav-item" *ngIf="perm.has('user-lifecycle','onboard')">
+    <button class="nav-link" [class.active]="activeTab==='onboard'" (click)="switchTab('onboard')">
+      <i class="bi bi-person-check me-1"></i>Tiếp nhận
+    </button>
+  </li>
+  <li class="nav-item" *ngIf="perm.has('user-lifecycle','offboard')">
+    <button class="nav-link" [class.active]="activeTab==='offboard'" (click)="switchTab('offboard')">
+      <i class="bi bi-person-dash me-1"></i>Thôi việc
+    </button>
+  </li>
+  <li class="nav-item" *ngIf="perm.has('user-lifecycle','leave') || perm.has('user-lifecycle','return')">
+    <button class="nav-link" [class.active]="activeTab==='leave'" (click)="switchTab('leave')">
+      <i class="bi bi-calendar-x me-1"></i>Nghỉ phép
+    </button>
+  </li>
+  <li class="nav-item" *ngIf="perm.has('user-lifecycle','transfer')">
+    <button class="nav-link" [class.active]="activeTab==='transfer'" (click)="switchTab('transfer')">
+      <i class="bi bi-arrow-left-right me-1"></i>Luân chuyển
+    </button>
+  </li>
+</ul>
+
+<!-- Tab content panel -->
+<div class="tab-content-panel">
+
+  <!-- ── Leave sub-tabs ── -->
+  <ng-container *ngIf="activeTab === 'leave'">
+    <div class="d-flex gap-2 mb-3">
+      <button class="btn btn-sm"
+              [ngClass]="leaveSubTab==='working' ? 'btn-primary' : 'btn-outline-secondary'"
+              (click)="switchLeaveSubTab('working')">
+        <i class="bi bi-person-check me-1"></i>Đang công tác
+      </button>
+      <button class="btn btn-sm"
+              [ngClass]="leaveSubTab==='on-leave' ? 'btn-primary' : 'btn-outline-secondary'"
+              (click)="switchLeaveSubTab('on-leave')">
+        <i class="bi bi-moon-stars me-1"></i>Tạm hoãn công tác
+      </button>
+    </div>
+
+    <div class="alert alert-light border small py-2 mb-3" *ngIf="leaveSubTab==='working'">
+      <i class="bi bi-info-circle text-primary me-1"></i>
+      Chọn nhân viên cần tạm hoãn công tác. Quyền truy cập hệ thống sẽ được tạm ngưng trong thời gian nghỉ và phục hồi khi xác nhận quay lại.
+    </div>
+    <div class="alert alert-light border small py-2 mb-3" *ngIf="leaveSubTab==='on-leave'">
+      <i class="bi bi-info-circle text-primary me-1"></i>
+      Nhân viên đang tạm hoãn công tác. Bấm <strong>Gia hạn</strong> để kéo dài thời gian, hoặc <strong>Đi làm</strong> khi nhân viên quay trở lại.
+    </div>
+  </ng-container>
+
+  <!-- Search bar -->
+  <div class="row g-2 mb-3 align-items-end">
+    <div class="col-md-3">
+      <label class="form-label small mb-1">Họ tên</label>
+      <input class="form-control form-control-sm" [(ngModel)]="searchFullName"
+             placeholder="Nguyễn Văn A" (keydown.enter)="onSearch()">
+    </div>
+    <div class="col-md-2">
+      <label class="form-label small mb-1">Username</label>
+      <input class="form-control form-control-sm" [(ngModel)]="searchUsername"
+             placeholder="nva..." (keydown.enter)="onSearch()">
+    </div>
+    <div class="col-md-2">
+      <label class="form-label small mb-1">Mã nhân viên</label>
+      <input class="form-control form-control-sm" [(ngModel)]="searchEmpCode"
+             placeholder="EMP001" (keydown.enter)="onSearch()">
+    </div>
+    <div class="col-md-2">
+      <label class="form-label small mb-1">Phòng ban</label>
+      <select class="form-select form-select-sm" [(ngModel)]="searchDeptId">
+        <option value="">Tất cả</option>
+        <option *ngFor="let d of departments" [value]="d.id ?? d.departmentId">{{ d.name ?? d.departmentName }}</option>
+      </select>
+    </div>
+    <div class="col-md-2" *ngIf="activeTab !== 'leave' && activeTab !== 'onboard'">
+      <label class="form-label small mb-1">Trạng thái</label>
+      <select class="form-select form-select-sm" [(ngModel)]="searchStatus">
+        <option value="">Tất cả</option>
+        <option value="ACTIVE">ACTIVE</option>
+        <option value="INACTIVE">INACTIVE</option>
+        <option value="LOCKED">LOCKED</option>
+        <option value="DELETED">DELETED</option>
+      </select>
+    </div>
+    <div class="col-auto">
+      <button class="btn btn-primary btn-sm" (click)="onSearch()" [disabled]="loadingSearch">
+        <span *ngIf="loadingSearch" class="spinner-border spinner-border-sm me-1"></span>
+        <i *ngIf="!loadingSearch" class="bi bi-search me-1"></i>Tìm
+      </button>
+      <button class="btn btn-outline-secondary btn-sm ms-1"
+              (click)="searchFullName=''; searchEmpCode=''; searchUsername=''; searchDeptId=''; onSearch()">
+        Xoá
+      </button>
+    </div>
+  </div>
+
+  <!-- Table -->
+  <div class="table-responsive">
+    <table class="table table-sm table-hover align-middle mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>Mã NV</th>
+          <th>Họ và tên</th>
+          <th>Username</th>
+          <th>Phòng ban</th>
+          <th>Trạng thái</th>
+          <th class="text-center"
+              [style.width]="activeTab === 'leave' && leaveSubTab === 'on-leave' ? '180px' : '130px'">
+            Thao tác
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngIf="loadingSearch">
+          <td colspan="6" class="text-center py-4">
+            <span class="spinner-border spinner-border-sm me-2"></span>Đang tải...
+          </td>
+        </tr>
+        <tr *ngIf="!loadingSearch && userList.length === 0">
+          <td colspan="6" class="text-center py-4 text-muted">
+            <i class="bi bi-inbox fs-4 d-block mb-1 opacity-50"></i>Không có dữ liệu
+          </td>
+        </tr>
+
+        <!-- Non-leave tabs: row clickable → modal -->
+        <ng-container *ngIf="activeTab !== 'leave'">
+          <tr *ngFor="let user of userList" class="table-row-clickable" (click)="openModal(user)">
+            <td><code>{{ user.employeeCode }}</code></td>
+            <td class="fw-medium">{{ user.fullName }}</td>
+            <td>{{ user.username }}</td>
+            <td>{{ user.departmentDetail ?? '—' }}</td>
+            <td>
+              <span class="badge" [ngClass]="statusBadge(user.status)">{{ user.status }}</span>
+            </td>
+            <td class="text-center">
+              <button class="btn btn-sm btn-outline-primary"
+                      (click)="$event.stopPropagation(); openModal(user)">
+                <i class="bi bi-pencil-square me-1"></i>{{ tabLabel(activeTab) }}
+              </button>
+            </td>
+          </tr>
+        </ng-container>
+
+        <!-- Leave tab: inline action buttons, no row-click -->
+        <ng-container *ngIf="activeTab === 'leave'">
+          <tr *ngFor="let user of userList">
+            <td><code>{{ user.employeeCode }}</code></td>
+            <td class="fw-medium">{{ user.fullName }}</td>
+            <td>{{ user.username }}</td>
+            <td>{{ user.departmentDetail ?? '—' }}</td>
+            <td>
+              <span class="badge" [ngClass]="statusBadge(user.status)">{{ user.status }}</span>
+            </td>
+            <td class="text-center">
+              <!-- Đang đi làm: Tạo đơn nghỉ -->
+              <ng-container *ngIf="leaveSubTab === 'working'">
+                <button class="btn btn-sm btn-outline-warning"
+                        *ngIf="perm.has('user-lifecycle','leave')"
+                        (click)="openLeaveCreateModal(user)">
+                  <i class="bi bi-calendar-plus me-1"></i>Tạo đơn nghỉ
+                </button>
+              </ng-container>
+              <!-- Đang nghỉ: Gia hạn + Đi làm -->
+              <ng-container *ngIf="leaveSubTab === 'on-leave'">
+                <button class="btn btn-sm btn-outline-secondary me-1"
+                        *ngIf="perm.has('user-lifecycle','leave')"
+                        (click)="openExtendModal(user)"
+                        title="Gia hạn nghỉ phép">
+                  <i class="bi bi-calendar-plus"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-success"
+                        *ngIf="perm.has('user-lifecycle','return')"
+                        (click)="openReturnModal(user)">
+                  <i class="bi bi-check2-circle me-1"></i>Đi làm
+                </button>
+              </ng-container>
+            </td>
+          </tr>
+        </ng-container>
+
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  <div *ngIf="searchTotalPages > 1" class="mt-3">
+    <nav>
+      <ul class="pagination pagination-sm justify-content-end mb-1">
+        <li class="page-item" [class.disabled]="searchPage === 0">
+          <button class="page-link" (click)="goToPage(searchPage - 1)">‹</button>
+        </li>
+        <li *ngFor="let p of pages" class="page-item" [class.active]="p === searchPage">
+          <button class="page-link" (click)="goToPage(p)">{{ p + 1 }}</button>
+        </li>
+        <li class="page-item" [class.disabled]="searchPage >= searchTotalPages - 1">
+          <button class="page-link" (click)="goToPage(searchPage + 1)">›</button>
+        </li>
+      </ul>
+    </nav>
+    <div class="text-muted small text-end">Tổng {{ searchTotal }} bản ghi</div>
+  </div>
+
+</div><!-- end tab-content-panel -->
+
+
+<!-- ===== Modal: Onboard / Offboard / Luân chuyển ===== -->
+<div class="modal-overlay" *ngIf="showActionModal" (click)="closeModal()">
+  <div class="modal-panel" (click)="$event.stopPropagation()">
+
+    <div class="modal-header-bar">
+      <div class="flex-grow-1">
+        <div class="d-flex align-items-center gap-2 mb-2">
+          <i class="bi bi-arrow-right-circle-fill text-primary"></i>
+          <h6 class="mb-0 fw-semibold">{{ tabLabel(activeTab) }}</h6>
+        </div>
+        <div class="user-info-card" *ngIf="selectedUser">
+          <div class="user-avatar-circle">
+            <i class="bi bi-person-fill"></i>
+          </div>
+          <div class="flex-grow-1">
+            <div class="d-flex align-items-center gap-2 flex-wrap mb-1">
+              <span class="fw-bold fs-6">{{ selectedUser.fullName }}</span>
+              <span class="badge" [ngClass]="statusBadge(selectedUser.status)">{{ selectedUser.status }}</span>
+            </div>
+            <div class="d-flex flex-wrap align-items-center gap-1 small mb-1">
+              <span class="text-secondary fw-medium">
+                <i class="bi bi-person-badge me-1"></i><code>{{ selectedUser.employeeCode }}</code>
+              </span>
+              <span class="text-muted px-1">·</span>
+              <span class="text-muted">
+                <i class="bi bi-person me-1"></i>{{ selectedUser.username }}
+              </span>
+              <span class="text-muted px-1">·</span>
+              <span class="text-muted">
+                <i class="bi bi-envelope me-1"></i>{{ selectedUser.email || '—' }}
+              </span>
+            </div>
+            <div class="d-flex flex-wrap align-items-center gap-3 small text-muted">
+              <span *ngIf="selectedUser.departmentDetail">
+                <i class="bi bi-building me-1"></i>{{ selectedUser.departmentDetail }}
+              </span>
+              <span *ngIf="selectedUser.position">
+                <i class="bi bi-briefcase me-1"></i>{{ getPosName(selectedUser.position) }}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <button class="btn-close ms-2 align-self-start mt-1" (click)="closeModal()"></button>
+    </div>
+
+    <div class="modal-body-area">
+
+      <div *ngIf="showConfirm" class="alert alert-warning d-flex align-items-start gap-2 mb-3">
+        <i class="bi bi-exclamation-triangle-fill fs-5 flex-shrink-0 mt-1"></i>
+        <span>Bạn có chắc chắn muốn thực hiện <strong>{{ tabLabel(activeTab) }}</strong> cho
+          <strong>{{ selectedUser?.fullName }}</strong> (<code>{{ selectedUser?.employeeCode }}</code>)?
+        </span>
+      </div>
+
+      <!-- Tiếp nhận -->
+      <ng-container *ngIf="activeTab === 'onboard'">
+        <ng-container *ngIf="!showConfirm">
+          <div class="row g-3">
+            <div class="col-12">
+              <label class="form-label small">Vai trò <span class="text-danger">*</span></label>
+              <div class="d-flex flex-wrap gap-2">
+                <button *ngFor="let r of roles" type="button" class="btn btn-sm"
+                        [ngClass]="isRoleSelected(r.id, 'onboard') ? 'btn-primary' : 'btn-outline-secondary'"
+                        (click)="toggleRole(r.id, 'onboard')">
+                  {{ r.name }}
+                </button>
+                <span *ngIf="roles.length === 0" class="text-muted small">Đang tải...</span>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small">Phòng ban <span class="text-danger">*</span></label>
+              <select class="form-select form-select-sm" [(ngModel)]="onboardForm.departmentId">
+                <option value="">-- Chọn phòng ban --</option>
+                <option *ngFor="let d of flatDepartments" [ngValue]="d.id">{{ d.label }}</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small">Chức vụ</label>
+              <select class="form-select form-select-sm" [(ngModel)]="onboardForm.positionCode">
+                <option value="">-- Chọn chức vụ --</option>
+                <option *ngFor="let p of positions" [value]="p.code">{{ p.name }}</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small">Ngày bắt đầu <span class="text-danger">*</span></label>
+              <input class="form-control form-control-sm" type="date" [(ngModel)]="onboardForm.joinDate">
+            </div>
+          </div>
+        </ng-container>
+        <ng-container *ngIf="showConfirm">
+          <div class="row g-2 small">
+            <div class="col-6"><span class="text-muted">Vai trò:</span> <strong>{{ getSelectedRoleNames('onboard') }}</strong></div>
+            <div class="col-6"><span class="text-muted">Phòng ban:</span> <strong>{{ getDeptName(onboardForm.departmentId) }}</strong></div>
+            <div class="col-6"><span class="text-muted">Chức vụ:</span> <strong>{{ getPosName(onboardForm.positionCode) }}</strong></div>
+            <div class="col-6"><span class="text-muted">Ngày bắt đầu:</span> <strong>{{ onboardForm.joinDate }}</strong></div>
+          </div>
+        </ng-container>
+      </ng-container>
+
+      <!-- Thôi việc -->
+      <ng-container *ngIf="activeTab === 'offboard'">
+        <div class="alert alert-danger mb-0">
+          <i class="bi bi-exclamation-triangle me-1"></i>
+          Hành động này sẽ <strong>offboard</strong> nhân viên
+          <strong>{{ selectedUser?.fullName }}</strong> (<code>{{ selectedUser?.employeeCode }}</code>).
+          Tất cả quyền truy cập sẽ bị thu hồi ngay lập tức.
+        </div>
+      </ng-container>
+
+      <!-- Luân chuyển -->
+      <ng-container *ngIf="activeTab === 'transfer'">
+        <ng-container *ngIf="!showConfirm">
+          <div class="row g-3">
+            <div class="col-12">
+              <label class="form-label small">Vai trò mới <span class="text-danger">*</span></label>
+              <div class="d-flex flex-wrap gap-2">
+                <button *ngFor="let r of roles" type="button" class="btn btn-sm"
+                        [ngClass]="isRoleSelected(r.id, 'transfer') ? 'btn-primary' : 'btn-outline-secondary'"
+                        (click)="toggleRole(r.id, 'transfer')">
+                  {{ r.name }}
+                </button>
+                <span *ngIf="roles.length === 0" class="text-muted small">Đang tải...</span>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small">Phòng ban mới <span class="text-danger">*</span></label>
+              <select class="form-select form-select-sm" [(ngModel)]="transferForm.departmentId">
+                <option value="">-- Chọn phòng ban --</option>
+                <option *ngFor="let d of flatDepartments" [ngValue]="d.id">{{ d.label }}</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small">Chức vụ mới</label>
+              <select class="form-select form-select-sm" [(ngModel)]="transferForm.positionCode">
+                <option value="">-- Giữ nguyên chức vụ --</option>
+                <option *ngFor="let p of positions" [value]="p.code">{{ p.name }}</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small">Ngày chuyển <span class="text-danger">*</span></label>
+              <input class="form-control form-control-sm" type="date" [(ngModel)]="transferForm.transferDate">
+            </div>
+          </div>
+        </ng-container>
+        <ng-container *ngIf="showConfirm">
+          <div class="row g-2 small">
+            <div class="col-6"><span class="text-muted">Vai trò mới:</span> <strong>{{ getSelectedRoleNames('transfer') }}</strong></div>
+            <div class="col-6"><span class="text-muted">Phòng ban mới:</span> <strong>{{ getDeptName(transferForm.departmentId) }}</strong></div>
+            <div class="col-6"><span class="text-muted">Chức vụ mới:</span> <strong>{{ getPosName(transferForm.positionCode) }}</strong></div>
+            <div class="col-6"><span class="text-muted">Ngày chuyển:</span> <strong>{{ transferForm.transferDate }}</strong></div>
+          </div>
+        </ng-container>
+      </ng-container>
+
+    </div>
+
+    <div class="modal-footer-bar">
+      <ng-container *ngIf="!showConfirm">
+        <button class="btn btn-sm btn-secondary" (click)="closeModal()">Hủy</button>
+        <button class="btn btn-sm btn-primary" (click)="requestConfirm()">Tiếp tục</button>
+      </ng-container>
+      <ng-container *ngIf="showConfirm">
+        <button class="btn btn-sm btn-outline-secondary" (click)="cancelConfirm()" [disabled]="loading">Quay lại</button>
+        <button class="btn btn-sm btn-danger" (click)="confirmAction()" [disabled]="loading">
+          <span *ngIf="loading" class="spinner-border spinner-border-sm me-1"></span>
+          Xác nhận
+        </button>
+      </ng-container>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ===== Modal: Nghỉ phép (Tạo đơn / Gia hạn / Quay lại) ===== -->
+<div class="modal-overlay" *ngIf="showLeaveModal" (click)="closeLeaveModal()">
+  <div class="modal-panel" (click)="$event.stopPropagation()">
+
+    <div class="modal-header-bar">
+      <div>
+        <h6 class="mb-0 fw-semibold">{{ leaveActionLabel() }}</h6>
+        <small class="text-muted" *ngIf="selectedLeaveUser">
+          <code>{{ selectedLeaveUser.employeeCode }}</code> · {{ selectedLeaveUser.fullName }}
+          <span class="badge ms-1" [ngClass]="statusBadge(selectedLeaveUser.status)">{{ selectedLeaveUser.status }}</span>
+        </small>
+      </div>
+      <button class="btn-close" (click)="closeLeaveModal()"></button>
+    </div>
+
+    <div class="modal-body-area">
+
+      <!-- Confirm banner -->
+      <div *ngIf="showLeaveConfirm" class="alert alert-warning d-flex align-items-start gap-2 mb-3">
+        <i class="bi bi-exclamation-triangle-fill fs-5 flex-shrink-0 mt-1"></i>
+        <span>Xác nhận <strong>{{ leaveActionLabel() }}</strong> cho
+          <strong>{{ selectedLeaveUser?.fullName }}</strong> (<code>{{ selectedLeaveUser?.employeeCode }}</code>)?
+        </span>
+      </div>
+
+      <!-- Tạo đơn nghỉ -->
+      <ng-container *ngIf="currentLeaveAction === 'leave'">
+        <ng-container *ngIf="!showLeaveConfirm">
+          <div class="row g-3">
+            <div class="col-12">
+              <label class="form-label small">Ngày bắt đầu nghỉ <span class="text-danger">*</span></label>
+              <input class="form-control form-control-sm" type="date" [(ngModel)]="leaveCreateForm.fromDate">
+            </div>
+            <div class="col-12">
+              <label class="form-label small">Ngày kết thúc nghỉ <span class="text-danger">*</span></label>
+              <input class="form-control form-control-sm" type="date" [(ngModel)]="leaveCreateForm.toDate">
+            </div>
+          </div>
+        </ng-container>
+        <ng-container *ngIf="showLeaveConfirm">
+          <div class="row g-2 small">
+            <div class="col-6"><span class="text-muted">Từ ngày:</span> <strong>{{ leaveCreateForm.fromDate }}</strong></div>
+            <div class="col-6"><span class="text-muted">Đến ngày:</span> <strong>{{ leaveCreateForm.toDate }}</strong></div>
+          </div>
+        </ng-container>
+      </ng-container>
+
+      <!-- Gia hạn -->
+      <ng-container *ngIf="currentLeaveAction === 'extend'">
+        <ng-container *ngIf="!showLeaveConfirm">
+          <div class="alert alert-info small py-2 mb-3">
+            <i class="bi bi-info-circle me-1"></i>Chỉ cập nhật ngày kết thúc nghỉ, không ảnh hưởng ngày bắt đầu.
+          </div>
+          <div>
+            <label class="form-label small">Ngày kết thúc mới <span class="text-danger">*</span></label>
+            <input class="form-control form-control-sm" type="date" [(ngModel)]="leaveExtendForm.toDate">
+          </div>
+        </ng-container>
+        <ng-container *ngIf="showLeaveConfirm">
+          <div class="small">
+            <span class="text-muted">Ngày kết thúc mới:</span> <strong>{{ leaveExtendForm.toDate }}</strong>
+          </div>
+        </ng-container>
+      </ng-container>
+
+      <!-- Xác nhận đi làm -->
+      <ng-container *ngIf="currentLeaveAction === 'return'">
+        <div class="alert alert-success mb-0">
+          <i class="bi bi-check2-circle me-1"></i>
+          Xác nhận nhân viên <strong>{{ selectedLeaveUser?.fullName }}</strong> đã quay lại làm việc.
+          Tất cả quyền truy cập sẽ được phục hồi ngay lập tức.
+        </div>
+      </ng-container>
+
+    </div>
+
+    <div class="modal-footer-bar">
+      <ng-container *ngIf="!showLeaveConfirm">
+        <button class="btn btn-sm btn-secondary" (click)="closeLeaveModal()">Hủy</button>
+        <button class="btn btn-sm btn-primary" (click)="requestLeaveConfirm()">Tiếp tục</button>
+      </ng-container>
+      <ng-container *ngIf="showLeaveConfirm">
+        <button class="btn btn-sm btn-outline-secondary" (click)="showLeaveConfirm=false" [disabled]="leaveActionLoading">
+          Quay lại
+        </button>
+        <button class="btn btn-sm btn-danger" (click)="doLeaveAction()" [disabled]="leaveActionLoading">
+          <span *ngIf="leaveActionLoading" class="spinner-border spinner-border-sm me-1"></span>
+          Xác nhận
+        </button>
+      </ng-container>
+    </div>
+
+  </div>
+</div>

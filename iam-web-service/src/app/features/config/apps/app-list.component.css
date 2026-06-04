@@ -1,0 +1,57 @@
+/* Shared modal/fab/alert/table classes are in styles.css */
+
+.app-icon-wrap {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #EEF4FC;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
+.url-cell { max-width: 240px; }
+
+/* iOS-style pill toggle (status inline) */
+.pill-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px 4px 5px;
+  border-radius: 999px;
+  border: none;
+  cursor: pointer;
+  font-size: 0;
+  transition: background 0.2s;
+  box-shadow: inset 0 1px 3px rgba(0,0,0,0.15);
+  min-width: 52px;
+  justify-content: flex-start;
+}
+
+.pill-toggle:disabled { opacity: 0.65; cursor: not-allowed; }
+.pill-on  { background: #166534; justify-content: flex-end; padding: 4px 5px 4px 10px; }
+.pill-on:hover:not(:disabled) { background: #14532D; }
+.pill-off { background: #94A3B8; }
+.pill-off:hover:not(:disabled) { background: #64748B; }
+
+.pill-knob {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.25);
+  flex-shrink: 0;
+  display: block;
+}
+
+.pill-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.04em;
+  line-height: 1;
+}
+
+/* Override modal max-width */
+.modal-panel { max-width: 620px; }

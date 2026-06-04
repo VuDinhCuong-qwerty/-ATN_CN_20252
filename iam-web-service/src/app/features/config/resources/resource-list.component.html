@@ -1,0 +1,337 @@
+<nav aria-label="breadcrumb" class="mb-2">
+  <ol class="breadcrumb mb-0">
+    <li class="breadcrumb-item text-muted small">Quản lý cấu hình</li>
+    <li class="breadcrumb-item active small fw-semibold">Tài nguyên</li>
+  </ol>
+</nav>
+
+<div class="row mb-3">
+  <div class="col-12">
+    <h4><i class="bi bi-boxes me-2 text-info"></i>Quản lý Tài nguyên</h4>
+    <hr>
+  </div>
+</div>
+
+<!-- Filter -->
+<div class="card mb-3">
+  <div class="card-body py-2">
+    <div class="row g-2 align-items-end">
+      <div class="col-md-4">
+        <label class="form-label small mb-1">Ứng dụng <span class="text-danger">*</span></label>
+        <select class="form-select form-select-sm" [(ngModel)]="filterAppId" (ngModelChange)="onAppChange()">
+          <option value="">-- Chọn ứng dụng --</option>
+          <option *ngFor="let app of applications" [value]="app.id">
+            {{ app.name }}  <ng-container *ngIf="app.code">({{ app.code }})</ng-container>
+          </option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label small mb-1">Trạng thái</label>
+        <select class="form-select form-select-sm" [(ngModel)]="filterStatus">
+          <option value="">Tất cả</option>
+          <option value="ACTIVE">ACTIVE</option>
+          <option value="INACTIVE">INACTIVE</option>
+        </select>
+      </div>
+      <div class="col-auto">
+        <button class="btn btn-primary btn-sm" (click)="search()" [disabled]="!filterAppId">
+          <i class="bi bi-search me-1"></i>Tìm kiếm
+        </button>
+        <button class="btn btn-outline-secondary btn-sm ms-1" (click)="clearFilter()" [disabled]="!filterAppId">Xoá</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Table -->
+<div class="card">
+  <div class="card-header py-2 small fw-semibold d-flex justify-content-between align-items-center">
+    <span *ngIf="filterAppId">Tổng: <strong>{{ totalElements }}</strong> tài nguyên</span>
+    <span *ngIf="!filterAppId" class="text-muted">Chọn ứng dụng để xem danh sách tài nguyên</span>
+    <span *ngIf="loading" class="spinner-border spinner-border-sm text-primary"></span>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-hover mb-0 resource-table">
+      <thead>
+        <tr>
+          <th>Resource Code</th>
+          <th>Tên tài nguyên</th>
+          <th>Loại</th>
+          <th>Actions</th>
+          <th class="text-center">Trạng thái</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let r of resources" class="table-row-clickable" (click)="openDetail(r)">
+          <td><code class="text-nowrap">{{ r.resourceCode ?? '—' }}</code></td>
+          <td>
+            <div class="fw-semibold resource-name">{{ r.resourceName ?? '—' }}</div>
+          </td>
+          <td>
+            <span class="badge bg-light text-dark border type-badge">{{ r.resourceType ?? '—' }}</span>
+          </td>
+          <td>
+            <code class="small text-muted">{{ actionsDisplay(r.actions) }}</code>
+          </td>
+          <td class="text-center">
+            <span class="badge"
+                  [class.bg-success]="r.status === 'ACTIVE'"
+                  [class.bg-secondary]="r.status !== 'ACTIVE'">
+              {{ r.status }}
+            </span>
+          </td>
+        </tr>
+
+        <tr *ngIf="resources.length === 0 && !loading">
+          <td colspan="5" class="text-center text-muted py-4">
+            <ng-container *ngIf="filterAppId">
+              <i class="bi bi-inbox fs-4 d-block mb-1"></i>Không có tài nguyên nào
+            </ng-container>
+            <ng-container *ngIf="!filterAppId">
+              <i class="bi bi-arrow-up-circle fs-4 d-block mb-1"></i>Chọn ứng dụng ở trên để xem tài nguyên
+            </ng-container>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  <div class="card-footer py-2 d-flex justify-content-between align-items-center small" *ngIf="totalPages > 1">
+    <span class="text-muted">Trang {{ currentPage + 1 }} / {{ totalPages }}</span>
+    <div class="btn-group btn-group-sm">
+      <button class="btn btn-outline-secondary" [disabled]="currentPage === 0" (click)="goPage(0)">«</button>
+      <button class="btn btn-outline-secondary" [disabled]="currentPage === 0" (click)="goPage(currentPage - 1)">‹</button>
+      <button *ngFor="let p of getVisiblePages()" class="btn"
+              [class.btn-primary]="p === currentPage"
+              [class.btn-outline-secondary]="p !== currentPage"
+              (click)="goPage(p)">{{ p + 1 }}</button>
+      <button class="btn btn-outline-secondary" [disabled]="currentPage >= totalPages - 1" (click)="goPage(currentPage + 1)">›</button>
+      <button class="btn btn-outline-secondary" [disabled]="currentPage >= totalPages - 1" (click)="goPage(totalPages - 1)">»</button>
+    </div>
+  </div>
+</div>
+
+<!-- FAB -->
+<button class="fab-btn btn btn-success shadow-lg" (click)="openCreate()" title="Tạo tài nguyên mới"
+        *ngIf="perm.has('application','create')">
+  <i class="bi bi-node-plus-fill fs-4"></i>
+</button>
+
+<!-- ===== DETAIL / INLINE-EDIT MODAL ===== -->
+<div class="modal-overlay" *ngIf="showDetailModal" (click)="closeDetail()">
+  <div class="modal-panel" (click)="$event.stopPropagation()">
+    <div class="modal-header-bar">
+      <div>
+        <span class="fw-semibold"><i class="bi bi-boxes me-2 text-info"></i>Chi tiết tài nguyên</span>
+        <div class="text-muted small mt-1" *ngIf="detailResource?.app">
+          <i class="bi bi-window me-1"></i>{{ detailResource.app.name }}
+          <span *ngIf="detailResource.app.serviceCode" class="ms-1 text-muted">({{ detailResource.app.serviceCode }})</span>
+        </div>
+      </div>
+      <button class="btn-close" (click)="closeDetail()"></button>
+    </div>
+
+    <div class="modal-body-area">
+      <div *ngIf="loadingDetail" class="text-center py-5">
+        <span class="spinner-border text-primary"></span>
+      </div>
+
+      <ng-container *ngIf="!loadingDetail && detailResource">
+        <div class="row g-3">
+
+          <!-- Resource Code -->
+          <div class="col-6">
+            <label class="field-label">Resource Code <span class="text-danger" *ngIf="perm.has('application','update')">*</span></label>
+            <ng-container *ngIf="perm.has('application','update'); else viewCode">
+              <input class="form-control form-control-sm" [(ngModel)]="editForm.resourceCode">
+            </ng-container>
+            <ng-template #viewCode>
+              <div class="field-val"><code>{{ detailResource.resourceCode ?? '—' }}</code></div>
+            </ng-template>
+          </div>
+
+          <!-- Loại -->
+          <div class="col-6">
+            <label class="field-label">Loại <span class="text-danger" *ngIf="perm.has('application','update')">*</span></label>
+            <ng-container *ngIf="perm.has('application','update'); else viewType">
+              <select class="form-select form-select-sm" [(ngModel)]="editForm.resourceType">
+                <option *ngFor="let t of RESOURCE_TYPES" [value]="t">{{ t }}</option>
+              </select>
+            </ng-container>
+            <ng-template #viewType>
+              <div class="field-val">
+                <span class="badge bg-light text-dark border">{{ detailResource.resourceType ?? '—' }}</span>
+              </div>
+            </ng-template>
+          </div>
+
+          <!-- Tên tài nguyên -->
+          <div class="col-12">
+            <label class="field-label">Tên tài nguyên <span class="text-danger" *ngIf="perm.has('application','update')">*</span></label>
+            <ng-container *ngIf="perm.has('application','update'); else viewName">
+              <input class="form-control form-control-sm" [(ngModel)]="editForm.resourceName">
+            </ng-container>
+            <ng-template #viewName>
+              <div class="field-val fw-semibold">{{ detailResource.resourceName ?? '—' }}</div>
+            </ng-template>
+          </div>
+
+          <!-- Actions -->
+          <div class="col-12">
+            <label class="field-label">Actions (CSV) <span class="text-danger" *ngIf="perm.has('application','update')">*</span></label>
+            <ng-container *ngIf="perm.has('application','update'); else viewActions">
+              <input class="form-control form-control-sm" [(ngModel)]="editForm.actionsRaw"
+                     placeholder="read,write,delete">
+              <div class="form-text small">Các action phân cách bằng dấu phẩy. Ví dụ: read,create,update,delete</div>
+            </ng-container>
+            <ng-template #viewActions>
+              <div class="field-val"><code>{{ actionsDisplay(detailResource.actions) }}</code></div>
+            </ng-template>
+          </div>
+
+          <!-- Trạng thái -->
+          <div class="col-6">
+            <label class="field-label">Trạng thái <span class="text-danger" *ngIf="perm.has('application','update')">*</span></label>
+            <ng-container *ngIf="perm.has('application','update'); else viewStatus">
+              <select class="form-select form-select-sm" [(ngModel)]="editForm.status">
+                <option value="ACTIVE">ACTIVE</option>
+                <option value="INACTIVE">INACTIVE</option>
+              </select>
+            </ng-container>
+            <ng-template #viewStatus>
+              <span class="badge"
+                    [class.bg-success]="detailResource.status === 'ACTIVE'"
+                    [class.bg-secondary]="detailResource.status !== 'ACTIVE'">
+                {{ detailResource.status }}
+              </span>
+            </ng-template>
+          </div>
+
+          <!-- LDAP Group Name -->
+          <div class="col-6">
+            <label class="field-label">LDAP Group Name</label>
+            <ng-container *ngIf="perm.has('application','update'); else viewLdap">
+              <input class="form-control form-control-sm" [(ngModel)]="editForm.ldapGroupName"
+                     placeholder="cn=group,dc=example,dc=com">
+            </ng-container>
+            <ng-template #viewLdap>
+              <div class="field-val text-muted">{{ detailResource.ldapGroupName || '—' }}</div>
+            </ng-template>
+          </div>
+
+          <!-- Mô tả -->
+          <div class="col-12">
+            <label class="field-label">Mô tả</label>
+            <ng-container *ngIf="perm.has('application','update'); else viewDesc">
+              <textarea class="form-control form-control-sm" rows="2" [(ngModel)]="editForm.description"></textarea>
+            </ng-container>
+            <ng-template #viewDesc>
+              <div class="field-val text-muted">{{ detailResource.description || '—' }}</div>
+            </ng-template>
+          </div>
+
+          <!-- Read-only meta -->
+          <div class="col-6">
+            <label class="field-label">Ngày tạo</label>
+            <div class="field-val text-muted small">{{ detailResource.createdAt | date:'dd/MM/yyyy HH:mm' }}</div>
+          </div>
+          <div class="col-6">
+            <label class="field-label">ID</label>
+            <div class="field-val text-muted small"><code>#{{ detailResource.id }}</code></div>
+          </div>
+
+        </div>
+
+        <!-- Warnings -->
+        <div *ngIf="detailResource.warnings?.length" class="alert alert-warning py-2 small mt-3 mb-0">
+          <i class="bi bi-exclamation-triangle-fill me-1"></i>
+          <span *ngFor="let w of detailResource.warnings; let last = last">
+            {{ w.message ?? w }}{{ !last ? '; ' : '' }}
+          </span>
+        </div>
+
+        <div *ngIf="saveMessage" class="alert alert-{{ saveMessageType }} py-1 small mt-2 mb-0">
+          {{ saveMessage }}
+        </div>
+      </ng-container>
+    </div>
+
+    <div class="modal-footer-bar">
+      <button class="btn btn-secondary btn-sm" (click)="closeDetail()">Đóng</button>
+      <ng-container *ngIf="perm.has('application','update')">
+        <button class="btn btn-outline-secondary btn-sm" (click)="resetEditForm()">
+          <i class="bi bi-arrow-counterclockwise me-1"></i>Làm mới
+        </button>
+        <button class="btn btn-primary btn-sm" (click)="saveResource()" [disabled]="loadingSave">
+          <span *ngIf="loadingSave" class="spinner-border spinner-border-sm me-1"></span>
+          <i *ngIf="!loadingSave" class="bi bi-check-lg me-1"></i>Lưu thay đổi
+        </button>
+      </ng-container>
+    </div>
+  </div>
+</div>
+
+<!-- ===== CREATE MODAL ===== -->
+<div class="modal-overlay" *ngIf="showCreateModal" (click)="closeCreate()">
+  <div class="modal-panel" (click)="$event.stopPropagation()">
+    <div class="modal-header-bar">
+      <span class="fw-semibold"><i class="bi bi-node-plus-fill me-2 text-success"></i>Tạo tài nguyên mới</span>
+      <button class="btn-close" (click)="closeCreate()"></button>
+    </div>
+    <div class="modal-body-area">
+      <div class="row g-3">
+        <div class="col-12">
+          <label class="form-label small mb-1">Ứng dụng <span class="text-danger">*</span></label>
+          <select class="form-select form-select-sm" [(ngModel)]="createForm.appId">
+            <option value="">-- Chọn ứng dụng --</option>
+            <option *ngFor="let app of applications" [value]="app.id">
+              {{ app.name }}<ng-container *ngIf="app.code"> ({{ app.code }})</ng-container>
+            </option>
+          </select>
+        </div>
+        <div class="col-6">
+          <label class="form-label small mb-1">Resource Code <span class="text-danger">*</span></label>
+          <input class="form-control form-control-sm" [(ngModel)]="createForm.resourceCode"
+                 placeholder="orders">
+        </div>
+        <div class="col-6">
+          <label class="form-label small mb-1">Tên tài nguyên <span class="text-danger">*</span></label>
+          <input class="form-control form-control-sm" [(ngModel)]="createForm.resourceName"
+                 placeholder="Quản lý đơn hàng">
+        </div>
+        <div class="col-6">
+          <label class="form-label small mb-1">Loại</label>
+          <select class="form-select form-select-sm" [(ngModel)]="createForm.resourceType">
+            <option *ngFor="let t of RESOURCE_TYPES" [value]="t">{{ t }}</option>
+          </select>
+        </div>
+        <div class="col-6">
+          <label class="form-label small mb-1">Actions (CSV) <span class="text-danger">*</span></label>
+          <input class="form-control form-control-sm" [(ngModel)]="createForm.actions"
+                 placeholder="read,write,delete">
+        </div>
+        <div class="col-12">
+          <label class="form-label small mb-1">LDAP Group Name</label>
+          <input class="form-control form-control-sm" [(ngModel)]="createForm.ldapGroupName"
+                 placeholder="cn=group,dc=example,dc=com">
+        </div>
+        <div class="col-12">
+          <label class="form-label small mb-1">Mô tả</label>
+          <textarea class="form-control form-control-sm" rows="2"
+                    [(ngModel)]="createForm.description"></textarea>
+        </div>
+      </div>
+      <div *ngIf="createMessage" class="alert alert-{{ createMessageType }} py-1 small mt-3 mb-0">
+        {{ createMessage }}
+      </div>
+    </div>
+    <div class="modal-footer-bar">
+      <button class="btn btn-secondary btn-sm" (click)="closeCreate()">Hủy</button>
+      <button class="btn btn-success btn-sm" (click)="submitCreate()" [disabled]="loadingCreate">
+        <span *ngIf="loadingCreate" class="spinner-border spinner-border-sm me-1"></span>
+        <i *ngIf="!loadingCreate" class="bi bi-check-lg me-1"></i>Tạo mới
+      </button>
+    </div>
+  </div>
+</div>

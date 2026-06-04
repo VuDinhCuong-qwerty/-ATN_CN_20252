@@ -1,0 +1,21 @@
+{
+    "configurations": [
+        {
+            "type": "java",
+            "name": "LdapGatewayApplication",
+            "request": "launch",
+            "mainClass": "com.iam.ldap.LdapGatewayApplication",
+            "projectName": "ldap"
+        },
+        {
+            "type": "java",
+            "name": "Spring Boot-LdapApplication<ldap>",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "mainClass": "com.iam.ldap.LdapApplication",
+            "projectName": "ldap",
+            "args": "",
+            "envFile": "${workspaceFolder}/.env"
+        }
+    ]
+}

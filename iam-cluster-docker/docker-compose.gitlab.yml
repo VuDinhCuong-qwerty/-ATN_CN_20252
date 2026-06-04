@@ -1,0 +1,63 @@
+services:
+  gitlab:
+    image: gitlab/gitlab-ce:17.11.1-ce.0   # pin version — latest hay thay đổi
+    container_name: gitlab
+    hostname: localhost
+    restart: unless-stopped
+    ports:
+      - "8929:8929"  # Web UI  → http://localhost:8929
+      - "2222:22"    # Git SSH → git clone ssh://git@localhost:2222/...
+    volumes:
+      - gitlab_config:/etc/gitlab
+      - gitlab_logs:/var/log/gitlab
+      - gitlab_data:/var/opt/gitlab
+    shm_size: '256m'
+    extra_hosts:
+      - "host.docker.internal:host-gateway"   # force IPv4 — mặc định Docker Desktop resolve IPv6
+    environment:
+      GITLAB_OMNIBUS_CONFIG: |
+        external_url 'http://localhost:8929'
+
+        # ── Tắt các thành phần nặng không cần cho dev/test ──────────────────
+        prometheus_monitoring['enable'] = false
+        alertmanager['enable']          = false
+        node_exporter['enable']         = false
+        redis_exporter['enable']        = false
+        postgres_exporter['enable']     = false
+        sidekiq['max_concurrency']      = 4   # default 20 — giảm worker
+
+        # ── LDAP — trỏ vào ldap-server đang chạy trên host ──────────────────
+        # host.docker.internal = địa chỉ máy host từ bên trong container
+        # (Docker Desktop for Windows/Mac hỗ trợ sẵn)
+        gitlab_rails['ldap_enabled'] = true
+        gitlab_rails['ldap_servers'] = {
+          'main' => {
+            'label'              => 'IAM',
+            'host'               => '192.168.65.254',   # host IPv4 (Docker Desktop gateway)
+            'port'               => 10389,
+            'uid'                => 'uid',
+            'bind_dn'            => 'uid=admin,ou=system',
+            'password'           => 'secret',
+            'encryption'         => 'plain',
+            'verify_certificates'=> false,
+            'active_directory'   => false,
+            'base'               => 'ou=gitlab-server,ou=users,dc=iam,dc=bank,dc=vn',
+            'user_filter'        => '',
+            'attributes'         => {
+              'username' => ['uid'],
+              'email'    => ['mail'],
+              'name'     => 'displayName'
+            },
+            # Access control enforce tại tầng BIND trong ldap-server:
+            # sau BCrypt pass, kiểm tra AUTH_APP_PERMISSION cho app 'gitlab-server'.
+            # user_filter KHÔNG dùng — memberOf không có trong ApacheDS schema →
+            # ApacheDS tối ưu filter thành (objectClass=referral) → 0 entries → tất cả bị chặn.
+            'group_base'      => 'ou=groups,dc=iam,dc=bank,dc=vn',
+            'admin_group'     => ''   # set SERVICE_CODE của app IAM nếu muốn auto-admin
+          }
+        }
+
+volumes:
+  gitlab_config:
+  gitlab_logs:
+  gitlab_data:

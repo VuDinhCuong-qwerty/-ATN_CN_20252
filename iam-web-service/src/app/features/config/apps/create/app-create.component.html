@@ -1,0 +1,121 @@
+<nav aria-label="breadcrumb" class="mb-2">
+  <ol class="breadcrumb mb-0">
+    <li class="breadcrumb-item">
+      <a href="javascript:void(0)" class="text-decoration-none small" (click)="back()">Quản lý cấu hình</a>
+    </li>
+    <li class="breadcrumb-item">
+      <a href="javascript:void(0)" class="text-decoration-none small" (click)="back()">Ứng dụng</a>
+    </li>
+    <li class="breadcrumb-item active small fw-semibold">Tạo mới</li>
+  </ol>
+</nav>
+
+<!-- Page header -->
+<div class="d-flex align-items-center justify-content-between mb-3">
+  <div class="d-flex align-items-center gap-2">
+    <button class="btn btn-outline-secondary btn-sm" (click)="back()">
+      <i class="bi bi-arrow-left me-1"></i>Quay lại
+    </button>
+    <h5 class="mb-0 ms-1">
+      <i class="bi bi-window-plus me-2 text-success"></i>Tạo ứng dụng mới
+    </h5>
+  </div>
+</div>
+
+<!-- Form card -->
+<div class="card">
+  <div class="card-header py-2 d-flex align-items-center justify-content-between">
+    <span class="fw-semibold small">Thông tin ứng dụng</span>
+  </div>
+  <div class="card-body p-4">
+    <div class="row g-3">
+
+      <!-- Tên ứng dụng -->
+      <div class="col-md-6">
+        <label class="field-label">Tên ứng dụng <span class="text-danger">*</span></label>
+        <input class="form-control form-control-sm" [(ngModel)]="form.name"
+               placeholder="VD: Core Banking">
+      </div>
+
+      <!-- Service Code -->
+      <div class="col-md-6">
+        <label class="field-label">Service Code <span class="text-danger">*</span></label>
+        <input class="form-control form-control-sm" [(ngModel)]="form.serviceCode"
+               placeholder="VD: core-banking">
+      </div>
+
+      <!-- Loại -->
+      <div class="col-md-4">
+        <label class="field-label">Loại ứng dụng <span class="text-danger">*</span></label>
+        <select class="form-select form-select-sm" [(ngModel)]="form.appType">
+          <option value="INTERNAL">INTERNAL</option>
+          <option value="THIRD_PARTY_LDAP">THIRD_PARTY_LDAP</option>
+        </select>
+      </div>
+
+      <!-- ACR Level -->
+      <div class="col-md-4">
+        <label class="field-label">ACR Level</label>
+        <input type="number" class="form-control form-control-sm" [(ngModel)]="form.acrLevel"
+               min="1" max="3">
+      </div>
+
+      <!-- Phòng ban -->
+      <div class="col-md-4">
+        <label class="field-label">Phòng ban <span class="text-danger">*</span></label>
+        <select class="form-select form-select-sm" [(ngModel)]="form.departmentId">
+          <option [ngValue]="null">-- Chọn phòng ban --</option>
+          <option *ngFor="let d of flatDepartments" [ngValue]="d.id">{{ d.label }}</option>
+        </select>
+      </div>
+
+      <!-- Mô tả -->
+      <div class="col-12">
+        <label class="field-label">Mô tả</label>
+        <textarea class="form-control form-control-sm" rows="2" [(ngModel)]="form.description"
+                  placeholder="Mô tả ngắn về ứng dụng..."></textarea>
+      </div>
+
+      <!-- Logo URL -->
+      <div class="col-md-6">
+        <label class="field-label">Logo URL <span class="text-danger">*</span></label>
+        <input class="form-control form-control-sm" [(ngModel)]="form.logoUri"
+               placeholder="https://...">
+      </div>
+
+      <!-- Default URL -->
+      <div class="col-md-6">
+        <label class="field-label">Default URL <span class="text-danger">*</span></label>
+        <input class="form-control form-control-sm" [(ngModel)]="form.defaultUrl"
+               placeholder="https://...">
+      </div>
+
+      <!-- Group ID -->
+      <div class="col-md-6">
+        <label class="field-label">Group ID</label>
+        <input type="number" class="form-control form-control-sm" [(ngModel)]="form.groupId">
+      </div>
+
+    </div>
+
+    <!-- Message -->
+    <div *ngIf="message" class="alert alert-{{ messageType }} py-2 small mt-3 mb-0">
+      <i class="bi me-1"
+         [class.bi-check-circle]="messageType === 'success'"
+         [class.bi-exclamation-triangle]="messageType === 'danger'"></i>
+      {{ message }}
+    </div>
+
+    <!-- Buttons -->
+    <div class="mt-4 d-flex align-items-center gap-2">
+      <button class="btn btn-success btn-sm" (click)="submit()" [disabled]="loadingCreate">
+        <span *ngIf="loadingCreate" class="spinner-border spinner-border-sm me-1"></span>
+        <i *ngIf="!loadingCreate" class="bi bi-check-lg me-1"></i>Tạo mới
+      </button>
+      <button class="btn btn-outline-secondary btn-sm" (click)="back()" [disabled]="loadingCreate">
+        <i class="bi bi-x-lg me-1"></i>Hủy
+      </button>
+    </div>
+
+  </div>
+</div>

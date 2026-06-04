@@ -1,0 +1,246 @@
+<nav aria-label="breadcrumb" class="mb-2">
+  <ol class="breadcrumb mb-0">
+    <li class="breadcrumb-item text-muted small">Quản lý cấu hình</li>
+    <li class="breadcrumb-item active small fw-semibold">OAuth2 Client</li>
+  </ol>
+</nav>
+
+<div class="d-flex align-items-center mb-3">
+  <h4 class="mb-0"><i class="bi bi-plug me-2 text-primary"></i>Quản lý OAuth2 Client</h4>
+</div>
+
+<!-- Global alert -->
+<div *ngIf="message" class="alert alert-floating alert-{{ messageType }} alert-dismissible" role="alert">
+  {{ message }}<button type="button" class="btn-close" (click)="message=''"></button>
+</div>
+
+<!-- Search bar -->
+<div class="search-bar mb-3">
+  <div class="row g-2 align-items-end">
+    <div class="col-md-3">
+      <label class="form-label small mb-1">Ứng dụng</label>
+      <select class="form-select form-select-sm" [(ngModel)]="filterAppId">
+        <option value="">-- Tất cả --</option>
+        <option *ngFor="let app of applications" [value]="app.id">{{ app.name }}</option>
+      </select>
+    </div>
+    <div class="col-md-2">
+      <label class="form-label small mb-1">Client ID</label>
+      <input class="form-control form-control-sm" [(ngModel)]="filterClientId"
+             placeholder="iam-web-client..." (keyup.enter)="search()">
+    </div>
+    <div class="col-md-2">
+      <label class="form-label small mb-1">Grant Type</label>
+      <select class="form-select form-select-sm" [(ngModel)]="filterGrantType">
+        <option value="">Tất cả</option>
+        <option *ngFor="let g of grantTypeOptions" [value]="g">{{ g }}</option>
+      </select>
+    </div>
+    <div class="col-md-2">
+      <label class="form-label small mb-1">Trạng thái</label>
+      <select class="form-select form-select-sm" [(ngModel)]="filterStatus">
+        <option value="">Tất cả</option>
+        <option value="ACTIVE">ACTIVE</option>
+        <option value="INACTIVE">INACTIVE</option>
+      </select>
+    </div>
+    <div class="col-auto">
+      <button class="btn btn-primary btn-sm" (click)="search()" [disabled]="loading">
+        <span *ngIf="loading" class="spinner-border spinner-border-sm me-1"></span>
+        <i *ngIf="!loading" class="bi bi-search me-1"></i>Tìm
+      </button>
+      <button class="btn btn-outline-secondary btn-sm ms-1" (click)="clearSearch()">Xoá</button>
+    </div>
+  </div>
+</div>
+
+<!-- Table -->
+<div class="card">
+  <div class="card-header py-2 small fw-semibold d-flex justify-content-between align-items-center">
+    <span>Tổng: <strong>{{ totalElements }}</strong> client</span>
+    <span *ngIf="loading" class="spinner-border spinner-border-sm text-primary"></span>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-hover mb-0 client-table">
+      <thead>
+        <tr>
+          <th>Client ID</th>
+          <th>Tên</th>
+          <th>Loại</th>
+          <th>Ứng dụng</th>
+          <th>Grant Types</th>
+          <th class="text-center">Trạng thái</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngIf="loading && clients.length === 0">
+          <td colspan="6" class="text-center py-4">
+            <span class="spinner-border spinner-border-sm me-2 text-primary"></span>Đang tải...
+          </td>
+        </tr>
+        <tr *ngIf="!loading && clients.length === 0">
+          <td colspan="6" class="text-center py-4 text-muted">
+            <i class="bi bi-inbox fs-4 d-block mb-1 opacity-50"></i>Không có dữ liệu
+          </td>
+        </tr>
+        <tr *ngFor="let c of clients" class="table-row-clickable" (click)="goToDetail(c)">
+          <td><code class="small">{{ c.clientId }}</code></td>
+          <td class="fw-medium">{{ c.name ?? '—' }}</td>
+          <td>
+            <span class="badge bg-secondary">{{ c.clientType ?? '—' }}</span>
+          </td>
+          <td class="small text-muted">{{ c.appName ?? '—' }}</td>
+          <td>
+            <ng-container *ngIf="getGrantTypeList(c.grantTypes).length; else noGrant">
+              <span *ngFor="let g of getGrantTypeList(c.grantTypes)" class="badge bg-light text-dark border me-1 small">{{ g }}</span>
+            </ng-container>
+            <ng-template #noGrant><span class="text-muted small">—</span></ng-template>
+          </td>
+          <td class="text-center">
+            <span class="badge" [ngClass]="statusBadge(c.enabled)">{{ statusLabel(c.enabled) }}</span>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  <div class="card-footer py-2 d-flex justify-content-between align-items-center small" *ngIf="totalPages > 1">
+    <span class="text-muted">Trang {{ currentPage + 1 }} / {{ totalPages }}</span>
+    <div class="btn-group btn-group-sm">
+      <button class="btn btn-outline-secondary" [disabled]="currentPage === 0" (click)="goPage(0)">«</button>
+      <button class="btn btn-outline-secondary" [disabled]="currentPage === 0" (click)="goPage(currentPage - 1)">‹</button>
+      <button *ngFor="let p of getVisiblePages()" class="btn"
+              [class.btn-primary]="p === currentPage"
+              [class.btn-outline-secondary]="p !== currentPage"
+              (click)="goPage(p)">{{ p + 1 }}</button>
+      <button class="btn btn-outline-secondary" [disabled]="currentPage >= totalPages - 1" (click)="goPage(currentPage + 1)">›</button>
+      <button class="btn btn-outline-secondary" [disabled]="currentPage >= totalPages - 1" (click)="goPage(totalPages - 1)">»</button>
+    </div>
+  </div>
+</div>
+
+<!-- FAB: Create Client -->
+<button class="fab-btn btn btn-success shadow-lg" (click)="openCreate()" title="Tạo OAuth2 Client mới"
+        *ngIf="perm.has('client','create')">
+  <i class="bi bi-plus-lg fs-5"></i>
+</button>
+
+<!-- ===== Modal: Tạo Client mới ===== -->
+<div class="modal-overlay" *ngIf="showCreateModal" (click)="closeCreate()">
+  <div class="modal-panel modal-panel-lg" (click)="$event.stopPropagation()">
+    <div class="modal-header-bar">
+      <h6 class="mb-0 fw-semibold"><i class="bi bi-plus-circle me-2"></i>Tạo OAuth2 Client mới</h6>
+      <button class="btn-close" (click)="closeCreate()"></button>
+    </div>
+    <div class="modal-body-area">
+      <div *ngIf="createMessage" class="alert alert-{{ createMessageType }} py-2 small">{{ createMessage }}</div>
+
+      <!-- Secret one-time reveal -->
+      <div *ngIf="createdSecret" class="alert alert-warning small">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+        <strong>Client Secret (chỉ hiển thị một lần):</strong>
+        <code class="d-block mt-1 user-select-all fs-6">{{ createdSecret }}</code>
+      </div>
+
+      <div *ngIf="!createdSecret" class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label small">Client ID <span class="text-danger">*</span></label>
+          <input class="form-control form-control-sm" [(ngModel)]="createForm.clientId" placeholder="my-spa-app">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label small">Tên <span class="text-danger">*</span></label>
+          <input class="form-control form-control-sm" [(ngModel)]="createForm.name" placeholder="My SPA Application">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label small">Loại</label>
+          <select class="form-select form-select-sm" [(ngModel)]="createForm.type">
+            <option value="public">public</option>
+            <option value="confidential">confidential</option>
+          </select>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label small">Ứng dụng <span class="text-danger">*</span></label>
+          <select class="form-select form-select-sm" [(ngModel)]="createForm.appId">
+            <option value="">-- Chọn --</option>
+            <option *ngFor="let app of applications" [value]="app.id">{{ app.name }}</option>
+          </select>
+        </div>
+        <div class="col-12">
+          <label class="form-label small mb-1">Grant Types</label>
+          <div class="d-flex flex-wrap gap-3">
+            <div *ngFor="let g of grantTypeOptions" class="form-check">
+              <input class="form-check-input" type="checkbox" [id]="'cg_'+g" [(ngModel)]="createGrantTypes[g]">
+              <label class="form-check-label small" [for]="'cg_'+g">{{ g }}</label>
+            </div>
+          </div>
+        </div>
+        <div class="col-12">
+          <label class="form-label small mb-1">Scopes</label>
+          <div class="d-flex flex-wrap gap-3">
+            <div *ngFor="let s of scopeOptions" class="form-check">
+              <input class="form-check-input" type="checkbox" [id]="'cs_'+s" [(ngModel)]="createScopes[s]">
+              <label class="form-check-label small" [for]="'cs_'+s">{{ s }}</label>
+            </div>
+          </div>
+        </div>
+        <div class="col-12">
+          <label class="form-label small">Redirect URIs <span class="text-muted">(phân cách bằng dấu phẩy)</span></label>
+          <textarea class="form-control form-control-sm" rows="2" [(ngModel)]="createRedirectUris"
+                    placeholder="https://app.example.com/callback"></textarea>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label small">Default URL</label>
+          <input class="form-control form-control-sm" [(ngModel)]="createForm.defaultUrl">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label small">Post Logout Redirect</label>
+          <input class="form-control form-control-sm" [(ngModel)]="createForm.postLogoutRedirect">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label small">Token Endpoint Auth</label>
+          <select class="form-select form-select-sm" [(ngModel)]="createForm.tokenEndpointAuth">
+            <option *ngFor="let o of tokenEndpointAuthOptions" [value]="o">{{ o }}</option>
+          </select>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label small">Access Token TTL (s)</label>
+          <input class="form-control form-control-sm" type="number" [(ngModel)]="createForm.accessTokenTtl">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label small">Refresh Token TTL (s)</label>
+          <input class="form-control form-control-sm" type="number" [(ngModel)]="createForm.refreshTokenTtl">
+        </div>
+        <div class="col-md-4 d-flex align-items-end">
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="createRequirePkce" [(ngModel)]="createForm.requirePkce">
+            <label class="form-check-label small" for="createRequirePkce">Bắt buộc PKCE</label>
+          </div>
+        </div>
+        <div class="col-md-4 d-flex align-items-end">
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="createRequireConsent" [(ngModel)]="createForm.requireConsent">
+            <label class="form-check-label small" for="createRequireConsent">Yêu cầu Consent</label>
+          </div>
+        </div>
+        <div class="col-12">
+          <label class="form-label small">Logo URI</label>
+          <input class="form-control form-control-sm" [(ngModel)]="createForm.logoUri">
+        </div>
+        <div class="col-12">
+          <label class="form-label small">Mô tả</label>
+          <textarea class="form-control form-control-sm" rows="2" [(ngModel)]="createForm.description"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer-bar">
+      <button class="btn btn-sm btn-outline-secondary" (click)="closeCreate()">
+        {{ createdSecret ? 'Đóng' : 'Hủy' }}
+      </button>
+      <button *ngIf="!createdSecret" class="btn btn-sm btn-success" (click)="submitCreate()" [disabled]="loadingCreate">
+        <span *ngIf="loadingCreate" class="spinner-border spinner-border-sm me-1"></span>
+        <i *ngIf="!loadingCreate" class="bi bi-plus-lg me-1"></i>Tạo Client
+      </button>
+    </div>
+  </div>
+</div>

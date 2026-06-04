@@ -1,0 +1,69 @@
+# =============================================================================
+# Kafka UI — giao diện web quản lý Kafka cluster
+# Image: provectuslabs/kafka-ui (phổ biến nhất, miễn phí)
+# Truy cập: http://localhost:8090
+# =============================================================================
+#
+# KHỞI ĐỘNG (kèm kafka):
+#   docker compose -f docker-compose.yml -f docker-compose.kafka.yml -f docker-compose.kafka-ui.yml up -d
+#
+# =============================================================================
+# TÍNH NĂNG TRÊN UI (http://localhost:8090)
+# =============================================================================
+#
+# [Dashboard]
+#   - Tổng quan cluster: số broker online, tổng topic, tổng partition
+#   - Throughput realtime: bytes in/out per second
+#
+# [Brokers]
+#   - Danh sách broker, ID, host:port, trạng thái (online/offline)
+#   - Disk usage, partition leader distribution
+#   - Xem config của từng broker (log.retention.ms, num.partitions, v.v.)
+#
+# [Topics] ← CÓ THỂ TẠO TOPIC TRỰC TIẾP TRÊN UI
+#   - Tạo topic mới: đặt tên, số partition, replication factor, retention
+#   - Xóa topic
+#   - Xem chi tiết: partition, offset đầu/cuối, leader, ISR (in-sync replicas)
+#   - Browse message: lọc theo partition, offset, timestamp, key, value
+#   - Produce message thử trực tiếp từ UI (có thể chọn partition, set key)
+#   - Chỉnh config topic (retention.ms, cleanup.policy, max.message.bytes...)
+#   ✓ Được bật nhờ DYNAMIC_CONFIG_ENABLED=true bên dưới
+#
+# [Consumers]
+#   - Danh sách consumer group đang active
+#   - Xem lag từng partition (committed offset vs log end offset)
+#   - Biết service nào đang bị lag, cần scale up consumer
+#
+# KHÔNG có sẵn (cần thêm service riêng):
+#   - Schema Registry (Avro/Protobuf) — cần thêm KAFKA_CLUSTERS_0_SCHEMAREGISTRY
+#   - Kafka Connect — cần thêm KAFKA_CLUSTERS_0_KAFKACONNECT_0_ADDRESS
+# =============================================================================
+
+services:
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka-ui
+    restart: unless-stopped
+    ports:
+      - "8090:8080"     # truy cập tại http://localhost:8090
+    environment:
+      # --- Kết nối đến Kafka cluster ---
+      KAFKA_CLUSTERS_0_NAME: iam-kafka-cluster
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka-1:9092,kafka-2:9092,kafka-3:9092
+
+      # --- SASL credentials (phải khớp với config/kafka-jaas.conf) ---
+      KAFKA_CLUSTERS_0_PROPERTIES_SECURITY_PROTOCOL: SASL_PLAINTEXT
+      KAFKA_CLUSTERS_0_PROPERTIES_SASL_MECHANISM: PLAIN
+      KAFKA_CLUSTERS_0_PROPERTIES_SASL_JAAS_CONFIG: >-
+        org.apache.kafka.common.security.plain.PlainLoginModule required
+        username="kafka_user"
+        password="kafka@123456";
+
+      # --- Bật tính năng dynamic config (tạo/xóa topic từ UI) ---
+      DYNAMIC_CONFIG_ENABLED: "true"
+    depends_on:
+      - kafka-1
+      - kafka-2
+      - kafka-3
+    networks:
+      - iam-internal-network

@@ -1,0 +1,20 @@
+services:
+  change-app-service:
+    image: change-app-service:latest
+    container_name: change-app-service
+    ports:
+      - "8085:8085"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      ORACLE_USER: change_user1
+      ORACLE_PASSWORD: ${CHANGE_DB_PASSWORD:-Change@123456}
+      IAM_CLIENT_SECRET: ${IAM_CLIENT_SECRET}
+    networks:
+      - iam-internal-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8085/change-app-service/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s

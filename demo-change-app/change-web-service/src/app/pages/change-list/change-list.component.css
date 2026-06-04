@@ -1,0 +1,54 @@
+.filter-bar { padding: 16px 20px; margin-bottom: 20px; }
+
+.filter-row {
+  display: flex;
+  gap: 16px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+.filter-group { display: flex; flex-direction: column; gap: 5px; }
+.filter-lbl {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.filter-actions { display: flex; gap: 8px; align-items: center; padding-top: 21px; }
+
+.table-card { overflow: hidden; }
+
+.chg-id {
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  background: #EDE9FE;
+  color: var(--primary-dark);
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.chg-name { font-weight: 500; }
+.emp-code {
+  font-size: 11px;
+  color: var(--text-muted);
+  background: var(--border-light);
+  padding: 1px 6px;
+  border-radius: 4px;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+.txt-muted { color: var(--text-muted); font-size: 13px; }
+
+/* Pagination */
+.pagination-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  border-top: 1px solid var(--border-light);
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.pg-info { font-size: 13px; color: var(--text-muted); }
+.pg-controls { display: flex; gap: 4px; align-items: center; }
