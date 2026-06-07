@@ -26,6 +26,16 @@ export class UserDetailComponent implements OnInit {
   message = '';
   messageType = '';
 
+  // Quyền hiện tại (ADMIN only)
+  detailAppPerms: any[] = [];
+  detailResPerms: any[] = [];
+  loadingDetailPerms = false;
+  detailPermsSubTab: 'app' | 'resource' = 'app';
+  revokeTarget: any = null;
+  revokeType: 'app' | 'resource' = 'app';
+  revokeReason = '';
+  loadingRevoke = false;
+
   departments: any[] = [];
   flatDepartments: any[] = [];
   positions: any[] = [];
@@ -66,6 +76,7 @@ export class UserDetailComponent implements OnInit {
         this.detailUser = res.data;
         this.loading = false;
         this.initForm();
+        if (this.isAdmin && !this.selfProfile) this.loadDetailPerms();
       },
       error: () => { this.loading = false; this.router.navigate(['/users']); }
     });
@@ -188,6 +199,8 @@ export class UserDetailComponent implements OnInit {
     return leaf?.name ?? '—';
   }
 
+  get isAdmin(): boolean { return this.perm.userInfo?.role === 'ADMIN'; }
+
   get canEditFull(): boolean {
     if (this.selfProfile) return false;
     return this.perm.has('user', 'update') && this.perm.userInfo?.role === 'ADMIN';
@@ -258,6 +271,52 @@ export class UserDetailComponent implements OnInit {
   }
 
   goBack() { this.router.navigate(['/users']); }
+
+  // ── Permissions (ADMIN only) ──────────────────────────────────────────────
+
+  loadDetailPerms() {
+    const code = this.employeeCode || this.detailUser?.employeeCode;
+    if (!code) return;
+    this.loadingDetailPerms = true;
+    this.identityService.getAppPermissions(code).subscribe({
+      next: res => { this.detailAppPerms = res.data?.content ?? res.data ?? []; },
+      error: () => {}
+    });
+    this.identityService.getResourcePermissions(code).subscribe({
+      next: res => { this.loadingDetailPerms = false; this.detailResPerms = res.data?.content ?? res.data ?? []; },
+      error: () => { this.loadingDetailPerms = false; }
+    });
+  }
+
+  openRevokeModal(type: 'app' | 'resource', p: any, event: Event) {
+    event.stopPropagation();
+    this.revokeType = type;
+    this.revokeTarget = p;
+    this.revokeReason = '';
+  }
+
+  closeRevokeModal() { this.revokeTarget = null; }
+
+  confirmRevoke() {
+    if (!this.revokeTarget) return;
+    const code = this.employeeCode || this.detailUser?.employeeCode;
+    this.loadingRevoke = true;
+    const obs = this.revokeType === 'app'
+      ? this.identityService.revokeAppPermission(code, { apps: [this.revokeTarget.appId], reason: this.revokeReason })
+      : this.identityService.revokeResourcePermission(code, { resourceIds: [this.revokeTarget.resourceId], reason: this.revokeReason });
+    obs.subscribe({
+      next: () => {
+        this.loadingRevoke = false;
+        this.revokeTarget = null;
+        this.showMessage('Thu hồi quyền thành công', 'success');
+        this.loadDetailPerms();
+      },
+      error: err => {
+        this.loadingRevoke = false;
+        this.showMessage(`Lỗi: ${err.error?.message ?? 'Không thể thu hồi'}`, 'danger');
+      }
+    });
+  }
 
   private showMessage(msg: string, type: string) {
     this.message = msg; this.messageType = type;
