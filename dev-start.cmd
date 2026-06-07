@@ -92,7 +92,7 @@ echo Tat ca services da dung. Dong cua so sau 3 giay...
 timeout /t 3 /nobreak >nul
 exit
 
-REM ── Kill process dang lang nghe tren port chi dinh ──────────────────────────
+REM ?? Kill process dang lang nghe tren port chi dinh ??????????????????????????
 :killport
 for /f "tokens=5" %%p in ('netstat -ano ^| findstr ":%~1 " ^| findstr "LISTENING" 2^>nul') do (
     taskkill /f /t /pid %%p >nul 2>&1

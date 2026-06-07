@@ -414,4 +414,167 @@
     </span>
   </div>
 
+  <!-- ── Quyền hiện tại (ADMIN only) ── -->
+  <ng-container *ngIf="isAdmin && !selfProfile">
+    <div class="detail-card mt-4">
+      <div class="detail-card-title d-flex align-items-center justify-content-between">
+        <span><i class="bi bi-key me-2 text-warning"></i>Quyền hiện tại</span>
+        <button class="btn btn-outline-secondary btn-sm" (click)="loadDetailPerms()" [disabled]="loadingDetailPerms" title="Làm mới">
+          <span *ngIf="loadingDetailPerms" class="spinner-border spinner-border-sm"></span>
+          <i *ngIf="!loadingDetailPerms" class="bi bi-arrow-clockwise"></i>
+        </button>
+      </div>
+
+      <!-- Sub-tabs pill -->
+      <ul class="nav nav-pills mb-3 perms-subtab">
+        <li class="nav-item">
+          <button class="nav-link" [class.active]="detailPermsSubTab === 'app'" (click)="detailPermsSubTab = 'app'">
+            <i class="bi bi-window me-1"></i>Quyền ứng dụng
+            <span class="badge ms-1"
+                  [class.bg-white]="detailPermsSubTab === 'app'" [class.text-primary]="detailPermsSubTab === 'app'"
+                  [class.bg-light]="detailPermsSubTab !== 'app'" [class.text-dark]="detailPermsSubTab !== 'app'">
+              {{ detailAppPerms.length }}
+            </span>
+          </button>
+        </li>
+        <li class="nav-item">
+          <button class="nav-link" [class.active]="detailPermsSubTab === 'resource'" (click)="detailPermsSubTab = 'resource'">
+            <i class="bi bi-boxes me-1"></i>Quyền tài nguyên
+            <span class="badge ms-1"
+                  [class.bg-white]="detailPermsSubTab === 'resource'" [class.text-primary]="detailPermsSubTab === 'resource'"
+                  [class.bg-light]="detailPermsSubTab !== 'resource'" [class.text-dark]="detailPermsSubTab !== 'resource'">
+              {{ detailResPerms.length }}
+            </span>
+          </button>
+        </li>
+      </ul>
+
+      <!-- Bảng Quyền ứng dụng -->
+      <ng-container *ngIf="detailPermsSubTab === 'app'">
+        <table class="table table-sm table-hover mb-0">
+          <thead>
+            <tr>
+              <th>Ứng dụng</th>
+              <th>Mã dịch vụ</th>
+              <th>Nguồn cấp</th>
+              <th>Trạng thái</th>
+              <th>Thời gian cấp</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let p of detailAppPerms">
+              <td class="fw-semibold small">{{ p.appName ?? '—' }}</td>
+              <td><code class="small">{{ p.serviceCode ?? '—' }}</code></td>
+              <td>
+                <span class="badge"
+                      [class.bg-info]="p.grantSource === 'system' || p.grantSource === 'SYSTEM'"
+                      [class.bg-warning]="p.grantSource === 'request' || p.grantSource === 'REQUEST'"
+                      [class.text-dark]="p.grantSource === 'request' || p.grantSource === 'REQUEST'"
+                      [class.bg-secondary]="!p.grantSource">
+                  {{ p.grantSource ?? '—' }}
+                </span>
+              </td>
+              <td>
+                <span class="badge"
+                      [class.bg-success]="p.status === 'ACTIVE'"
+                      [class.bg-secondary]="p.status !== 'ACTIVE'">
+                  {{ p.status }}
+                </span>
+              </td>
+              <td class="small text-muted text-nowrap">{{ p.grantedAt | date:'dd/MM/yyyy' }}</td>
+              <td class="text-end">
+                <button *ngIf="p.status === 'ACTIVE'"
+                        class="btn btn-outline-danger btn-sm py-0 px-2"
+                        (click)="openRevokeModal('app', p, $event)">
+                  <i class="bi bi-x-circle me-1"></i>Thu hồi
+                </button>
+              </td>
+            </tr>
+            <tr *ngIf="detailAppPerms.length === 0 && !loadingDetailPerms">
+              <td colspan="6" class="text-center text-muted py-3 small">Chưa có quyền ứng dụng</td>
+            </tr>
+            <tr *ngIf="loadingDetailPerms">
+              <td colspan="6" class="text-center py-3">
+                <span class="spinner-border spinner-border-sm me-2"></span>Đang tải...
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </ng-container>
+
+      <!-- Bảng Quyền tài nguyên -->
+      <ng-container *ngIf="detailPermsSubTab === 'resource'">
+        <table class="table table-sm table-hover mb-0">
+          <thead>
+            <tr>
+              <th>Tài nguyên</th>
+              <th>Action</th>
+              <th>Ứng dụng</th>
+              <th>Trạng thái</th>
+              <th>Thời gian cấp</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let p of detailResPerms">
+              <td class="fw-semibold small">{{ p.resourceName ?? '—' }}</td>
+              <td><code class="small text-primary">{{ p.action ?? '—' }}</code></td>
+              <td class="small text-muted">{{ p.appName ?? '—' }}</td>
+              <td>
+                <span class="badge"
+                      [class.bg-success]="p.status === 'ACTIVE'"
+                      [class.bg-secondary]="p.status !== 'ACTIVE'">
+                  {{ p.status }}
+                </span>
+              </td>
+              <td class="small text-muted text-nowrap">{{ p.grantedAt | date:'dd/MM/yyyy' }}</td>
+              <td class="text-end">
+                <button *ngIf="p.status === 'ACTIVE'"
+                        class="btn btn-outline-danger btn-sm py-0 px-2"
+                        (click)="openRevokeModal('resource', p, $event)">
+                  <i class="bi bi-x-circle me-1"></i>Thu hồi
+                </button>
+              </td>
+            </tr>
+            <tr *ngIf="detailResPerms.length === 0 && !loadingDetailPerms">
+              <td colspan="6" class="text-center text-muted py-3 small">Chưa có quyền tài nguyên</td>
+            </tr>
+            <tr *ngIf="loadingDetailPerms">
+              <td colspan="6" class="text-center py-3">
+                <span class="spinner-border spinner-border-sm me-2"></span>Đang tải...
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </ng-container>
+    </div>
+  </ng-container>
+
 </ng-container>
+
+<!-- Revoke confirm modal -->
+<div class="modal-overlay" *ngIf="revokeTarget" (click)="closeRevokeModal()">
+  <div class="modal-panel" style="max-width:420px" (click)="$event.stopPropagation()">
+    <div class="modal-header-bar">
+      <span class="modal-title"><i class="bi bi-x-circle me-2 text-danger"></i>Thu hồi quyền</span>
+    </div>
+    <div class="modal-body-area">
+      <p class="small mb-3">
+        Xác nhận thu hồi quyền
+        <strong>{{ revokeType === 'app' ? (revokeTarget.appName ?? revokeTarget.serviceCode) : (revokeTarget.resourceName ?? revokeTarget.resourceCode) }}</strong>
+        của <strong>{{ detailUser?.fullName ?? employeeCode }}</strong>?
+      </p>
+      <label class="form-label small mb-1">Lý do <span class="text-muted">(không bắt buộc)</span></label>
+      <textarea class="form-control form-control-sm" rows="2"
+                [(ngModel)]="revokeReason" placeholder="Nhập lý do thu hồi..."></textarea>
+    </div>
+    <div class="modal-footer-bar d-flex justify-content-end gap-2">
+      <button class="btn btn-sm btn-outline-secondary" (click)="closeRevokeModal()" [disabled]="loadingRevoke">Hủy</button>
+      <button class="btn btn-sm btn-danger" (click)="confirmRevoke()" [disabled]="loadingRevoke">
+        <span *ngIf="loadingRevoke" class="spinner-border spinner-border-sm me-1"></span>
+        Xác nhận thu hồi
+      </button>
+    </div>
+  </div>
+</div>

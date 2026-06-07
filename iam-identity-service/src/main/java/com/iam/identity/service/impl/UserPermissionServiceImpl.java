@@ -629,6 +629,9 @@ public class UserPermissionServiceImpl implements UserPermissionService {
         if (!"ACTIVE".equals(grantees.get(0).getStatus())) {
             throw new BusinessException(ErrorCode.VALIDATION_FAILED.getCode(), "Grantee is not active: " + requestFor);
         }
+        if (requestFor.equalsIgnoreCase(request.getReviewerCode())) {
+            throw new BusinessException(ErrorCode.VALIDATION_FAILED.getCode(), "Người duyệt không thể là người thụ hưởng quyền");
+        }
 
         // 2. Build details
         List<AuthRequestDetail> details = new ArrayList<>();

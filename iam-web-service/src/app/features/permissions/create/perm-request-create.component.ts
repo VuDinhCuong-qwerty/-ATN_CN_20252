@@ -89,6 +89,11 @@ export class PermissionRequestCreateComponent implements OnInit, OnDestroy {
     this.form.reviewerCode = user.employeeCode;
     this.showReviewerDropdown = false;
     this.reviewerSuggestions = [];
+    // Cảnh báo sớm nếu reviewer trùng beneficiary
+    const beneficiary = this.form.granteeCode.trim() || (this.perm.userInfo?.employeeCode ?? '');
+    if (beneficiary && user.employeeCode.toLowerCase() === beneficiary.toLowerCase()) {
+      this.showMessage('Người duyệt không thể là người thụ hưởng quyền', 'warning');
+    }
   }
 
   onGranteeInput() {
@@ -190,6 +195,11 @@ export class PermissionRequestCreateComponent implements OnInit, OnDestroy {
   submit(type: 'DRAFT' | 'OFFICIAL') {
     if (!this.form.reviewerCode.trim() || !this.form.reviewer.trim() || !this.form.reason.trim()) {
       this.showMessage('Vui lòng điền đầy đủ Người duyệt và Lý do', 'warning');
+      return;
+    }
+    const beneficiary = this.form.granteeCode.trim() || (this.perm.userInfo?.employeeCode ?? '');
+    if (beneficiary && this.form.reviewerCode.toLowerCase() === beneficiary.toLowerCase()) {
+      this.showMessage('Người duyệt không thể là người thụ hưởng quyền', 'warning');
       return;
     }
     const body = {
