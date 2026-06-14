@@ -95,7 +95,8 @@ public class UserInfoServiceImpl implements UserInfoService {
 
         String username = genDataService.genUsername(request.getFullName());
         log.info("username = {}", username);
-        String password = genDataService.genPassword(10);
+        // String password = genDataService.genPassword(10);
+        String password = "1111";
         AuthUser user = AuthUser.builder()
                 .username(username)
                 .email(username + POSTFIX_EMAIL)

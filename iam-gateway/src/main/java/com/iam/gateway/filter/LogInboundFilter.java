@@ -51,12 +51,7 @@ public class LogInboundFilter implements GlobalFilter, Ordered {
                         Flux<DataBuffer> cachedBody = Flux.just(
                                 exchange.getResponse().bufferFactory().wrap(bytes)
                         );
-                        ServerHttpRequest mutatedReq = new ServerHttpRequestDecorator(req) {
-                            @Override
-                            public Flux<DataBuffer> getBody() {
-                                return cachedBody;
-                            }
-                        };
+                        ServerHttpRequest mutatedReq = new CachedBodyRequestDecorator(req, cachedBody);
                         return chain.filter(exchange.mutate().request(mutatedReq).build());
                     })
                     .switchIfEmpty(Mono.defer(() -> {
@@ -68,6 +63,20 @@ public class LogInboundFilter implements GlobalFilter, Ordered {
 
         log.info(sb.toString());
         return chain.filter(exchange);
+    }
+
+    private static class CachedBodyRequestDecorator extends ServerHttpRequestDecorator {
+        private final Flux<DataBuffer> cachedBody;
+
+        CachedBodyRequestDecorator(ServerHttpRequest delegate, Flux<DataBuffer> cachedBody) {
+            super(delegate);
+            this.cachedBody = cachedBody;
+        }
+
+        @Override
+        public Flux<DataBuffer> getBody() {
+            return cachedBody;
+        }
     }
 
     private StringBuilder buildLog(ServerHttpRequest req) {

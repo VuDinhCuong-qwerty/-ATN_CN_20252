@@ -9,7 +9,7 @@ services:
       - SPRING_PROFILES_ACTIVE=docker
       # ── Tự động lấy từ .env / cluster — không cần sửa ──────────────────────
       - DB_URL=jdbc:oracle:thin:@//host.docker.internal:1521/AUTHPDB1
-      - KAFKA_SERVERS=kafka-1:9092,kafka-2:9092,kafka-3:9092
+      - KAFKA_SERVERS=kafka-1:9092,kafka-2:9092
       # ── ⚠️  PHẢI TỰ ĐIỀN trước khi chạy service ──────────────────────────
       # Gmail App Password (không phải password Gmail thường):
       #   Tạo tại: https://myaccount.google.com/apppasswords

@@ -9,7 +9,7 @@ services:
       - SPRING_PROFILES_ACTIVE=docker
       - DB_URL=jdbc:oracle:thin:@//host.docker.internal:1521/AUTHPDB1
       - AUTH_ISSUER_URI=http://host.docker.internal:8888/ms-internal-iam/auth
-      - KAFKA_SERVERS=kafka-1:9092,kafka-2:9092,kafka-3:9092
+      - KAFKA_SERVERS=kafka-1:9092,kafka-2:9092
       - REDIS_HOST=redis
     extra_hosts:
       - "host.docker.internal:host-gateway"

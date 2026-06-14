@@ -102,12 +102,6 @@
             <optional>true</optional>
         </dependency>
 
-        <!-- JSON log shipping — Fluent Bit → Elasticsearch -->
-        <dependency>
-            <groupId>net.logstash.logback</groupId>
-            <artifactId>logstash-logback-encoder</artifactId>
-            <version>7.4</version>
-        </dependency>
 
         <!-- Test -->
         <dependency>
