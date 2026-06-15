@@ -1,6 +1,7 @@
 package com.demo.change.repository;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -13,6 +14,12 @@ import com.demo.change.entity.ChangeRequest;
 
 @Repository
 public interface ChangeRequestRepository extends JpaRepository<ChangeRequest, Long> {
+
+    @Query(value = "SELECT STATUS, COUNT(*) AS CNT FROM CHG_CHANGE_REQUEST GROUP BY STATUS", nativeQuery = true)
+    List<Object[]> countByStatus();
+
+    @Query(value = "SELECT CREATED_BY, CREATED_BY_CODE, COUNT(*) AS CNT FROM CHG_CHANGE_REQUEST GROUP BY CREATED_BY, CREATED_BY_CODE ORDER BY CNT DESC", nativeQuery = true)
+    List<Object[]> topCreators();
 
     @Query(value = "SELECT * FROM CHG_CHANGE_REQUEST " +
                    "WHERE (:status IS NULL OR STATUS = :status) " +

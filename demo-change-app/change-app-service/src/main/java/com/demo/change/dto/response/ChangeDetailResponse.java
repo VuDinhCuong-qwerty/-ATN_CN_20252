@@ -26,6 +26,8 @@ public class ChangeDetailResponse {
     private List<ChecklistDetail> checklistItems;
     private List<TeamMemberDetail> teamMembers;
     private List<ApproverDetail> approvers;
+    private List<DocumentResponse> documents;
+    private List<AuditLogResponse> auditLogs;
 
     @Data
     @Builder
@@ -35,6 +37,10 @@ public class ChangeDetailResponse {
         private String link;
         private String jobType;
         private Integer orderNum;
+        private String jobStatus;
+        private LocalDateTime startedAt;
+        private LocalDateTime completedAt;
+        private String resultNote;
         private String createdBy;
         private String createdByCode;
         private LocalDateTime createdAt;

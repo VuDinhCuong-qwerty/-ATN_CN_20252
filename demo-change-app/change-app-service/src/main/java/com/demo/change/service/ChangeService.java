@@ -4,6 +4,7 @@ import com.demo.change.dto.request.CreateChangeRequest;
 import com.demo.change.dto.request.UpdateChangeRequest;
 import com.demo.change.dto.response.ChangeDetailResponse;
 import com.demo.change.dto.response.ChangeListItemResponse;
+import com.demo.change.dto.response.GoliveJobResponse;
 import com.demo.change.dto.response.PageResponse;
 
 public interface ChangeService {
@@ -28,4 +29,6 @@ public interface ChangeService {
     void updateChecklistItemStatus(Long changeId, Long itemId, String taskStatus, String username);
 
     void finalizeResult(Long changeId, String username, String userCode);
+
+    GoliveJobResponse runJob(Long changeId, Long jobId, String username, String userCode);
 }

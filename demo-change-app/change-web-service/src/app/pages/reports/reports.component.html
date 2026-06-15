@@ -1,0 +1,91 @@
+<div class="page-header">
+  <div class="page-title-icon"><i class="bi bi-bar-chart-line"></i></div>
+  <div>
+    <h4 class="page-title">Báo cáo thống kê</h4>
+    <div class="page-subtitle">Tổng hợp kết quả Change Management</div>
+  </div>
+</div>
+
+@if (loading) {
+  <div class="empty-state" style="margin-top:40px"><span class="spinner"></span></div>
+} @else if (error) {
+  <div class="alert alert-error"><i class="bi bi-exclamation-triangle-fill"></i> {{ error }}</div>
+} @else if (summary) {
+
+  <!-- Summary cards -->
+  <div class="report-cards">
+    <div class="report-card">
+      <div class="rc-label">Tổng Change</div>
+      <div class="rc-value">{{ summary.totalAll }}</div>
+    </div>
+    <div class="report-card rc-success">
+      <div class="rc-label">Thành công</div>
+      <div class="rc-value">{{ successCount }}</div>
+    </div>
+    <div class="report-card rc-fail">
+      <div class="rc-label">Thất bại</div>
+      <div class="rc-value">{{ failCount }}</div>
+    </div>
+    <div class="report-card rc-rate">
+      <div class="rc-label">Tỷ lệ thành công</div>
+      <div class="rc-value">{{ summary.successRate | number:'1.0-1' }}%</div>
+    </div>
+  </div>
+
+  <!-- By status table -->
+  <div class="section-card" style="margin-bottom:20px">
+    <div class="section-hdr">
+      <div class="section-icon"><i class="bi bi-pie-chart"></i></div>
+      <span class="section-title">Thống kê theo trạng thái</span>
+    </div>
+    <table class="data-table">
+      <thead><tr>
+        <th>Trạng thái</th>
+        <th style="width:120px;text-align:right">Số lượng</th>
+        <th>Tỷ lệ</th>
+      </tr></thead>
+      <tbody>
+        @for (e of statusEntries; track e.status) {
+          <tr>
+            <td><span [class]="'badge-status badge-' + e.status">{{ STATUS_LABELS[e.status] || e.status }}</span></td>
+            <td style="text-align:right;font-weight:700">{{ e.count }}</td>
+            <td>
+              <div class="progress-bar-wrap">
+                <div class="progress-bar-fill" [style.width.%]="summary.totalAll > 0 ? (e.count / summary.totalAll * 100) : 0"></div>
+                <span class="progress-pct">{{ summary.totalAll > 0 ? (e.count / summary.totalAll * 100 | number:'1.0-0') : 0 }}%</span>
+              </div>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Top creators -->
+  @if (summary.topCreators.length > 0) {
+    <div class="section-card">
+      <div class="section-hdr">
+        <div class="section-icon"><i class="bi bi-trophy"></i></div>
+        <span class="section-title">Top người tạo Change</span>
+      </div>
+      <table class="data-table">
+        <thead><tr>
+          <th style="width:44px">#</th>
+          <th>Họ tên</th>
+          <th style="width:130px">Mã NV</th>
+          <th style="width:100px;text-align:right">Số Change</th>
+        </tr></thead>
+        <tbody>
+          @for (c of summary.topCreators; track c.createdByCode; let i = $index) {
+            <tr>
+              <td class="txt-center txt-muted">{{ i + 1 }}</td>
+              <td><strong>{{ c.createdBy }}</strong></td>
+              <td class="txt-muted">{{ c.createdByCode }}</td>
+              <td style="text-align:right;font-weight:700;color:var(--iam-primary)">{{ c.count }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+}

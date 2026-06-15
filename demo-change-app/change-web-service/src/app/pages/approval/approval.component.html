@@ -1,0 +1,103 @@
+<div class="page-header">
+  <div class="page-title-icon"><i class="bi bi-shield-check"></i></div>
+  <div>
+    <h4 class="page-title">Phê duyệt CAB</h4>
+    <div class="page-subtitle">Xem xét và phê duyệt các yêu cầu Change</div>
+  </div>
+</div>
+
+@if (error) {
+  <div class="alert alert-error"><i class="bi bi-exclamation-triangle-fill"></i> {{ error }}</div>
+}
+
+<div class="tab-pills">
+  @if (perm.has('change-approval', 'approve')) {
+    <button class="tab-pill" [class.active]="activeTab === 'queue'" (click)="activeTab = 'queue'">
+      <i class="bi bi-hourglass-split"></i> Hàng chờ duyệt
+      @if (queueItems.length > 0) { <span class="pill-cnt">{{ queueItems.length }}</span> }
+    </button>
+  }
+  <button class="tab-pill" [class.active]="activeTab === 'history'" (click)="activeTab = 'history'">
+    <i class="bi bi-clock-history"></i> Lịch sử
+  </button>
+</div>
+
+<!-- Queue tab -->
+@if (activeTab === 'queue') {
+  <div class="section-card">
+    @if (loadingQueue) {
+      <div class="empty-state"><span class="spinner"></span></div>
+    } @else if (queueItems.length === 0) {
+      <div class="empty-state"><i class="bi bi-inbox"></i><p>Không có change request nào đang chờ duyệt.</p></div>
+    } @else {
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Tên Change</th>
+            <th style="width:150px">Người tạo</th>
+            <th style="width:160px">Thời gian Go-Live</th>
+            <th style="width:150px">Ngày nộp</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (c of queueItems; track c.id) {
+            <tr class="clickable" [routerLink]="['/changes', c.id]">
+              <td><strong>{{ c.changeName }}</strong></td>
+              <td class="txt-muted">{{ c.createdBy }}</td>
+              <td class="txt-muted">{{ fmtDate(c.goliveAt) }}</td>
+              <td class="txt-muted">{{ fmtDate(c.updatedAt) }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    }
+  </div>
+}
+
+<!-- History tab -->
+@if (activeTab === 'history') {
+  <div class="section-card">
+    <div class="section-hdr" style="gap:12px;flex-wrap:wrap">
+      <span class="section-title">Lịch sử Change</span>
+      <div class="filter-row" style="margin-left:auto;display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+        <input class="form-control" style="width:180px;font-size:13px;padding:6px 10px"
+               type="text" [(ngModel)]="filterSubmitter" placeholder="Người tạo (username)">
+        <input class="form-control" style="width:150px;font-size:13px;padding:6px 10px"
+               type="date" [(ngModel)]="filterDateFrom">
+        <input class="form-control" style="width:150px;font-size:13px;padding:6px 10px"
+               type="date" [(ngModel)]="filterDateTo">
+        <button class="btn btn-outline btn-sm" (click)="loadHistory()">
+          <i class="bi bi-search"></i> Tìm
+        </button>
+      </div>
+    </div>
+    @if (loadingHistory) {
+      <div class="empty-state"><span class="spinner"></span></div>
+    } @else if (historyItems.length === 0) {
+      <div class="empty-state"><i class="bi bi-inbox"></i><p>Không có kết quả nào.</p></div>
+    } @else {
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Tên Change</th>
+            <th style="width:130px">Trạng thái</th>
+            <th style="width:150px">Người tạo</th>
+            <th style="width:160px">Go-Live</th>
+            <th style="width:150px">Cập nhật</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (c of historyItems; track c.id) {
+            <tr class="clickable" [routerLink]="['/changes', c.id]">
+              <td><strong>{{ c.changeName }}</strong></td>
+              <td><span [class]="'badge-status badge-' + c.status">{{ STATUS_LABELS[c.status] || c.status }}</span></td>
+              <td class="txt-muted">{{ c.createdBy }}</td>
+              <td class="txt-muted">{{ fmtDate(c.goliveAt) }}</td>
+              <td class="txt-muted">{{ fmtDate(c.updatedAt) }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    }
+  </div>
+}

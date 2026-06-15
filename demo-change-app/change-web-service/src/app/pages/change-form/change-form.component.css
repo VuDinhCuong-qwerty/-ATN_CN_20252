@@ -197,7 +197,7 @@
   margin-bottom: 10px;
   border-bottom: 1px dashed var(--border);
 }
-.slot-dev    { color: #7C3AED; }
+.slot-dev    { color: #1D4ED8; }
 .slot-tester { color: #0369A1; }
 .slot-ba     { color: #047857; }
 .lead-badge {

@@ -31,6 +31,9 @@ public class SecurityConfig {
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/actuator/health", "/actuator/info").permitAll()
+                        // Static Angular SPA assets — no auth needed
+                        .requestMatchers("/", "/index.html", "/*.js", "/*.css", "/*.ico",
+                                         "/*.map", "/assets/**", "/favicon.ico").permitAll()
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth2 -> oauth2
                         .jwt(jwt -> jwt

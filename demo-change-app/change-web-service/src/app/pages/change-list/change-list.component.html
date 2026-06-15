@@ -133,7 +133,7 @@
 
 </div>
 
-@if (perm.has('create')) {
+@if (perm.has('change-request', 'create')) {
   <a class="fab" [routerLink]="['/changes/new']" title="Tạo change mới">
     <i class="bi bi-plus-lg"></i>
   </a>

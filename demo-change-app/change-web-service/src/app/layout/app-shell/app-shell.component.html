@@ -1,0 +1,102 @@
+<div class="shell-wrapper" [class.collapsed]="collapsed">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <span class="logo-icon">⚡</span>
+      <span class="logo-text">Change Portal</span>
+    </div>
+
+    <nav class="sidebar-nav">
+
+      <!-- Dashboard -->
+      <a routerLink="/dashboard" routerLinkActive="active" class="nav-item">
+        <i class="bi bi-speedometer2"></i>
+        <span>Dashboard</span>
+      </a>
+
+      <!-- Quản lý Change -->
+      <div class="nav-group" *ngIf="perm.hasResource('change-request')">
+        <button class="nav-group-header" (click)="changeExpanded = !changeExpanded">
+          <i class="bi bi-file-earmark-text"></i>
+          <span>Quản lý Change</span>
+          <i class="bi chevron" [class.bi-chevron-down]="changeExpanded" [class.bi-chevron-right]="!changeExpanded"></i>
+        </button>
+        <div class="nav-group-items" *ngIf="changeExpanded">
+          <a routerLink="/changes" routerLinkActive="active" class="nav-sub-item">
+            <i class="bi bi-list-ul"></i><span>Danh sách Change</span>
+          </a>
+          <a routerLink="/changes/new" routerLinkActive="active" class="nav-sub-item"
+             *ngIf="perm.has('change-request','create')">
+            <i class="bi bi-plus-circle"></i><span>Tạo Change mới</span>
+          </a>
+        </div>
+      </div>
+
+      <!-- Phê duyệt CAB -->
+      <div class="nav-group" *ngIf="perm.hasResource('change-approval')">
+        <button class="nav-group-header" (click)="approvalExpanded = !approvalExpanded">
+          <i class="bi bi-shield-check"></i>
+          <span>Phê duyệt CAB</span>
+          <i class="bi chevron" [class.bi-chevron-down]="approvalExpanded" [class.bi-chevron-right]="!approvalExpanded"></i>
+        </button>
+        <div class="nav-group-items" *ngIf="approvalExpanded">
+          <a routerLink="/approval/queue" routerLinkActive="active" class="nav-sub-item"
+             *ngIf="perm.has('change-approval','approve')">
+            <i class="bi bi-hourglass-split"></i><span>Hàng chờ duyệt</span>
+          </a>
+          <a routerLink="/approval/history" routerLinkActive="active" class="nav-sub-item">
+            <i class="bi bi-clock-history"></i><span>Lịch sử phê duyệt</span>
+          </a>
+        </div>
+      </div>
+
+      <!-- Thực thi Go-Live -->
+      <div class="nav-group" *ngIf="perm.hasResource('change-execution')">
+        <button class="nav-group-header" (click)="executionExpanded = !executionExpanded">
+          <i class="bi bi-rocket-takeoff"></i>
+          <span>Thực thi Go-Live</span>
+          <i class="bi chevron" [class.bi-chevron-down]="executionExpanded" [class.bi-chevron-right]="!executionExpanded"></i>
+        </button>
+        <div class="nav-group-items" *ngIf="executionExpanded">
+          <a routerLink="/execution" routerLinkActive="active" class="nav-sub-item">
+            <i class="bi bi-play-circle"></i><span>Danh sách thực thi</span>
+          </a>
+        </div>
+      </div>
+
+      <!-- Báo cáo -->
+      <a routerLink="/reports" routerLinkActive="active" class="nav-item"
+         *ngIf="perm.has('change-report','view')">
+        <i class="bi bi-bar-chart-line"></i>
+        <span>Báo cáo</span>
+      </a>
+
+    </nav>
+
+    <!-- Sidebar footer: user info + logout -->
+    <div class="sidebar-footer">
+      <div class="user-info">
+        <div class="user-avatar">{{ (perm.displayName || 'U').charAt(0).toUpperCase() }}</div>
+        <div class="user-meta" *ngIf="!collapsed">
+          <div class="user-name">{{ perm.displayName }}</div>
+          <div class="user-role">{{ perm.role }}</div>
+        </div>
+      </div>
+      <button class="logout-btn" (click)="logout()" title="Đăng xuất">
+        <i class="bi bi-box-arrow-right"></i>
+      </button>
+    </div>
+  </aside>
+
+  <!-- Toggle collapse button -->
+  <button class="collapse-btn" (click)="toggle()" [title]="collapsed ? 'Mở rộng' : 'Thu gọn'">
+    <i class="bi" [class.bi-chevron-left]="!collapsed" [class.bi-chevron-right]="collapsed"></i>
+  </button>
+
+  <!-- Main content -->
+  <main class="main-content">
+    <router-outlet />
+  </main>
+
+</div>

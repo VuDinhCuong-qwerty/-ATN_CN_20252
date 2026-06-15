@@ -1,0 +1,14 @@
+/* Approval — full styles: session sau */
+.tab-pills { display: flex; gap: 8px; margin: 20px 0 0; }
+.tab-pill {
+  padding: 8px 20px; border-radius: 20px; border: 1.5px solid var(--iam-border, #D5E3F5);
+  background: #fff; cursor: pointer; font-size: 14px; font-weight: 500;
+  color: var(--iam-text-muted, #5A6E8C); transition: all 0.15s;
+}
+.tab-pill.active { background: var(--iam-primary, #003B8E); color: #fff; border-color: var(--iam-primary, #003B8E); }
+.tab-pill i { margin-right: 4px; }
+.pill-cnt {
+  display: inline-block; margin-left: 6px; background: #EF4444; color: #fff;
+  border-radius: 10px; font-size: 11px; font-weight: 700; padding: 1px 6px;
+}
+.tab-pills { margin-bottom: 16px; }

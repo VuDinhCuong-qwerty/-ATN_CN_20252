@@ -46,8 +46,15 @@ public class IdentityValidationServiceImpl implements IdentityValidationService 
             throw new BusinessException(ErrorCode.NOT_FOUND,
                     "Không lấy được thông tin chi tiết user: " + username);
         }
-        boolean isCab = detail.getRoles() != null && detail.getRoles().stream()
-                .anyMatch(r -> "CAB".equalsIgnoreCase(r.getRoleCode()));
+        boolean isCab = false;
+        if (detail.getRoles() != null) {
+            for (UserDetailResponse.RoleInfo r : detail.getRoles()) {
+                if ("CAB".equalsIgnoreCase(r.getRoleCode())) {
+                    isCab = true;
+                    break;
+                }
+            }
+        }
         if (!isCab) {
             throw new BusinessException(ErrorCode.VALIDATION_FAILED,
                     "Người dùng không có role CAB: " + username);
@@ -62,10 +69,10 @@ public class IdentityValidationServiceImpl implements IdentityValidationService 
         if (resp == null || resp.getContent() == null || resp.getContent().isEmpty()) {
             return null;
         }
-        return resp.getContent().stream()
-                .filter(c -> username.equalsIgnoreCase(c.getUsername()))
-                .findFirst()
-                .orElse(null);
+        for (Content c : resp.getContent()) {
+            if (username.equalsIgnoreCase(c.getUsername())) return c;
+        }
+        return null;
     }
 
     private Content findActiveUser(String username) {
@@ -73,9 +80,9 @@ public class IdentityValidationServiceImpl implements IdentityValidationService 
         if (resp == null || resp.getContent() == null || resp.getContent().isEmpty()) {
             return null;
         }
-        return resp.getContent().stream()
-                .filter(c -> username.equalsIgnoreCase(c.getUsername()))
-                .findFirst()
-                .orElse(null);
+        for (Content c : resp.getContent()) {
+            if (username.equalsIgnoreCase(c.getUsername())) return c;
+        }
+        return null;
     }
 }

@@ -24,7 +24,7 @@
 .cr-id {
   font-family: 'Courier New', monospace;
   font-size: 12px;
-  background: #EDE9FE;
+  background: #DBEAFE;
   color: var(--primary-dark);
   padding: 2px 8px;
   border-radius: 6px;
@@ -74,7 +74,7 @@
 .job-type-badge {
   display: inline-block;
   padding: 2px 10px;
-  background: #EDE9FE;
+  background: #DBEAFE;
   color: var(--primary-dark);
   border-radius: 6px;
   font-size: 12px;
@@ -176,7 +176,7 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  background: #F5F3FF;
+  background: #EEF4FF;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 12px 16px;
@@ -371,7 +371,7 @@
   display: flex; align-items: center; gap: 5px;
   padding-bottom: 10px; margin-bottom: 10px; border-bottom: 1px dashed var(--border);
 }
-.slot-dev    { color: #7C3AED; }
+.slot-dev    { color: #1D4ED8; }
 .slot-tester { color: #0369A1; }
 .slot-ba     { color: #047857; }
 .lead-badge {
@@ -443,6 +443,32 @@
   display: flex; justify-content: center; gap: 12px;
 }
 
+/* ── Audit timeline ────────────────────────────── */
+.audit-timeline { display: flex; flex-direction: column; gap: 0; }
+.audit-item {
+  display: flex;
+  gap: 14px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border-light);
+  position: relative;
+}
+.audit-item:last-child { border-bottom: none; }
+.audit-icon {
+  width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
+  background: linear-gradient(135deg, #DBEAFE, #BFDBFE);
+  color: var(--primary);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; margin-top: 2px;
+}
+.audit-content { flex: 1; min-width: 0; }
+.audit-action { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.04em; }
+.audit-transition { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; flex-wrap: wrap; }
+.audit-note { font-size: 13px; color: var(--text-muted); margin-bottom: 4px; font-style: italic; }
+.audit-meta { font-size: 12px; color: var(--text-muted); }
+
+/* txt-sm utility */
+.txt-sm { font-size: 12px; }
+
 /* Result options */
 .result-options {
   display: flex;
@@ -463,6 +489,6 @@
   transition: all 0.15s;
   user-select: none;
 }
-.result-opt:hover { border-color: var(--primary-light); background: #F5F3FF; }
-.result-opt.selected { border-color: var(--primary); background: #EDE9FE; color: var(--primary); }
+.result-opt:hover { border-color: var(--primary-light); background: #EEF4FF; }
+.result-opt.selected { border-color: var(--primary); background: #DBEAFE; color: var(--primary); }
 .result-opt i { font-size: 18px; }

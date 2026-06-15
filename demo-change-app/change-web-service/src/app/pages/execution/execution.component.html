@@ -1,0 +1,129 @@
+<div class="page-header">
+  <div class="page-title-icon"><i class="bi bi-rocket-takeoff"></i></div>
+  <div>
+    <h4 class="page-title">Thực thi Go-Live</h4>
+    <div class="page-subtitle">Quản lý và theo dõi các change đang thực thi</div>
+  </div>
+</div>
+
+@if (error) {
+  <div class="alert alert-error"><i class="bi bi-exclamation-triangle-fill"></i> {{ error }}</div>
+}
+
+<div class="tab-pills">
+  <button class="tab-pill" [class.active]="activeTab === 'ready'" (click)="activeTab = 'ready'">
+    <i class="bi bi-check2-circle"></i> Sẵn sàng thực thi
+    @if (readyItems.length > 0) { <span class="pill-cnt">{{ readyItems.length }}</span> }
+  </button>
+  <button class="tab-pill" [class.active]="activeTab === 'executing'" (click)="activeTab = 'executing'">
+    <i class="bi bi-play-circle"></i> Đang thực thi
+    @if (executingItems.length > 0) { <span class="pill-cnt pill-cnt-blue">{{ executingItems.length }}</span> }
+  </button>
+  <button class="tab-pill" [class.active]="activeTab === 'done'" (click)="activeTab = 'done'">
+    <i class="bi bi-flag-fill"></i> Đã hoàn thành
+  </button>
+</div>
+
+<!-- Ready tab -->
+@if (activeTab === 'ready') {
+  <div class="section-card">
+    <div class="section-hdr">
+      <div class="section-icon"><i class="bi bi-check2-circle" style="color:#059669"></i></div>
+      <span class="section-title">Change đã được duyệt, sẵn sàng bắt đầu go-live</span>
+    </div>
+    @if (loadingReady) {
+      <div class="empty-state"><span class="spinner"></span></div>
+    } @else if (readyItems.length === 0) {
+      <div class="empty-state"><i class="bi bi-check2-all"></i><p>Không có change nào đang chờ thực thi.</p></div>
+    } @else {
+      <table class="data-table">
+        <thead><tr>
+          <th>Tên Change</th>
+          <th style="width:140px">Người tạo</th>
+          <th style="width:160px">Thời gian Go-Live</th>
+          <th style="width:140px">Ngày duyệt</th>
+        </tr></thead>
+        <tbody>
+          @for (c of readyItems; track c.id) {
+            <tr class="clickable" [routerLink]="['/changes', c.id]">
+              <td><strong>{{ c.changeName }}</strong></td>
+              <td class="txt-muted">{{ c.createdBy }}</td>
+              <td class="txt-muted">{{ fmtDate(c.goliveAt) }}</td>
+              <td class="txt-muted">{{ fmtDate(c.updatedAt) }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    }
+  </div>
+}
+
+<!-- Executing tab -->
+@if (activeTab === 'executing') {
+  <div class="section-card">
+    <div class="section-hdr">
+      <div class="section-icon"><i class="bi bi-play-circle" style="color:#1D4ED8"></i></div>
+      <span class="section-title">Change đang trong quá trình go-live</span>
+    </div>
+    @if (loadingExecuting) {
+      <div class="empty-state"><span class="spinner"></span></div>
+    } @else if (executingItems.length === 0) {
+      <div class="empty-state"><i class="bi bi-rocket-takeoff"></i><p>Không có change nào đang thực thi.</p></div>
+    } @else {
+      <table class="data-table">
+        <thead><tr>
+          <th>Tên Change</th>
+          <th style="width:140px">Người tạo</th>
+          <th style="width:160px">Thời gian Go-Live</th>
+          <th style="width:140px">Bắt đầu thực thi</th>
+        </tr></thead>
+        <tbody>
+          @for (c of executingItems; track c.id) {
+            <tr class="clickable" [routerLink]="['/changes', c.id]">
+              <td><strong>{{ c.changeName }}</strong></td>
+              <td class="txt-muted">{{ c.createdBy }}</td>
+              <td class="txt-muted">{{ fmtDate(c.goliveAt) }}</td>
+              <td class="txt-muted">{{ fmtDate(c.updatedAt) }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    }
+  </div>
+}
+
+<!-- Done tab -->
+@if (activeTab === 'done') {
+  <div class="section-card">
+    <div class="section-hdr">
+      <div class="section-icon"><i class="bi bi-flag-fill" style="color:#D97706"></i></div>
+      <span class="section-title">Change đã hoàn thành (SUCCESS / FAIL)</span>
+    </div>
+    @if (loadingDone) {
+      <div class="empty-state"><span class="spinner"></span></div>
+    } @else if (doneItems.length === 0) {
+      <div class="empty-state"><i class="bi bi-flag"></i><p>Chưa có change nào hoàn thành.</p></div>
+    } @else {
+      <table class="data-table">
+        <thead><tr>
+          <th>Tên Change</th>
+          <th style="width:130px">Kết quả</th>
+          <th style="width:140px">Người tạo</th>
+          <th style="width:160px">Thời gian Go-Live</th>
+          <th style="width:140px">Hoàn thành</th>
+        </tr></thead>
+        <tbody>
+          @for (c of doneItems; track c.id) {
+            <tr class="clickable" [routerLink]="['/changes', c.id]">
+              <td><strong>{{ c.changeName }}</strong></td>
+              <td><span [class]="'badge-status badge-' + c.status">{{ STATUS_LABELS[c.status] || c.status }}</span></td>
+              <td class="txt-muted">{{ c.createdBy }}</td>
+              <td class="txt-muted">{{ fmtDate(c.goliveAt) }}</td>
+              <td class="txt-muted">{{ fmtDate(c.updatedAt) }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    }
+  </div>
+}

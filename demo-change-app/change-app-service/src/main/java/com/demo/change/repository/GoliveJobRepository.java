@@ -17,4 +17,7 @@ public interface GoliveJobRepository extends JpaRepository<GoliveJob, Long> {
 
     @Query(value = "SELECT COUNT(*) FROM CHG_GOLIVE_JOB WHERE CHANGE_REQUEST_ID = :changeRequestId AND STATUS = 1", nativeQuery = true)
     int countActiveByChangeRequestId(@Param("changeRequestId") Long changeRequestId);
+
+    @Query(value = "SELECT COUNT(*) FROM CHG_GOLIVE_JOB WHERE CHANGE_REQUEST_ID = :changeRequestId AND STATUS = 1 AND JOB_STATUS = :jobStatus", nativeQuery = true)
+    int countActiveByChangeRequestIdAndJobStatus(@Param("changeRequestId") Long changeRequestId, @Param("jobStatus") String jobStatus);
 }

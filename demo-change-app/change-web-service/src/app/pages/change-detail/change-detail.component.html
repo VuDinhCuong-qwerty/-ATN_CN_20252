@@ -422,116 +422,197 @@
     <!-- ══════════════════════════════════════════════════════════════════ -->
     } @else {
 
-
-      <!-- Info section -->
-      <div class="section-card">
-        <div class="section-hdr">
-          <div class="section-icon"><i class="bi bi-info-circle"></i></div>
-          <span class="section-title">Thông tin chung</span>
-        </div>
-        <div class="section-body">
-          <div class="detail-row">
-            <span class="detail-lbl">Tên Change</span>
-            <span class="detail-val">{{ cr.changeName }}</span>
-          </div>
-          <div class="detail-row">
-            <span class="detail-lbl">Mã Change</span>
-            <span class="detail-val"><span class="cr-id">{{ shortId(cr.changeId) }}</span></span>
-          </div>
-          @if (cr.goliveAt) {
-            <div class="detail-row">
-              <span class="detail-lbl">Thời gian Go-Live</span>
-              <span class="detail-val">{{ fmtDate(cr.goliveAt) }}</span>
-            </div>
+      <!-- 6-Tab Navigation -->
+      <div class="section-card" style="margin-bottom:0;border-bottom:none;border-radius:var(--iam-radius) var(--iam-radius) 0 0">
+        <div class="tab-nav" style="margin-bottom:0;padding:0 16px;border-bottom:2px solid var(--iam-border-light)">
+          <button class="tab-btn" [class.active]="activeTab === 'info'" (click)="activeTab = 'info'">
+            <i class="bi bi-info-circle"></i> Thông tin
+          </button>
+          <button class="tab-btn" [class.active]="activeTab === 'jobs'" (click)="activeTab = 'jobs'">
+            <i class="bi bi-gear"></i> Go-Live Jobs
+            @if ((cr.jobs?.length ?? 0) > 0) { <span class="tab-cnt">{{ cr.jobs!.length }}</span> }
+          </button>
+          <button class="tab-btn" [class.active]="activeTab === 'checklist'" (click)="activeTab = 'checklist'">
+            <i class="bi bi-check2-square"></i> Checklist
+            @if ((cr.checklistItems?.length ?? 0) > 0) { <span class="tab-cnt">{{ cr.checklistItems!.length }}</span> }
+          </button>
+          @if (canViewApproval) {
+            <button class="tab-btn" [class.active]="activeTab === 'approval'" (click)="activeTab = 'approval'">
+              <i class="bi bi-person-check"></i> Phê duyệt
+              @if ((cr.approvers?.length ?? 0) > 0) { <span class="tab-cnt">{{ cr.approvers!.length }}</span> }
+            </button>
           }
-          @if (cr.gitLink) {
-            <div class="detail-row">
-              <span class="detail-lbl">Git / Ticket Link</span>
-              <span class="detail-val">
-                <a [href]="cr.gitLink" target="_blank" rel="noopener" class="link-ext">
-                  {{ cr.gitLink }} <i class="bi bi-box-arrow-up-right"></i>
-                </a>
-              </span>
-            </div>
-          }
-          @if (cr.content) {
-            <div class="detail-row">
-              <span class="detail-lbl">Mô tả</span>
-              <span class="detail-val content-block">{{ cr.content }}</span>
-            </div>
-          }
-          <div class="detail-row">
-            <span class="detail-lbl">Ngày tạo</span>
-            <span class="detail-val">{{ fmtDate(cr.createdAt) }}</span>
-          </div>
-          <div class="detail-row">
-            <span class="detail-lbl">Cập nhật lần cuối</span>
-            <span class="detail-val">{{ fmtDate(cr.updatedAt) }}</span>
-          </div>
+          <button class="tab-btn" [class.active]="activeTab === 'artifacts'" (click)="activeTab = 'artifacts'">
+            <i class="bi bi-paperclip"></i> Tài liệu
+            @if (documents.length > 0) { <span class="tab-cnt">{{ documents.length }}</span> }
+          </button>
+          <button class="tab-btn" [class.active]="activeTab === 'history'" (click)="activeTab = 'history'">
+            <i class="bi bi-clock-history"></i> Lịch sử
+          </button>
         </div>
       </div>
 
-      <!-- Golive Jobs -->
-      @if ((cr.jobs?.length ?? 0) > 0) {
-        <div class="section-card">
-          <div class="section-hdr">
-            <div class="section-icon"><i class="bi bi-gear"></i></div>
-            <span class="section-title">Danh sách Job Go-Live</span>
-            <span class="badge-count">{{ cr.jobs!.length }} jobs</span>
-          </div>
-          <div class="section-body" style="padding:0">
-            <table class="data-table">
-              <thead>
-                <tr>
-                  <th style="width:44px">#</th>
-                  <th>Tên Job</th>
-                  <th style="width:120px">Loại</th>
-                  <th>Link</th>
-                </tr>
-              </thead>
-              <tbody>
-                @for (job of cr.jobs!; track job.id) {
-                  <tr>
-                    <td class="txt-center txt-muted">{{ job.orderNum }}</td>
-                    <td><strong>{{ job.name }}</strong></td>
-                    <td><span class="job-type-badge">{{ JOB_TYPE_LABELS[job.jobType] || job.jobType }}</span></td>
-                    <td>
-                      @if (job.link) {
-                        <a [href]="job.link" target="_blank" rel="noopener" class="link-ext">
-                          {{ job.link }} <i class="bi bi-box-arrow-up-right"></i>
-                        </a>
-                      } @else { <span class="txt-muted">—</span> }
-                    </td>
-                  </tr>
-                }
-              </tbody>
-            </table>
+      <!-- ── Tab: Thông tin chung ── -->
+      @if (activeTab === 'info') {
+        <div class="section-card" style="border-radius:0 0 var(--iam-radius) var(--iam-radius)">
+          <div class="section-body">
+            <div class="detail-row">
+              <span class="detail-lbl">Tên Change</span>
+              <span class="detail-val">{{ cr.changeName }}</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-lbl">Mã Change</span>
+              <span class="detail-val"><span class="cr-id">{{ shortId(cr.changeId) }}</span></span>
+            </div>
+            @if (cr.goliveAt) {
+              <div class="detail-row">
+                <span class="detail-lbl">Thời gian Go-Live</span>
+                <span class="detail-val">{{ fmtDate(cr.goliveAt) }}</span>
+              </div>
+            }
+            @if (cr.gitLink) {
+              <div class="detail-row">
+                <span class="detail-lbl">Git / Ticket Link</span>
+                <span class="detail-val">
+                  <a [href]="cr.gitLink" target="_blank" rel="noopener" class="link-ext">
+                    {{ cr.gitLink }} <i class="bi bi-box-arrow-up-right"></i>
+                  </a>
+                </span>
+              </div>
+            }
+            @if (cr.content) {
+              <div class="detail-row">
+                <span class="detail-lbl">Mô tả</span>
+                <span class="detail-val content-block">{{ cr.content }}</span>
+              </div>
+            }
+            <div class="detail-row">
+              <span class="detail-lbl">Người tạo</span>
+              <span class="detail-val">{{ cr.createdBy }} @if (cr.createdByCode) { <span class="emp-code-sm">{{ cr.createdByCode }}</span> }</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-lbl">Ngày tạo</span>
+              <span class="detail-val">{{ fmtDate(cr.createdAt) }}</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-lbl">Cập nhật lần cuối</span>
+              <span class="detail-val">{{ fmtDate(cr.updatedAt) }}</span>
+            </div>
+            <!-- Team -->
+            @if ((cr.teamMembers?.length ?? 0) > 0) {
+              <div class="detail-row" style="align-items:flex-start">
+                <span class="detail-lbl">Change Team</span>
+                <div class="team-view-grid" style="flex:1">
+                  @for (m of cr.teamMembers!; track m.id) {
+                    <div class="team-member-card">
+                      <div class="tm-avatar">{{ m.fullName.charAt(0) }}</div>
+                      <div class="tm-info">
+                        <div class="tm-name-row">
+                          <span class="tm-name">{{ m.fullName }}</span>
+                          @if (m.isLead === 1) { <span class="tm-lead-badge"><i class="bi bi-star-fill"></i> Lead</span> }
+                        </div>
+                        <div class="tm-username">&#64;{{ m.username }}
+                          @if (m.employeeCode) { <span class="emp-code-inline">{{ m.employeeCode }}</span> }
+                        </div>
+                        <div class="tm-role">{{ MEMBER_LABELS[m.memberRole] || m.memberRole }}</div>
+                      </div>
+                    </div>
+                  }
+                </div>
+              </div>
+            }
           </div>
         </div>
       }
 
-      <!-- Checklist -->
-      @if ((cr.checklistItems?.length ?? 0) > 0) {
-        <div class="section-card">
-          <div class="section-hdr">
-            <div class="section-icon"><i class="bi bi-check2-square"></i></div>
-            <span class="section-title">Checklist thực thi</span>
-          </div>
+      <!-- ── Tab: Go-Live Jobs ── -->
+      @if (activeTab === 'jobs') {
+        <div class="section-card" style="border-radius:0 0 var(--iam-radius) var(--iam-radius)">
+          @if (jobError) {
+            <div class="alert alert-error" style="margin:16px"><i class="bi bi-exclamation-triangle-fill"></i>{{ jobError }}</div>
+          }
+          @if ((cr.jobs?.length ?? 0) === 0) {
+            <div class="empty-state"><i class="bi bi-list-ol"></i><p>Chưa có job nào.</p></div>
+          } @else {
+            <div style="padding:0">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th style="width:44px">#</th>
+                    <th>Tên Job</th>
+                    <th style="width:110px">Loại</th>
+                    <th style="width:140px">Trạng thái</th>
+                    <th>Kết quả</th>
+                    @if (canRunJob) { <th style="width:90px"></th> }
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (job of cr.jobs!; track job.id) {
+                    <tr>
+                      <td class="txt-center txt-muted">{{ job.orderNum }}</td>
+                      <td>
+                        <strong>{{ job.name }}</strong>
+                        @if (job.link) {
+                          <br>
+                          <a [href]="job.link" target="_blank" rel="noopener" class="link-ext" style="font-size:12px">
+                            {{ job.link }} <i class="bi bi-box-arrow-up-right"></i>
+                          </a>
+                        }
+                      </td>
+                      <td><span class="job-type-badge">{{ JOB_TYPE_LABELS[job.jobType] || job.jobType }}</span></td>
+                      <td>
+                        <span [class]="'badge-status badge-JOB-' + (job.jobStatus || 'PENDING')">
+                          {{ job.jobStatus || 'PENDING' }}
+                        </span>
+                        @if (job.jobStatus === 'RUNNING') {
+                          <span class="spinner" style="width:14px;height:14px;border-width:2px;display:inline-block;margin-left:6px;vertical-align:middle"></span>
+                        }
+                      </td>
+                      <td>
+                        @if (job.resultNote) { <span style="font-size:12px;color:var(--iam-text-muted)">{{ job.resultNote }}</span> }
+                        @else if (job.completedAt) { <span class="txt-muted txt-sm">{{ fmtDate(job.completedAt) }}</span> }
+                        @else { <span class="txt-muted">—</span> }
+                      </td>
+                      @if (canRunJob) {
+                        <td>
+                          @if (!job.jobStatus || job.jobStatus === 'PENDING') {
+                            <button class="btn btn-primary btn-sm"
+                                    [disabled]="runningJobId !== null"
+                                    (click)="runJob(job)">
+                              @if (runningJobId === job.id) {
+                                <span class="spinner" style="width:12px;height:12px;border-width:2px"></span>
+                              } @else { <i class="bi bi-play-fill"></i> }
+                              Chạy
+                            </button>
+                          }
+                        </td>
+                      }
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+        </div>
+      }
+
+      <!-- ── Tab: Checklist ── -->
+      @if (activeTab === 'checklist') {
+        <div class="section-card" style="border-radius:0 0 var(--iam-radius) var(--iam-radius)">
           <div class="section-body">
             <div class="tab-nav">
               <button class="tab-btn" [class.active]="activePhase === 'PRE'" (click)="activePhase = 'PRE'">
-                Trước golive @if (preCount > 0) { <span class="tab-cnt">{{ preCount }}</span> }
+                Trước go-live @if (preCount > 0) { <span class="tab-cnt">{{ preCount }}</span> }
               </button>
               <button class="tab-btn" [class.active]="activePhase === 'DURING'" (click)="activePhase = 'DURING'">
-                Trong khi golive @if (duringCount > 0) { <span class="tab-cnt">{{ duringCount }}</span> }
+                Trong go-live @if (duringCount > 0) { <span class="tab-cnt">{{ duringCount }}</span> }
               </button>
               <button class="tab-btn" [class.active]="activePhase === 'ROLLBACK'" (click)="activePhase = 'ROLLBACK'">
                 Rollback @if (rollbackCount > 0) { <span class="tab-cnt">{{ rollbackCount }}</span> }
               </button>
             </div>
-
             @if (checklistByPhase.length === 0) {
-              <p style="color:var(--text-muted);font-size:13px;padding:8px 0">Không có bước nào.</p>
+              <div class="empty-state"><i class="bi bi-clipboard-check"></i><p>Không có bước nào trong giai đoạn này.</p></div>
             } @else {
               <div class="checklist-view">
                 @for (item of checklistByPhase; track item.id) {
@@ -544,27 +625,19 @@
                       @if (item.assignedTo) {
                         <span class="cl-assignee">
                           <i class="bi bi-person"></i> {{ item.assignedTo }}
-                          @if (item.assignedToCode) {
-                            <span class="emp-code-sm">{{ item.assignedToCode }}</span>
-                          }
+                          @if (item.assignedToCode) { <span class="emp-code-sm">{{ item.assignedToCode }}</span> }
                         </span>
                       }
                     </div>
                     <div class="cl-status">
-                      <span [class]="taskStatusClass(item.taskStatus)">
-                        {{ TASK_STATUS_LABELS[item.taskStatus || 'READY'] }}
-                      </span>
+                      <span [class]="taskStatusClass(item.taskStatus)">{{ TASK_STATUS_LABELS[item.taskStatus || 'READY'] }}</span>
                       @if (canUpdateItem(item)) {
-                        <button class="btn btn-success btn-xs"
-                                [disabled]="updatingItemId === item.id"
+                        <button class="btn btn-success btn-xs" [disabled]="updatingItemId === item.id"
                                 (click)="updateChecklistItem(item, 'SUCCESS')">
-                          @if (updatingItemId === item.id) {
-                            <span class="spinner" style="width:12px;height:12px;border-width:2px"></span>
-                          } @else { <i class="bi bi-check2"></i> }
-                          OK
+                          @if (updatingItemId === item.id) { <span class="spinner" style="width:12px;height:12px;border-width:2px"></span> }
+                          @else { <i class="bi bi-check2"></i> } OK
                         </button>
-                        <button class="btn btn-danger btn-xs"
-                                [disabled]="updatingItemId === item.id"
+                        <button class="btn btn-danger btn-xs" [disabled]="updatingItemId === item.id"
                                 (click)="updateChecklistItem(item, 'FAIL')">
                           <i class="bi bi-x"></i> Fail
                         </button>
@@ -578,58 +651,18 @@
         </div>
       }
 
-      <!-- Change Team -->
-      @if ((cr.teamMembers?.length ?? 0) > 0) {
-        <div class="section-card">
-          <div class="section-hdr">
-            <div class="section-icon"><i class="bi bi-people"></i></div>
-            <span class="section-title">Change Team</span>
-            <span class="badge-count">{{ cr.teamMembers!.length }} thành viên</span>
-          </div>
-          <div class="section-body">
-            <div class="team-view-grid">
-              @for (m of cr.teamMembers!; track m.id) {
-                <div class="team-member-card">
-                  <div class="tm-avatar">{{ m.fullName.charAt(0) }}</div>
-                  <div class="tm-info">
-                    <div class="tm-name-row">
-                      <span class="tm-name">{{ m.fullName }}</span>
-                      @if (m.isLead === 1) {
-                        <span class="tm-lead-badge"><i class="bi bi-star-fill"></i> Lead</span>
-                      }
-                    </div>
-                    <div class="tm-username">&#64;{{ m.username }}
-                      @if (m.employeeCode) {
-                        <span class="emp-code-inline">{{ m.employeeCode }}</span>
-                      }
-                    </div>
-                    <div class="tm-role">{{ MEMBER_LABELS[m.memberRole] || m.memberRole }}</div>
-                  </div>
-                </div>
-              }
-            </div>
-          </div>
-        </div>
-      }
-
-      <!-- Approvers -->
-      @if ((cr.approvers?.length ?? 0) > 0) {
-        <div class="section-card">
-          <div class="section-hdr">
-            <div class="section-icon"><i class="bi bi-person-check"></i></div>
-            <span class="section-title">Danh sách CAB</span>
-          </div>
-          <div class="section-body" style="padding:0">
+      <!-- ── Tab: Phê duyệt (chỉ hiện khi canViewApproval) ── -->
+      @if (activeTab === 'approval' && canViewApproval) {
+        <div class="section-card" style="border-radius:0 0 var(--iam-radius) var(--iam-radius)">
+          @if ((cr.approvers?.length ?? 0) === 0) {
+            <div class="empty-state"><i class="bi bi-person-check"></i><p>Chưa có CAB approver nào.</p></div>
+          } @else {
             <table class="data-table">
               <thead>
                 <tr>
-                  <th>#</th>
-                  <th>Họ tên</th>
-                  <th>Username</th>
-                  <th>Mã NV</th>
-                  <th style="width:120px">Trạng thái</th>
-                  <th>Ghi chú</th>
-                  <th style="width:160px">Thời gian duyệt</th>
+                  <th>#</th><th>Họ tên</th><th>Username</th><th>Mã NV</th>
+                  <th style="width:120px">Trạng thái</th><th>Ghi chú</th>
+                  <th style="width:150px">Thời gian quyết định</th>
                 </tr>
               </thead>
               <tbody>
@@ -639,21 +672,106 @@
                     <td><strong>{{ a.fullName }}</strong></td>
                     <td class="txt-muted">&#64;{{ a.username }}</td>
                     <td class="txt-muted">{{ a.employeeCode }}</td>
-                    <td>
-                      <span [class]="approverStatusClass(a)">{{ approverStatusLabel(a) }}</span>
-                    </td>
+                    <td><span [class]="approverStatusClass(a)">{{ approverStatusLabel(a) }}</span></td>
                     <td class="txt-muted">{{ a.note || '—' }}</td>
                     <td class="txt-muted">{{ fmtDate(a.decidedAt) }}</td>
                   </tr>
                 }
               </tbody>
             </table>
+          }
+        </div>
+      }
+
+      <!-- ── Tab: Tài liệu ── -->
+      @if (activeTab === 'artifacts') {
+        <div class="section-card" style="border-radius:0 0 var(--iam-radius) var(--iam-radius)">
+          <div class="section-hdr">
+            <span class="section-title">Tài liệu đính kèm</span>
+            @if (canManageArtifacts) {
+              <button class="btn btn-outline btn-sm ms-auto" (click)="openAddDoc()">
+                <i class="bi bi-plus"></i> Thêm tài liệu
+              </button>
+            }
+          </div>
+          @if (documents.length === 0) {
+            <div class="empty-state"><i class="bi bi-paperclip"></i><p>Chưa có tài liệu nào.</p></div>
+          } @else {
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th style="width:120px">Loại</th><th>Tiêu đề</th><th>Link</th>
+                  <th>Ghi chú</th><th>Người thêm</th><th style="width:140px">Ngày thêm</th>
+                  @if (canManageArtifacts) { <th style="width:60px"></th> }
+                </tr>
+              </thead>
+              <tbody>
+                @for (doc of documents; track doc.id) {
+                  <tr>
+                    <td><span [class]="'badge-doc-' + doc.docType">{{ doc.docType }}</span></td>
+                    <td><strong>{{ doc.title }}</strong></td>
+                    <td>
+                      @if (doc.url) {
+                        <a [href]="doc.url" target="_blank" rel="noopener" class="link-ext" style="font-size:12px">
+                          Mở link <i class="bi bi-box-arrow-up-right"></i>
+                        </a>
+                      } @else { <span class="txt-muted">—</span> }
+                    </td>
+                    <td class="txt-muted">{{ doc.note || '—' }}</td>
+                    <td class="txt-muted">{{ doc.createdBy }}</td>
+                    <td class="txt-muted">{{ fmtDate(doc.createdAt) }}</td>
+                    @if (canManageArtifacts) {
+                      <td>
+                        <button class="btn btn-icon btn-danger btn-sm" (click)="deleteDoc(doc)" title="Xóa">
+                          <i class="bi bi-trash"></i>
+                        </button>
+                      </td>
+                    }
+                  </tr>
+                }
+              </tbody>
+            </table>
+          }
+        </div>
+      }
+
+      <!-- ── Tab: Lịch sử ── -->
+      @if (activeTab === 'history') {
+        <div class="section-card" style="border-radius:0 0 var(--iam-radius) var(--iam-radius)">
+          <div class="section-body">
+            @if (auditLogs.length === 0) {
+              <div class="empty-state"><i class="bi bi-clock-history"></i><p>Chưa có hoạt động nào.</p></div>
+            } @else {
+              <div class="audit-timeline">
+                @for (log of auditLogs; track log.id) {
+                  <div class="audit-item">
+                    <div class="audit-icon"><i class="bi bi-activity"></i></div>
+                    <div class="audit-content">
+                      <div class="audit-action">{{ log.action }}</div>
+                      @if (log.fromStatus || log.toStatus) {
+                        <div class="audit-transition">
+                          @if (log.fromStatus) { <span class="badge-status badge-{{ log.fromStatus }}">{{ STATUS_LABELS[log.fromStatus] || log.fromStatus }}</span> }
+                          @if (log.fromStatus && log.toStatus) { <i class="bi bi-arrow-right" style="font-size:12px;color:var(--iam-text-muted)"></i> }
+                          @if (log.toStatus) { <span class="badge-status badge-{{ log.toStatus }}">{{ STATUS_LABELS[log.toStatus] || log.toStatus }}</span> }
+                        </div>
+                      }
+                      @if (log.note) { <div class="audit-note">{{ log.note }}</div> }
+                      <div class="audit-meta">
+                        <strong>{{ log.performedBy }}</strong>
+                        @if (log.performedByCode) { <span class="emp-code-sm">{{ log.performedByCode }}</span> }
+                        · {{ fmtDate(log.createdAt) }}
+                      </div>
+                    </div>
+                  </div>
+                }
+              </div>
+            }
           </div>
         </div>
       }
 
       <!-- Bottom action bar -->
-      @if (canEdit || canSubmit || canApprove || canExecute || canUpdateResult) {
+      @if (canEdit || canSubmit || canApproveAction || canExecute || canFinalize) {
         <div class="bottom-action-bar">
           @if (actionError) {
             <span class="bottom-error"><i class="bi bi-exclamation-triangle-fill"></i> {{ actionError }}</span>
@@ -669,11 +787,11 @@
                 <i class="bi bi-send"></i> Gửi duyệt
               </button>
             }
-            @if (canApprove) {
-              <button class="btn btn-danger" (click)="showRejectModal = true; actionError = ''">
+            @if (canApproveAction) {
+              <button class="btn btn-danger" (click)="showRejectModal = true; actionError = ''; activeTab = 'approval'">
                 <i class="bi bi-x-circle"></i> Từ chối
               </button>
-              <button class="btn btn-success" (click)="showApproveModal = true; actionError = ''">
+              <button class="btn btn-success" (click)="showApproveModal = true; actionError = ''; activeTab = 'approval'">
                 <i class="bi bi-check-circle"></i> Phê duyệt
               </button>
             }
@@ -682,9 +800,9 @@
                 <i class="bi bi-play-circle"></i> Bắt đầu Go-Live
               </button>
             }
-            @if (canUpdateResult) {
+            @if (canFinalize) {
               <button class="btn btn-warning" (click)="showResultModal = true; actionError = ''">
-                <i class="bi bi-flag"></i> Ghi nhận kết quả
+                <i class="bi bi-flag"></i> Chốt kết quả
               </button>
             }
           </div>
@@ -698,6 +816,48 @@
   }
 
 </div>
+
+<!-- ── Add Document Modal ── -->
+@if (showAddDocModal) {
+  <div class="modal-overlay" (click)="closeAddDoc()">
+    <div class="modal-panel" (click)="$event.stopPropagation()">
+      <div class="modal-hdr"><i class="bi bi-paperclip" style="color:var(--iam-primary)"></i> Thêm tài liệu</div>
+      <div class="modal-body">
+        @if (docError) { <div class="alert alert-error" style="margin-bottom:14px"><i class="bi bi-exclamation-triangle-fill"></i> {{ docError }}</div> }
+        <div class="form-group">
+          <label class="form-label">Loại tài liệu <span class="req">*</span></label>
+          <select class="form-control" [(ngModel)]="newDoc.docType">
+            <option value="GIT">GIT</option>
+            <option value="JIRA">JIRA</option>
+            <option value="CONFLUENCE">CONFLUENCE</option>
+            <option value="BUILD">BUILD</option>
+            <option value="OTHER">OTHER</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Tiêu đề <span class="req">*</span></label>
+          <input class="form-control" type="text" [(ngModel)]="newDoc.title" placeholder="Tên tài liệu...">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Link URL</label>
+          <input class="form-control" type="url" [(ngModel)]="newDoc.url" placeholder="https://...">
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label class="form-label">Ghi chú</label>
+          <textarea class="form-control" [(ngModel)]="newDoc.note" rows="2" placeholder="Mô tả thêm..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" (click)="closeAddDoc()" [disabled]="savingDoc">Hủy</button>
+        <button class="btn btn-primary" (click)="saveDoc()" [disabled]="savingDoc || !newDoc.title.trim()">
+          @if (savingDoc) { <span class="spinner" style="width:14px;height:14px;border-width:2px"></span> }
+          @else { <i class="bi bi-plus"></i> }
+          Thêm
+        </button>
+      </div>
+    </div>
+  </div>
+}
 
 <!-- ── Approve Modal ── -->
 @if (showApproveModal) {

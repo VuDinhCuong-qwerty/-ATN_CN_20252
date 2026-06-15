@@ -1,0 +1,84 @@
+<div class="page-header">
+  <div class="page-title-icon"><i class="bi bi-speedometer2"></i></div>
+  <div>
+    <h4 class="page-title">Dashboard</h4>
+    <div class="page-subtitle">Tổng quan hệ thống Change Management</div>
+  </div>
+</div>
+
+@if (loading) {
+  <div class="loading-box"><span class="spinner"></span> Đang tải...</div>
+} @else if (error) {
+  <div class="alert alert-error"><i class="bi bi-exclamation-triangle-fill"></i> {{ error }}</div>
+} @else if (stats) {
+
+  <!-- Stat cards -->
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-icon stat-icon-blue"><i class="bi bi-file-earmark-text"></i></div>
+      <div class="stat-body">
+        <div class="stat-value">{{ stats.totalThisMonth }}</div>
+        <div class="stat-label">Tổng change tháng này</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon stat-icon-amber"><i class="bi bi-hourglass-split"></i></div>
+      <div class="stat-body">
+        <div class="stat-value">{{ stats.pendingApproval }}</div>
+        <div class="stat-label">Chờ phê duyệt</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon stat-icon-indigo"><i class="bi bi-rocket-takeoff"></i></div>
+      <div class="stat-body">
+        <div class="stat-value">{{ stats.executing }}</div>
+        <div class="stat-label">Đang thực thi</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon stat-icon-green"><i class="bi bi-check-circle"></i></div>
+      <div class="stat-body">
+        <div class="stat-value">{{ stats.successRate | number:'1.0-0' }}%</div>
+        <div class="stat-label">Tỷ lệ thành công</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent changes -->
+  <div class="section-card">
+    <div class="section-hdr">
+      <div class="section-icon"><i class="bi bi-clock-history"></i></div>
+      <span class="section-title">Change gần đây</span>
+      <a routerLink="/changes" class="btn btn-ghost btn-sm" style="margin-left:auto">Xem tất cả</a>
+    </div>
+    @if (stats.recentChanges.length === 0) {
+      <div class="empty-state"><i class="bi bi-inbox"></i><p>Chưa có change request nào.</p></div>
+    } @else {
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Tên Change</th>
+            <th style="width:140px">Trạng thái</th>
+            <th style="width:160px">Thời gian Go-Live</th>
+            <th style="width:130px">Người tạo</th>
+            <th style="width:150px">Cập nhật</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (c of stats.recentChanges; track c.id) {
+            <tr class="clickable" [routerLink]="['/changes', c.id]">
+              <td>
+                <strong>{{ c.changeName }}</strong>
+                @if (c.changeId) { <br><span style="font-size:11px;color:var(--iam-text-muted);font-family:monospace">{{ shortId(c.changeId) }}</span> }
+              </td>
+              <td><span [class]="'badge-status badge-' + c.status">{{ STATUS_LABELS[c.status] || c.status }}</span></td>
+              <td class="txt-muted">{{ fmtDate(c.goliveAt) }}</td>
+              <td class="txt-muted">{{ c.createdBy }}</td>
+              <td class="txt-muted">{{ fmtDate(c.updatedAt) }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    }
+  </div>
+}

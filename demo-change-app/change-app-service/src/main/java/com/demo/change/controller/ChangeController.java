@@ -20,6 +20,7 @@ import com.demo.change.dto.request.UpdateChangeRequest;
 import com.demo.change.dto.request.UpdateChecklistStatusRequest;
 import com.demo.change.dto.response.ChangeDetailResponse;
 import com.demo.change.dto.response.ChangeListItemResponse;
+import com.demo.change.dto.response.GoliveJobResponse;
 import com.demo.change.dto.response.PageResponse;
 import com.demo.change.service.ChangeService;
 
@@ -91,7 +92,7 @@ public class ChangeController {
     }
 
     @PostMapping("/{id}/submit")
-    @PreAuthorize("hasAuthority('change-mgmt/change-request:update')")
+    @PreAuthorize("hasAuthority('change-mgmt/change-request:submit')")
     public ResponseEntity<ApiResponse<Void>> submitChange(
             @PathVariable Long id,
             Authentication authentication,
@@ -105,7 +106,7 @@ public class ChangeController {
     }
 
     @PostMapping("/{id}/approve")
-    @PreAuthorize("hasAuthority('change-mgmt/change-request:approve')")
+    @PreAuthorize("hasAuthority('change-mgmt/change-approval:approve')")
     public ResponseEntity<ApiResponse<Void>> approveChange(
             @PathVariable Long id,
             @RequestBody(required = false) ApproveActionRequest body,
@@ -121,7 +122,7 @@ public class ChangeController {
     }
 
     @PostMapping("/{id}/reject")
-    @PreAuthorize("hasAuthority('change-mgmt/change-request:approve')")
+    @PreAuthorize("hasAuthority('change-mgmt/change-approval:reject')")
     public ResponseEntity<ApiResponse<Void>> rejectChange(
             @PathVariable Long id,
             @RequestBody(required = false) ApproveActionRequest body,
@@ -137,7 +138,7 @@ public class ChangeController {
     }
 
     @PostMapping("/{id}/execute")
-    @PreAuthorize("hasAuthority('change-mgmt/change-request:execute')")
+    @PreAuthorize("hasAuthority('change-mgmt/change-execution:execute')")
     public ResponseEntity<ApiResponse<Void>> executeChange(
             @PathVariable Long id,
             Authentication authentication,
@@ -151,7 +152,7 @@ public class ChangeController {
     }
 
     @PostMapping("/{changeId}/checklist/{itemId}/status")
-    @PreAuthorize("hasAuthority('change-mgmt/change-request:update')")
+    @PreAuthorize("hasAuthority('change-mgmt/change-checklist:update')")
     public ResponseEntity<ApiResponse<Void>> updateChecklistItemStatus(
             @PathVariable Long changeId,
             @PathVariable Long itemId,
@@ -166,7 +167,7 @@ public class ChangeController {
     }
 
     @PostMapping("/{id}/result")
-    @PreAuthorize("hasAuthority('change-mgmt/change-request:execute')")
+    @PreAuthorize("hasAuthority('change-mgmt/change-execution:finalize')")
     public ResponseEntity<ApiResponse<Void>> finalizeResult(
             @PathVariable Long id,
             Authentication authentication,
@@ -177,5 +178,20 @@ public class ChangeController {
         log.info("[ChangeController] POST /api/changes/{}/result by={}/{}", id, username, userCode);
         changeService.finalizeResult(id, username, userCode);
         return ResponseEntity.ok(ApiResponse.ok(null, request.getRequestURI()));
+    }
+
+    @PostMapping("/{changeId}/jobs/{jobId}/run")
+    @PreAuthorize("hasAuthority('change-mgmt/change-execution:execute')")
+    public ResponseEntity<ApiResponse<GoliveJobResponse>> runJob(
+            @PathVariable Long changeId,
+            @PathVariable Long jobId,
+            Authentication authentication,
+            HttpServletRequest request) {
+        JwtAuthenticationToken jwt = (JwtAuthenticationToken) authentication;
+        String username = jwt.getToken().getClaimAsString("username");
+        String userCode = jwt.getToken().getClaimAsString("employeeCode");
+        log.info("[ChangeController] POST /api/changes/{}/jobs/{}/run by={}/{}", changeId, jobId, username, userCode);
+        GoliveJobResponse data = changeService.runJob(changeId, jobId, username, userCode);
+        return ResponseEntity.ok(ApiResponse.ok(data, request.getRequestURI()));
     }
 }

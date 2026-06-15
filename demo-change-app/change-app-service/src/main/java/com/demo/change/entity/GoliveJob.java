@@ -43,6 +43,18 @@ public class GoliveJob {
     @Column(name = "ORDER_NUM")
     private Integer orderNum;
 
+    @Column(name = "JOB_STATUS")
+    private String jobStatus;   // PENDING/RUNNING/SUCCESS/FAIL
+
+    @Column(name = "STARTED_AT")
+    private LocalDateTime startedAt;
+
+    @Column(name = "COMPLETED_AT")
+    private LocalDateTime completedAt;
+
+    @Column(name = "RESULT_NOTE")
+    private String resultNote;
+
     @Column(name = "STATUS")
     private Integer status;
 
@@ -57,6 +69,13 @@ public class GoliveJob {
 
     @Column(name = "UPDATED_AT")
     private LocalDateTime updatedAt;
+
+    public interface JOB_STATUS {
+        String PENDING = "PENDING";
+        String RUNNING = "RUNNING";
+        String SUCCESS = "SUCCESS";
+        String FAIL    = "FAIL";
+    }
 
     public interface JOB_TYPE {
         String MERGE  = "MERGE";

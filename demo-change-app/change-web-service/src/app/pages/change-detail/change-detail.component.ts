@@ -5,7 +5,7 @@ import { ChangeService } from '../../shared/services/change.service';
 import { PermissionService } from '../../core/auth/permission.service';
 import {
   ChangeRequest, ChecklistItem, Approver, Phase,
-  GoliveJob, TeamMember
+  GoliveJob, TeamMember, Document, AuditLogEntry
 } from '../../shared/models/change.model';
 import { TeamSlot, ApproverSlot, ChecklistStep } from '../change-form/change-form.component';
 
@@ -26,6 +26,9 @@ export class ChangeDetailComponent implements OnInit {
   actionError = '';
   actionSuccess = '';
 
+  // Active tab (6 tabs)
+  activeTab: 'info' | 'jobs' | 'checklist' | 'approval' | 'artifacts' | 'history' = 'info';
+
   // Approve/reject modal
   showApproveModal = false;
   approveNote = '';
@@ -39,6 +42,20 @@ export class ChangeDetailComponent implements OnInit {
   acting = false;
   updatingItemId: number | null = null;
   activePhase: Phase = 'PRE';
+
+  // Job execution
+  runningJobId: number | null = null;
+  jobError = '';
+
+  // Documents
+  documents: Document[] = [];
+  showAddDocModal = false;
+  newDoc = { docType: 'GIT', title: '', url: '', note: '' };
+  savingDoc = false;
+  docError = '';
+
+  // Audit log
+  auditLogs: AuditLogEntry[] = [];
 
   // ── Edit mode ─────────────────────────────────────────────────────────────
   editMode = false;
@@ -98,7 +115,12 @@ export class ChangeDetailComponent implements OnInit {
   load(id: number) {
     this.loading = true; this.error = '';
     this.svc.getChangeDetail(id).subscribe({
-      next: cr => { this.cr = cr; this.loading = false; },
+      next: cr => {
+        this.cr = cr;
+        this.documents = cr.documents ?? [];
+        this.auditLogs = cr.auditLogs ?? [];
+        this.loading = false;
+      },
       error: () => { this.error = 'Không thể tải chi tiết.'; this.loading = false; }
     });
   }
@@ -108,25 +130,37 @@ export class ChangeDetailComponent implements OnInit {
   // ── Computed permissions ──────────────────────────────────────────────────
 
   get canEdit(): boolean {
-    return !!(this.perm.has('update') && this.cr?.status === 'DRAFT' && this.cr?.createdBy === this.perm.username);
+    return !!(this.perm.has('change-request', 'update') && this.cr?.status === 'DRAFT' && this.cr?.createdBy === this.perm.username);
   }
 
   get canSubmit(): boolean {
-    return !!(this.perm.has('update') && this.cr?.status === 'DRAFT' && this.cr?.createdBy === this.perm.username);
+    return !!(this.perm.has('change-request', 'submit') && this.cr?.status === 'DRAFT' && this.cr?.createdBy === this.perm.username);
   }
 
-  get canApprove(): boolean {
-    if (!this.perm.has('approve') || this.cr?.status !== 'PENDING') return false;
+  get canViewApproval(): boolean {
+    return this.perm.has('change-approval', 'view');
+  }
+
+  get canApproveAction(): boolean {
+    if (!this.perm.has('change-approval', 'approve') || this.cr?.status !== 'PENDING') return false;
     const myCode = this.perm.employeeCode;
-    return !!(myCode && this.cr?.approvers?.some(a => a.employeeCode === myCode));
+    return !!(myCode && this.cr?.approvers?.some(a => a.employeeCode === myCode && a.approveStatus === 'PENDING'));
   }
 
   get canExecute(): boolean {
-    return !!(this.perm.has('execute') && this.cr?.status === 'APPROVED' && this.cr?.createdBy === this.perm.username);
+    return !!(this.perm.has('change-execution', 'execute') && this.cr?.status === 'APPROVED' && this.cr?.createdBy === this.perm.username);
   }
 
-  get canUpdateResult(): boolean {
-    return !!(this.perm.has('execute') && this.cr?.status === 'EXECUTING' && this.cr?.createdByCode === this.perm.employeeCode);
+  get canRunJob(): boolean {
+    return !!(this.perm.has('change-execution', 'execute') && this.cr?.status === 'EXECUTING');
+  }
+
+  get canFinalize(): boolean {
+    return !!(this.perm.has('change-execution', 'finalize') && this.cr?.status === 'EXECUTING' && this.cr?.createdByCode === this.perm.employeeCode);
+  }
+
+  get canManageArtifacts(): boolean {
+    return this.perm.has('change-artifact', 'manage');
   }
 
   // ── View-mode checklist helpers ───────────────────────────────────────────
@@ -143,11 +177,55 @@ export class ChangeDetailComponent implements OnInit {
 
   canUpdateItem(item: ChecklistItem): boolean {
     return !!(
-      this.perm.has('update') &&
+      this.perm.has('change-checklist', 'update') &&
       this.cr?.status === 'EXECUTING' &&
       (!item.taskStatus || item.taskStatus === 'READY') &&
       item.assignedToCode === this.perm.employeeCode
     );
+  }
+
+  // ── Job execution ─────────────────────────────────────────────────────────
+
+  runJob(job: GoliveJob) {
+    if (!this.cr?.id || !job.id || this.runningJobId) return;
+    this.runningJobId = job.id;
+    this.jobError = '';
+    this.svc.runJob(this.cr.id, job.id).subscribe({
+      next: updatedJob => {
+        // Update the job in local array
+        if (this.cr?.jobs) {
+          const idx = this.cr.jobs.findIndex(j => j.id === job.id);
+          if (idx >= 0) this.cr.jobs[idx] = { ...this.cr.jobs[idx], ...updatedJob };
+        }
+        this.runningJobId = null;
+      },
+      error: e => {
+        this.runningJobId = null;
+        this.jobError = e?.error?.errorDesc || e?.error?.message || 'Không thể chạy job.';
+      }
+    });
+  }
+
+  // ── Documents ─────────────────────────────────────────────────────────────
+
+  openAddDoc() { this.newDoc = { docType: 'GIT', title: '', url: '', note: '' }; this.docError = ''; this.showAddDocModal = true; }
+  closeAddDoc() { this.showAddDocModal = false; }
+
+  saveDoc() {
+    if (!this.cr?.id || !this.newDoc.title.trim()) { this.docError = 'Tiêu đề là bắt buộc.'; return; }
+    this.savingDoc = true; this.docError = '';
+    this.svc.addDocument(this.cr.id, this.newDoc).subscribe({
+      next: doc => { this.documents = [doc, ...this.documents]; this.savingDoc = false; this.closeAddDoc(); },
+      error: e => { this.savingDoc = false; this.docError = e?.error?.errorDesc || 'Không thể thêm tài liệu.'; }
+    });
+  }
+
+  deleteDoc(doc: Document) {
+    if (!this.cr?.id || !doc.id) return;
+    this.svc.deleteDocument(this.cr.id, doc.id).subscribe({
+      next: () => { this.documents = this.documents.filter(d => d.id !== doc.id); },
+      error: e => { this.actionError = e?.error?.errorDesc || 'Không thể xóa tài liệu.'; }
+    });
   }
 
   updateChecklistItem(item: ChecklistItem, taskStatus: 'SUCCESS' | 'FAIL') {
