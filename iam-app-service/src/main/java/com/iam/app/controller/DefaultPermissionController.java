@@ -79,12 +79,13 @@ public class DefaultPermissionController {
             @RequestParam(required = false) String positionCode,
             @RequestParam(required = false) Long resourceId,
             @RequestParam(required = false) String status,
+            @RequestParam(required = false) Long applicationId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
 
         Pageable pageable = PageRequest.of(page, size);
         Page<DefaultResourcePermissionResponse> result = defaultResourcePermissionService
-                .getPermissions(roleId, positionCode, resourceId, status, pageable);
+                .getPermissions(roleId, positionCode, resourceId, status, applicationId, pageable);
         return ResponseEntity.ok(ApiResponse.ok(result, BASE_URL + "/resources"));
     }
 

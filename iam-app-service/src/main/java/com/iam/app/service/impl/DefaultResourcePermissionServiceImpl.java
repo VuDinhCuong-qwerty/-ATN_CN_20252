@@ -43,9 +43,9 @@ public class DefaultResourcePermissionServiceImpl implements DefaultResourcePerm
     @Override
     public Page<DefaultResourcePermissionResponse> getPermissions(Long roleId, String positionCode,
                                                                   Long resourceId, String status,
-                                                                  Pageable pageable) {
+                                                                  Long applicationId, Pageable pageable) {
         Page<AuthDefaultResource> page = resourcePermissionRepository.findByFilters(
-                roleId, positionCode, resourceId, status, pageable);
+                roleId, positionCode, resourceId, status, applicationId, pageable);
 
         List<AuthDefaultResource> content = page.getContent();
         if (content.isEmpty()) {

@@ -17,17 +17,21 @@ public interface AuthDefaultResourceRepository extends JpaRepository<AuthDefault
     List<AuthDefaultResource> findByResourceId(@Param("resourceId") Long resourceId);
 
     @Query(
-        value = "SELECT * FROM AUTH_DEFAULT_RESOURCE " +
-                "WHERE (:roleId IS NULL OR ROLE_ID = :roleId) " +
-                "AND (:positionCode IS NULL OR POSITION_CODE = :positionCode) " +
-                "AND (:resourceId IS NULL OR RESOURCE_ID = :resourceId) " +
-                "AND (:status IS NULL OR STATUS = :status) " +
-                "ORDER BY CREATED_AT DESC",
-        countQuery = "SELECT COUNT(*) FROM AUTH_DEFAULT_RESOURCE " +
-                     "WHERE (:roleId IS NULL OR ROLE_ID = :roleId) " +
-                     "AND (:positionCode IS NULL OR POSITION_CODE = :positionCode) " +
-                     "AND (:resourceId IS NULL OR RESOURCE_ID = :resourceId) " +
-                     "AND (:status IS NULL OR STATUS = :status)",
+        value = "SELECT dr.* FROM AUTH_DEFAULT_RESOURCE dr " +
+                "JOIN AUTH_RESOURCE r ON r.ID = dr.RESOURCE_ID " +
+                "WHERE (:roleId IS NULL OR dr.ROLE_ID = :roleId) " +
+                "AND (:positionCode IS NULL OR dr.POSITION_CODE = :positionCode) " +
+                "AND (:resourceId IS NULL OR dr.RESOURCE_ID = :resourceId) " +
+                "AND (:status IS NULL OR dr.STATUS = :status) " +
+                "AND (:applicationId IS NULL OR r.APP_ID = :applicationId) " +
+                "ORDER BY dr.CREATED_AT DESC",
+        countQuery = "SELECT COUNT(*) FROM AUTH_DEFAULT_RESOURCE dr " +
+                     "JOIN AUTH_RESOURCE r ON r.ID = dr.RESOURCE_ID " +
+                     "WHERE (:roleId IS NULL OR dr.ROLE_ID = :roleId) " +
+                     "AND (:positionCode IS NULL OR dr.POSITION_CODE = :positionCode) " +
+                     "AND (:resourceId IS NULL OR dr.RESOURCE_ID = :resourceId) " +
+                     "AND (:status IS NULL OR dr.STATUS = :status) " +
+                     "AND (:applicationId IS NULL OR r.APP_ID = :applicationId)",
         nativeQuery = true
     )
     Page<AuthDefaultResource> findByFilters(
@@ -35,6 +39,7 @@ public interface AuthDefaultResourceRepository extends JpaRepository<AuthDefault
             @Param("positionCode") String positionCode,
             @Param("resourceId") Long resourceId,
             @Param("status") String status,
+            @Param("applicationId") Long applicationId,
             Pageable pageable);
 
     @Query(value = "SELECT * FROM AUTH_DEFAULT_RESOURCE WHERE ROLE_ID IN :roleIds", nativeQuery = true)

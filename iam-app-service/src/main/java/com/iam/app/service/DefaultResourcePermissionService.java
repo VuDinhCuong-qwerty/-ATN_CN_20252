@@ -12,7 +12,7 @@ public interface DefaultResourcePermissionService {
 
     Page<DefaultResourcePermissionResponse> getPermissions(Long roleId, String positionCode,
                                                            Long resourceId, String status,
-                                                           Pageable pageable);
+                                                           Long applicationId, Pageable pageable);
 
     List<DefaultResourcePermissionResponse> createPermissions(CreateDefaultResourcePermissionRequest request);
 

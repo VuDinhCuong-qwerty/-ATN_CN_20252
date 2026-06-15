@@ -152,6 +152,7 @@ export class DefaultPermListComponent implements OnInit {
     const params: any = { page: this.resourcePermsPage, size: this.resourcePermsSize };
     if (this.filterResource.roleId) params.roleId = this.filterResource.roleId;
     if (this.filterResource.positionCode) params.positionCode = this.filterResource.positionCode;
+    if (this.filterResAppId) params.applicationId = this.filterResAppId;
     if (this.filterResource.resourceId) params.resourceId = this.filterResource.resourceId;
     if (this.filterResource.status) params.status = this.filterResource.status;
     this.api.getDefaultResourcePerms(params).subscribe({
