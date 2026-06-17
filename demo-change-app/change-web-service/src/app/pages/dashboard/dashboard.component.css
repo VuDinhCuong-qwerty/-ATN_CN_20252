@@ -32,3 +32,13 @@
 .stats-grid { margin-bottom: 24px; }
 .stat-value { font-size: 28px; font-weight: 700; color: var(--iam-text, #0F2044); }
 .stat-label { font-size: 13px; color: var(--iam-text-muted, #5A6E8C); margin-top: 2px; }
+
+/* Charts row */
+.charts-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+  gap: 20px;
+  margin-bottom: 24px;
+}
+.chart-card { margin-bottom: 0 !important; }
+.chart-body { padding: 20px 24px 24px; }

@@ -5,4 +5,4 @@ volumes:
 
 networks:
   iam-internal-network:
-    driver: bridge
+    external: true

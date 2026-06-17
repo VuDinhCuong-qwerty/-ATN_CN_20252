@@ -32,33 +32,22 @@
     </div>
   </div>
 
-  <!-- By status table -->
+  <!-- Donut chart: by status -->
   <div class="section-card" style="margin-bottom:20px">
     <div class="section-hdr">
-      <div class="section-icon"><i class="bi bi-pie-chart"></i></div>
+      <div class="section-icon"><i class="bi bi-pie-chart-fill"></i></div>
       <span class="section-title">Thống kê theo trạng thái</span>
+      <span class="section-hint" style="margin-left:auto;font-size:12px;color:var(--iam-text-muted)">
+        Di chuột vào biểu đồ để xem chi tiết
+      </span>
     </div>
-    <table class="data-table">
-      <thead><tr>
-        <th>Trạng thái</th>
-        <th style="width:120px;text-align:right">Số lượng</th>
-        <th>Tỷ lệ</th>
-      </tr></thead>
-      <tbody>
-        @for (e of statusEntries; track e.status) {
-          <tr>
-            <td><span [class]="'badge-status badge-' + e.status">{{ STATUS_LABELS[e.status] || e.status }}</span></td>
-            <td style="text-align:right;font-weight:700">{{ e.count }}</td>
-            <td>
-              <div class="progress-bar-wrap">
-                <div class="progress-bar-fill" [style.width.%]="summary.totalAll > 0 ? (e.count / summary.totalAll * 100) : 0"></div>
-                <span class="progress-pct">{{ summary.totalAll > 0 ? (e.count / summary.totalAll * 100 | number:'1.0-0') : 0 }}%</span>
-              </div>
-            </td>
-          </tr>
-        }
-      </tbody>
-    </table>
+    <div class="chart-body">
+      <app-donut-chart
+        [segments]="statusSegments"
+        [total]="summary.totalAll"
+        centerLabel="Change"
+      />
+    </div>
   </div>
 
   <!-- Top creators -->

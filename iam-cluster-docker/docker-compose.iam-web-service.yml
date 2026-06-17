@@ -1,0 +1,15 @@
+services:
+  iam-web-service:
+    image: iam-web-service:latest
+    container_name: iam-web-service
+    restart: unless-stopped
+    ports:
+      - "4200:4200"
+    networks:
+      - iam-internal-network
+    depends_on:
+      - iam-gateway
+
+networks:
+  iam-internal-network:
+    external: true

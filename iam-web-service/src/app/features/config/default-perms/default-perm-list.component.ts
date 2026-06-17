@@ -14,6 +14,7 @@ export class DefaultPermListComponent implements OnInit {
 
   activeTab: 'app' | 'resource' = 'app';
   roles: any[] = [];
+  positions: any[] = [];
   applications: any[] = [];
 
   // ── App permissions ──────────────────────────────────────────────────────
@@ -65,6 +66,7 @@ export class DefaultPermListComponent implements OnInit {
 
   ngOnInit() {
     this.api.getRoles().subscribe({ next: res => this.roles = res.data ?? [] });
+    this.api.getPositions().subscribe({ next: res => this.positions = res.data ?? [] });
     this.api.getApplications({ size: 200 }).subscribe({
       next: res => this.applications = res.data?.content ?? res.data ?? []
     });

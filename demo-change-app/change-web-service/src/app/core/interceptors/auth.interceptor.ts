@@ -13,7 +13,7 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const store = inject(TokenStoreService);
   const auth  = inject(AuthService);
 
-  const shouldAttach = req.url.startsWith('/api/') && !isTokenEndpoint(req.url);
+  const shouldAttach = req.url.includes('/api/') && !isTokenEndpoint(req.url);
   const token = store.getToken();
   const outReq = (shouldAttach && token) ? withBearer(req, token) : req;
 

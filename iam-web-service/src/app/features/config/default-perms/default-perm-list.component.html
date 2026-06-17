@@ -297,9 +297,11 @@
           </select>
         </div>
         <div class="col-12">
-          <label class="form-label small">Mã chức danh <span class="text-danger">*</span></label>
-          <input class="form-control form-control-sm" [(ngModel)]="createAppForm.positionCode"
-                 placeholder="VD: POS001">
+          <label class="form-label small">Chức danh <span class="text-danger">*</span></label>
+          <select class="form-select form-select-sm" [(ngModel)]="createAppForm.positionCode">
+            <option value="">-- Chọn chức danh --</option>
+            <option *ngFor="let p of positions" [value]="p.code">{{ p.name }} ({{ p.code }})</option>
+          </select>
         </div>
         <div class="col-12">
           <label class="form-label small">Ứng dụng <span class="text-danger">*</span></label>
@@ -340,9 +342,11 @@
           </select>
         </div>
         <div class="col-12">
-          <label class="form-label small">Mã chức danh <span class="text-danger">*</span></label>
-          <input class="form-control form-control-sm" [(ngModel)]="createResForm.positionCode"
-                 placeholder="VD: POS001">
+          <label class="form-label small">Chức danh <span class="text-danger">*</span></label>
+          <select class="form-select form-select-sm" [(ngModel)]="createResForm.positionCode">
+            <option value="">-- Chọn chức danh --</option>
+            <option *ngFor="let p of positions" [value]="p.code">{{ p.name }} ({{ p.code }})</option>
+          </select>
         </div>
         <div class="col-12">
           <label class="form-label small">Ứng dụng (để lọc tài nguyên) <span class="text-danger">*</span></label>

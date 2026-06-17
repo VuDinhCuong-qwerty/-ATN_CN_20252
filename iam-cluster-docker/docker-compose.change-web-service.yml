@@ -1,0 +1,21 @@
+services:
+  change-web-service:
+    image: change-web-service:latest
+    container_name: change-web-service
+    ports:
+      - "4201:4201"
+    networks:
+      - iam-internal-network
+    depends_on:
+      - change-app-service
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:4201/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+networks:
+  iam-internal-network:
+    external: true

@@ -2,12 +2,12 @@ services:
   change-app-service:
     image: change-app-service:latest
     container_name: change-app-service
-    ports:
-      - "8085:8085"
+    # Internal only — frontend nginx container proxies API calls
+    # Uncomment to expose for debugging: - "8085:8085"
     environment:
       SPRING_PROFILES_ACTIVE: docker
       ORACLE_USER: change_user1
-      ORACLE_PASSWORD: ${CHANGE_DB_PASSWORD:-Change@123456}
+      ORACLE_PASSWORD: ${CHANGE_DB_PASSWORD:-change@123456}
       IAM_CLIENT_SECRET: ${IAM_CLIENT_SECRET}
     networks:
       - iam-internal-network

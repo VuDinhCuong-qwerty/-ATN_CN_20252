@@ -67,7 +67,7 @@ export class AuthService {
         this.tokenStore.setUserInfo(userInfo);
         sessionStorage.removeItem('pkce_verifier');
         sessionStorage.removeItem('pkce_state');
-        this.router.navigate(['/changes']);
+        this.router.navigate(['/dashboard']);
       },
       error: err => {
         console.error('Token exchange failed', err);

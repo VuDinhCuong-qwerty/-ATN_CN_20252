@@ -1,0 +1,70 @@
+<div class="dc-root">
+
+  <div class="dc-svg-wrap" (mouseleave)="onSegLeave()">
+    <svg viewBox="0 0 200 200" class="dc-svg">
+      <!-- Background ring -->
+      <circle cx="100" cy="100" r="80"
+              fill="none"
+              stroke="var(--iam-border-light,#EAF0FB)"
+              stroke-width="32"/>
+
+      <!-- Segments -->
+      @for (seg of computed; track seg.label; let i = $index) {
+        <circle
+          cx="100" cy="100" r="80"
+          fill="none"
+          [attr.stroke]="seg.color"
+          stroke-width="32"
+          stroke-linecap="butt"
+          [attr.stroke-dasharray]="animated ? seg.dasharray : ('0 ' + C.toFixed(2))"
+          [attr.stroke-dashoffset]="seg.dashoffset"
+          transform="rotate(-90 100 100)"
+          class="dc-seg"
+          [class.dc-seg-hi]="hovered === seg"
+          [style.transition-delay]="(i * 0.12) + 's'"
+          (mouseenter)="onSegEnter(seg, $event)"
+          (mousemove)="onSegMove($event)"
+          (mouseleave)="onSegLeave()"
+        />
+      }
+
+      <!-- Center text — static -->
+      <text x="100" y="95" text-anchor="middle" class="dc-count">{{ centerCount }}</text>
+      <text x="100" y="116" text-anchor="middle" class="dc-sub">{{ centerLabel }}</text>
+    </svg>
+  </div>
+
+  <!-- Legend -->
+  <div class="dc-legend">
+    @for (seg of computed; track seg.label) {
+      <div class="dc-leg-row"
+           [class.dc-leg-hi]="hovered === seg"
+           (mouseenter)="onSegEnter(seg, $event)"
+           (mousemove)="onSegMove($event)"
+           (mouseleave)="onSegLeave()">
+        <span class="dc-dot" [style.background]="seg.color"></span>
+        <span class="dc-leg-label">{{ seg.label }}</span>
+        <span class="dc-leg-val">{{ seg.value }}</span>
+        <span class="dc-leg-pct">{{ seg.percentage.toFixed(1) }}%</span>
+      </div>
+    }
+  </div>
+
+</div>
+
+<!-- Floating tooltip — fixed position, follows cursor -->
+@if (hovered) {
+  <div class="dc-tooltip"
+       [style.left.px]="tipX"
+       [style.top.px]="tipY">
+    <span class="tip-dot" [style.background]="hovered.color"></span>
+    <div class="tip-body">
+      <div class="tip-label">{{ hovered.label }}</div>
+      <div class="tip-stats">
+        <span class="tip-val">{{ hovered.value }}</span>
+        <span class="tip-sep">·</span>
+        <span class="tip-pct">{{ hovered.percentage.toFixed(1) }}%</span>
+      </div>
+    </div>
+  </div>
+}

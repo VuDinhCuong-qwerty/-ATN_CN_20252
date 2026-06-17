@@ -16,5 +16,17 @@
     "changeOrigin": true,
     "pathRewrite": { "^/api/users": "/change-app-service/api/users" },
     "secure": false
+  },
+  "/api/dashboard": {
+    "target": "http://localhost:8085",
+    "changeOrigin": true,
+    "pathRewrite": { "^/api/dashboard": "/change-app-service/api/dashboard" },
+    "secure": false
+  },
+  "/api/reports": {
+    "target": "http://localhost:8085",
+    "changeOrigin": true,
+    "pathRewrite": { "^/api/reports": "/change-app-service/api/reports" },
+    "secure": false
   }
 }

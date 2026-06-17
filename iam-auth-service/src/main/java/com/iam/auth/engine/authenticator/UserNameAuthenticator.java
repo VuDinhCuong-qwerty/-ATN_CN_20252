@@ -66,6 +66,8 @@ public class UserNameAuthenticator implements Authenticator{
         AuthUser user = this.userRepository.findByUsername(username.toUpperCase()).orElse(null);
         if (user == null || !this.passwordEncoder.matches(password, user.getPassword()) || !"ACTIVE".equals(user.getStatus())) {
             session.getNodeStatus().put(session.getCurrentNodeId(), "FAIL");
+            log.info("User in db: {}", user.getUsername());
+            log.info("Pass in db: {}", user.getPassword());
             log.info("Username {} or Passwword {} is invalid!", username, password);
             return ExecutionResult.failed(ErrorCode.INVALID_CREDENTIALS.getCode(), ErrorCode.INVALID_CREDENTIALS.getCode());
         }

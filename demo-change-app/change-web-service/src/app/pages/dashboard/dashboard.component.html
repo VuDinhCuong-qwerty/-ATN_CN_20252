@@ -44,7 +44,45 @@
     </div>
   </div>
 
-  <!-- Recent changes -->
+  <!-- Charts row -->
+  <div class="charts-row">
+
+    <!-- Chart 1: Success rate ring -->
+    <div class="section-card chart-card">
+      <div class="section-hdr">
+        <div class="section-icon"><i class="bi bi-trophy"></i></div>
+        <span class="section-title">Tỷ lệ thành công</span>
+      </div>
+      <div class="chart-body">
+        <app-donut-chart
+          [segments]="rateSegments"
+          [total]="100"
+          [centerOverride]="rateCenterOverride"
+          centerLabel="Tỷ lệ"
+        />
+      </div>
+    </div>
+
+    <!-- Chart 2: Status breakdown from recent changes -->
+    @if (recentStatusSegments.length > 0) {
+      <div class="section-card chart-card">
+        <div class="section-hdr">
+          <div class="section-icon"><i class="bi bi-pie-chart"></i></div>
+          <span class="section-title">Trạng thái (5 change gần nhất)</span>
+        </div>
+        <div class="chart-body">
+          <app-donut-chart
+            [segments]="recentStatusSegments"
+            [total]="recentTotal"
+            centerLabel="Change"
+          />
+        </div>
+      </div>
+    }
+
+  </div>
+
+  <!-- Recent changes table -->
   <div class="section-card">
     <div class="section-hdr">
       <div class="section-icon"><i class="bi bi-clock-history"></i></div>
@@ -69,7 +107,9 @@
             <tr class="clickable" [routerLink]="['/changes', c.id]">
               <td>
                 <strong>{{ c.changeName }}</strong>
-                @if (c.changeId) { <br><span style="font-size:11px;color:var(--iam-text-muted);font-family:monospace">{{ shortId(c.changeId) }}</span> }
+                @if (c.changeId) {
+                  <br><span style="font-size:11px;color:var(--iam-text-muted);font-family:monospace">{{ shortId(c.changeId) }}</span>
+                }
               </td>
               <td><span [class]="'badge-status badge-' + c.status">{{ STATUS_LABELS[c.status] || c.status }}</span></td>
               <td class="txt-muted">{{ fmtDate(c.goliveAt) }}</td>

@@ -129,12 +129,19 @@ export class ChangeDetailComponent implements OnInit {
 
   // ── Computed permissions ──────────────────────────────────────────────────
 
+  private get isOwner(): boolean {
+    if (!this.cr) return false;
+    const byCode = this.perm.employeeCode && this.cr.createdByCode === this.perm.employeeCode;
+    const byName = this.perm.username && this.cr.createdBy === this.perm.username;
+    return !!(byCode || byName);
+  }
+
   get canEdit(): boolean {
-    return !!(this.perm.has('change-request', 'update') && this.cr?.status === 'DRAFT' && this.cr?.createdBy === this.perm.username);
+    return !!(this.perm.has('change-request', 'update') && this.cr?.status === 'DRAFT' && this.isOwner);
   }
 
   get canSubmit(): boolean {
-    return !!(this.perm.has('change-request', 'submit') && this.cr?.status === 'DRAFT' && this.cr?.createdBy === this.perm.username);
+    return !!(this.perm.has('change-request', 'update') && this.cr?.status === 'DRAFT' && this.isOwner);
   }
 
   get canViewApproval(): boolean {
@@ -148,7 +155,7 @@ export class ChangeDetailComponent implements OnInit {
   }
 
   get canExecute(): boolean {
-    return !!(this.perm.has('change-execution', 'execute') && this.cr?.status === 'APPROVED' && this.cr?.createdBy === this.perm.username);
+    return !!(this.perm.has('change-execution', 'execute') && this.cr?.status === 'APPROVED' && this.isOwner);
   }
 
   get canRunJob(): boolean {
@@ -156,7 +163,7 @@ export class ChangeDetailComponent implements OnInit {
   }
 
   get canFinalize(): boolean {
-    return !!(this.perm.has('change-execution', 'finalize') && this.cr?.status === 'EXECUTING' && this.cr?.createdByCode === this.perm.employeeCode);
+    return !!(this.perm.has('change-execution', 'finalize') && this.cr?.status === 'EXECUTING' && this.isOwner);
   }
 
   get canManageArtifacts(): boolean {
