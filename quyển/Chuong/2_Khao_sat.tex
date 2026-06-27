@@ -1,0 +1,590 @@
+\documentclass[../DoAn.tex]{subfiles}
+\begin{document}
+% Chương này có độ dài từ 9 đến 11 trang.
+
+% Với phương pháp phân tích thiết kế hướng đối tượng, sinh viên sử dụng biểu đồ use case theo hướng dẫn của template này. Với các phương pháp khác, sinh viên trao đổi với giáo viên hướng dẫn để đổi tên và sắp xếp lại đề mục cho phù hợp. Ví dụ, thay vì sử dụng biểu đồ use case, sinh viên đi theo hướng tiếp cận Agile có thể dùng User Story.
+
+
+% \textbf{Lưu ý}: Mỗi chương nên có thêm 1 đoạn mở đầu chương và kết thúc chương, mở đầu giới thiệu những nội dung sẽ trình bày trong chương, kết thúc tổng kết lại các nội dung đã trình bày
+Dựa trên các phân tích tổng quan trong Chương \ref{chapter:Introduction}, chương này tập trung khảo sát và phân tích bài toán quản lý phân quyền người dùng trong môi trường đa hệ thống. Trước hết, một số giải pháp hiện có sẽ được xem xét nhằm làm rõ các ưu điểm và hạn chế (phần \ref{section:2.1}). Trên cơ sở đó, các yêu cầu của hệ thống được xác định và tổng hợp. Từ đó, một hướng tiếp cận phù hợp sẽ được đề xuất nhằm khắc phục các hạn chế và tận dụng các ưu điểm của các giải pháp hiện có.
+
+
+\section{Khảo sát hiện trạng}
+\label{section:2.1}
+% Thông thường, khảo sát chi tiết về hiện trạng và yêu cầu của phần mềm sẽ được lấy từ ba nguồn chính, đó là (i) người dùng/khách hàng, (ii) các hệ thống đã có, (iii) và các ứng dụng tương tự.
+% Sinh viên cần tiến hành phân tích, so sánh, đánh giá chi tiết ưu nhược điểm của các sản phẩm/nghiên cứu hiện có. Sinh viên có thể lập bảng so sánh nếu cần thiết. Kết hợp với khảo sát người dùng/khách hàng (nếu có), sinh viên nêu và mô tả sơ lược các tính năng phần mềm quan trọng cần phát triển.
+Trong thực tế, bài toán quản lý định danh và phân quyền người dùng thường được giải quyết thông qua các nền tảng IAM (Identity and Access Management) như Keycloak hoặc các giải pháp thương mại từ Microsoft. Các hệ thống này cung cấp khả năng xác thực tập trung, hỗ trợ các chuẩn phổ biến như OAuth2, OpenID Connect và SAML, đồng thời cho phép tích hợp với nhiều hệ thống khác nhau trong doanh nghiệp. Tuy nhiên, cách tiếp cận và mức độ đáp ứng đối với bài toán quản lý quyền gắn liền với vòng đời người dùng giữa các nhóm giải pháp này có sự khác biệt đáng kể.
+
+Đối với các giải pháp mã nguồn mở như Keycloak, ưu điểm nổi bật là chi phí thấp, khả năng tùy biến cao và hỗ trợ đa dạng các giao thức tiêu chuẩn. Hệ thống cho phép triển khai linh hoạt và giúp doanh nghiệp kiểm soát toàn bộ hạ tầng IAM. Tuy nhiên, đi kèm với đó là độ phức tạp trong triển khai và vận hành, đòi hỏi đội ngũ kỹ thuật có chuyên môn cao \cite{descope_keycloak_alternatives,cybersectool_keycloak,ossalt_keycloak_vs_authentik}. Quan trọng hơn, các giải pháp này chủ yếu tập trung vào các chức năng cốt lõi như xác thực và phân quyền, nhưng chưa thực sự gắn kết chặt chẽ quyền truy cập với hoạt động và vòng đời cụ thể của người dùng trong tổ chức. Ngoài ra, một hạn chế thường được nhắc đến là giao diện quản trị còn tương đối “lạc hậu”, ảnh hưởng đến trải nghiệm người dùng \cite{descope_keycloak_alternatives,cybersectool_keycloak,ossalt_keycloak_vs_authentik}.
+
+Ngược lại, các giải pháp thương mại như Microsoft Azure AD cung cấp một hệ sinh thái hoàn chỉnh với nhiều tính năng nâng cao, bao gồm quản lý vòng đời người dùng, phân quyền theo chính sách và khả năng tích hợp chặt chẽ với các dịch vụ trong cùng nền tảng. Tuy nhiên, các giải pháp này thường đi kèm với rủi ro vendor lock-in, khi hệ thống phụ thuộc sâu vào công nghệ và hệ sinh thái của nhà cung cấp. Điều này khiến việc chuyển đổi sang nền tảng khác trở nên khó khăn và tốn kém do chi phí di chuyển dữ liệu, thay đổi kiến trúc và tái tích hợp hệ thống \cite{neontri_vendor_lock_in}. Bên cạnh đó, chi phí vận hành cũng có xu hướng gia tăng theo quy mô người dùng và mức độ sử dụng dịch vụ, đặc biệt khi các tính năng nâng cao chỉ trong các gói trả phí cao hơn \cite{neontri_vendor_lock_in}.
+
+Đáng chú ý, sự phụ thuộc vào một nhà cung cấp còn tiềm ẩn rủi ro về tính sẵn sàng của hệ thống. Một ví dụ điển hình là sự cố diện rộng của Cloudflare vào năm 2025, khi lỗi cấu hình nội bộ đã gây gián đoạn trên phạm vi toàn cầu, ảnh hưởng đến nhiều dịch vụ lớn như ChatGPT, Spotify và các nền tảng trực tuyến khác \cite{cloudflare_outage_2025}.
+
+Từ các phân tích trên, có thể thấy rằng các giải pháp hiện tại chủ yếu tập trung vào xác thực và phân quyền ở mức hệ thống, nhưng chưa giải quyết triệt để bài toán quản lý vòng đời quyền truy cập của người dùng trong các kịch bản thực tế như gia nhập, thay đổi vai trò, tạm nghỉ hoặc nghỉ việc. Do đó, giải pháp đề xuất trong đồ án này hướng tới việc xây dựng một hệ thống quản lý phân quyền gắn liền với vòng đời người dùng, nhằm khắc phục những hạn chế còn tồn tại của các phương pháp hiện có.
+\section{Tổng quan chức năng}
+\label{section:2.2}
+% Phần \ref{section:2.2} này có nhiệm vụ tóm tắt các chức năng của phần mềm. Trong phần này, sinh viên lưu ý chỉ mô tả chức năng mức cao (tổng quan) mà không đặc tả chi tiết cho từng chức năng. Đặc tả chi tiết được trình bày trong phần \ref{section:2.3}.
+Trong phần này, hệ thống được trình bày ở mức tổng quan thông qua các chức năng chính và các đặc trưng nổi bật. Các mô tả chỉ tập trung ở mức khái quát nhằm cung cấp cái nhìn toàn diện về hệ thống, làm cơ sở cho việc đặc tả chi tiết ở các phần tiếp theo.
+
+\subsection{Biểu đồ use case tổng quát}
+\label{subsection:2.2.1}
+% Sinh viên vẽ biểu đồ use case tổng quan và giải thích các tác nhân tham gia là gì, nêu vai trò của từng tác nhân, và mô tả ngắn gọn các use case chính.
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth]{Hinhve/UCTQ.png}
+    \caption{Biểu đồ use case tổng quan}
+    \label{fig:UCTQ}
+\end{figure}
+
+\subsubsection{Các tác nhân trong hệ thống}
+Hệ thống bao gồm các tác nhân sau:
+\begin{itemize}
+    \item \textbf{STAFF:} Tác nhân này đại diện cho các nhân viên trong tổ chức sử dụng các hệ thống nội bộ phục vụ công việc hằng ngày. STAFF có nhu cầu truy cập vào các ứng dụng và tài nguyên tương ứng với vai trò công việc của mình, đồng thời có thể thực hiện các yêu cầu liên quan đến cấp quyền, thay đổi quyền hoặc khôi phục quyền truy cập khi cần thiết.
+
+    \item \textbf{CAB:} Đây là tác nhân đóng vai trò kiểm soát và phê duyệt các yêu cầu cấp quyền trong hệ thống. CAB đảm bảo rằng các quyền truy cập được cấp phát phù hợp với chính sách bảo mật và quy định nội bộ của tổ chức, hạn chế rủi ro truy cập trái phép hoặc lạm dụng quyền. Tác nhân này thường tham gia vào các quy trình phê duyệt trước khi quyền được cấp chính thức cho người dùng.
+
+    \item \textbf{ADMIN:} Đây là tác nhân chịu trách nhiệm triển khai, cấu hình và vận hành hệ thống quản lý định danh và phân quyền. ADMIN thực hiện các chức năng như quản lý người dùng, thiết lập chính sách phân quyền, cấu hình hệ thống và xử lý các sự cố kỹ thuật, đảm bảo hệ thống hoạt động ổn định và an toàn.
+\end{itemize}
+
+\subsubsection{Mô tả ngắn gọn các use case chính}
+Các use case chính của hệ thống bao gồm:
+\begin{itemize}
+    \item \textbf{UC01 -- Xin và phê duyệt cấp quyền:} Nhân viên (STAFF), kiểm soát viên kỹ thuật(ADMIN) hay Lãnh đạo (CAB) gửi yêu cầu cấp quyền truy cập tới các ứng dụng hoặc tài nguyên trong hệ thống. CAB thực hiện xem xét và quyết định phê duyệt hoặc từ chối yêu cầu. Khi yêu cầu được chấp thuận, hệ thống tự động cấp quyền tương ứng cho người dùng.
+
+    \item \textbf{UC02 -- Tạo người dùng mới:} Quản trị viên (ADMIN) nhập thông tin hồ sơ cho nhân viên mới, đồng thời gán vai trò và vị trí công tác. Hệ thống tự động tạo thông tin đăng nhập, cấp quyền mặc định tương ứng và gửi thông báo tới người dùng.
+
+    \item \textbf{UC03 -- Tiếp nhận nhân viên:} Quản trị viên (ADMIN) thực hiện kích hoạt lại tài khoản của nhân viên quay trở lại làm việc, đồng thời cập nhật vai trò và vị trí mới. Hệ thống tự động cấp lại các quyền truy cập mặc định phù hợp.
+
+    \item \textbf{UC04 -- Thôi việc:} Quản trị viên (ADMIN) vô hiệu hóa tài khoản của nhân viên nghỉ việc. Hệ thống tự động thu hồi toàn bộ vai trò và quyền truy cập, đồng thời chấm dứt các phiên đăng nhập đang hoạt động.
+
+    \item \textbf{UC05 -- Nghỉ phép dài hạn:} Quản trị viên (ADMIN) thiết lập khoảng thời gian nghỉ phép cho nhân viên. Trong thời gian này, hệ thống tạm thời vô hiệu hóa quyền truy cập của người dùng.
+
+    \item \textbf{UC06 -- Trở lại sau nghỉ phép:} Quản trị viên (ADMIN) xác nhận việc nhân viên quay trở lại làm việc sau kỳ nghỉ. Hệ thống khôi phục quyền truy cập của người dùng về trạng thái trước khi nghỉ.
+
+    \item \textbf{UC07 -- Luân chuyển vị trí:} Quản trị viên (ADMIN) cập nhật thông tin về vai trò, vị trí và phòng ban mới của nhân viên. Hệ thống thu hồi các quyền hiện tại và tự động cấp lại quyền mặc định theo cấu hình của vị trí mới.
+
+    \item \textbf{UC08 -- Quản lý thông tin người dùng:} Quản trị viên (ADMIN) thực hiện các thao tác xem, tạo mới và cập nhật thông tin hồ sơ người dùng trong hệ thống.
+
+    \item \textbf{UC09 -- Quản lý cấu hình hệ thống:} Quản trị viên (ADMIN) cấu hình các thành phần của hệ thống như ứng dụng, tài nguyên, OAuth2 client, luồng xác thực và các bộ quyền mặc định theo vai trò và vị trí.
+
+    \item \textbf{UC10 -- Xác thực và đăng nhập:} Người dùng (ADMIN, CAB, STAFF) thực hiện đăng nhập vào hệ thống để truy cập các chức năng theo quyền được cấp.
+\end{itemize}
+
+
+\subsection{Biểu đồ use case phân rã "Xin và phê duyệt cấp quyền"}
+\label{subsection:2.2.2}
+% Với mỗi use case mức cao trong biểu đồ use case tổng quan, sinh viên tạo một mục riêng như mục \ref{subsection:2.2.2} và tiến hành phân rã use case đó. Lưu ý tên use case cần phân rã trong biểu đồ use case tổng quan phải khớp với tên đề mục.
+
+% Trong mỗi mục như vậy, sinh viên vẽ và giải thích ngắn gọn các use case phân rã.
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth]{Hinhve/UC1.png}
+    \caption{Biểu đồ use case phân rã "Xin và phê duyệt cấp quyền"}
+    \label{fig:UC1}
+\end{figure}
+
+Use case \textbf{UC01 -- Xin và phê duyệt cấp quyền} mô tả quy trình người dùng yêu cầu và xử lý cấp quyền truy cập đến các ứng dụng hoặc tài nguyên trong hệ thống. Tác nhân \textbf{STAFF} có thể khởi tạo, chỉnh sửa, gửi hoặc hủy yêu cầu, đồng thời theo dõi danh sách và chi tiết các yêu cầu do mình tạo. Sau khi yêu cầu được gửi, \textbf{CAB} — kế thừa từ \textbf{STAFF} — có thêm thẩm quyền xét duyệt, bao gồm phê duyệt hoặc từ chối yêu cầu. Tác nhân \textbf{ADMIN} kế thừa toàn bộ quyền của STAFF và có thể tham gia xử lý hoặc theo dõi các yêu cầu trong toàn bộ quy trình khi cần thiết.
+
+
+\subsection{Biểu đồ use case phân rã "Tạo người dùng mới"}
+\label{subsection:2.2.3}
+% Với mỗi use case mức cao trong biểu đồ use case tổng quan, sinh viên tạo một mục riêng như mục \ref{subsection:2.2.2} và tiến hành phân rã use case đó. Lưu ý tên use case cần phân rã trong biểu đồ use case tổng quan phải khớp với tên đề mục.
+
+% Trong mỗi mục như vậy, sinh viên vẽ và giải thích ngắn gọn các use case phân rã.
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth]{Hinhve/UC2.png}
+    \caption{Biểu đồ use case phân rã "Tạo người dùng mới"}
+    \label{fig:UC2}
+\end{figure}
+
+Use case \textbf{UC02 -- Tạo người dùng mới} mô tả quy trình quản trị viên (ADMIN) khởi tạo tài khoản cho người dùng trong hệ thống. ADMIN thực hiện việc nhập thông tin cá nhân, lựa chọn vai trò và vị trí công tác, đồng thời khai báo địa chỉ liên quan. Sau khi hoàn tất các thông tin cần thiết, ADMIN xác nhận tạo tài khoản; hệ thống tiến hành ghi nhận dữ liệu và thiết lập thông tin truy cập tương ứng cho người dùng mới.
+
+
+\subsection{Biểu đồ use case phân rã "Tiếp nhận nhân viên"}
+\label{subsection:2.2.4}
+% Với mỗi use case mức cao trong biểu đồ use case tổng quan, sinh viên tạo một mục riêng như mục \ref{subsection:2.2.2} và tiến hành phân rã use case đó. Lưu ý tên use case cần phân rã trong biểu đồ use case tổng quan phải khớp với tên đề mục.
+
+% Trong mỗi mục như vậy, sinh viên vẽ và giải thích ngắn gọn các use case phân rã.
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth]{Hinhve/UC3.png}
+    \caption{Biểu đồ use case phân rã Tiếp nhận nhân viên}
+    \label{fig:UC3}
+\end{figure}
+
+Use case \textbf{UC03 -- Tiếp nhận nhân viên} mô tả quy trình quản trị viên (ADMIN) tiếp nhận lại nhân viên đã từng thuộc hệ thống. ADMIN thực hiện tìm kiếm hồ sơ nhân viên cần tiếp nhận và cập nhật lại thông tin công tác. Sau đó, ADMIN gán vai trò và vị trí mới phù hợp, rồi xác nhận tiếp nhận; hệ thống tiến hành kích hoạt lại tài khoản và thiết lập các quyền truy cập tương ứng.
+
+
+\subsection{Biểu đồ use case phân rã "Thôi việc"}
+\label{subsection:2.2.5}
+% Với mỗi use case mức cao trong biểu đồ use case tổng quan, sinh viên tạo một mục riêng như mục \ref{subsection:2.2.2} và tiến hành phân rã use case đó. Lưu ý tên use case cần phân rã trong biểu đồ use case tổng quan phải khớp với tên đề mục.
+
+% Trong mỗi mục như vậy, sinh viên vẽ và giải thích ngắn gọn các use case phân rã.
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth]{Hinhve/UC4.png}
+    \caption{Biểu đồ use case phân rã "Thôi việc"}
+    \label{fig:UC4}
+\end{figure}
+
+Use case \textbf{UC04 -- Thôi việc} mô tả quy trình quản trị viên (ADMIN) xử lý việc chấm dứt quyền truy cập của nhân viên trong hệ thống. ADMIN thực hiện tìm kiếm nhân viên cần thôi việc và tiến hành xác nhận thao tác. Sau khi xác nhận, hệ thống sẽ vô hiệu hóa tài khoản, thu hồi toàn bộ quyền truy cập và kết thúc các phiên làm việc liên quan của nhân viên.
+
+
+\subsection{Biểu đồ use case phân rã "Nghỉ phép dài hạn"}
+\label{subsection:2.2.6}
+% Với mỗi use case mức cao trong biểu đồ use case tổng quan, sinh viên tạo một mục riêng như mục \ref{subsection:2.2.2} và tiến hành phân rã use case đó. Lưu ý tên use case cần phân rã trong biểu đồ use case tổng quan phải khớp với tên đề mục.
+
+% Trong mỗi mục như vậy, sinh viên vẽ và giải thích ngắn gọn các use case phân rã.
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth]{Hinhve/UC5.png}
+    \caption{Biểu đồ use case phân rã Nghỉ phép dài hạn}
+    \label{fig:UC5}
+\end{figure}
+
+Use case \textbf{UC05 -- Nghỉ phép dài hạn} mô tả quy trình quản trị viên (ADMIN) thiết lập trạng thái nghỉ phép cho nhân viên trong hệ thống. ADMIN thực hiện tìm kiếm nhân viên và khai báo khoảng thời gian nghỉ phép tương ứng. Sau khi xác nhận, hệ thống sẽ tạm ngưng quyền truy cập của nhân viên trong suốt thời gian nghỉ và đảm bảo các quyền được khôi phục sau khi kết thúc kỳ nghỉ.
+
+
+\subsection{Biểu đồ use case phân rã "Trở lại sau nghỉ phép"}
+\label{subsection:2.2.7}
+% Với mỗi use case mức cao trong biểu đồ use case tổng quan, sinh viên tạo một mục riêng như mục \ref{subsection:2.2.2} và tiến hành phân rã use case đó. Lưu ý tên use case cần phân rã trong biểu đồ use case tổng quan phải khớp với tên đề mục.
+
+% Trong mỗi mục như vậy, sinh viên vẽ và giải thích ngắn gọn các use case phân rã.
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth]{Hinhve/UC6.png}
+    \caption{Biểu đồ use case phân rã Trở lại sau nghỉ phép}
+    \label{fig:UC6}
+\end{figure}
+
+Use case \textbf{UC06 -- Trở lại sau nghỉ phép} mô tả quy trình quản trị viên (ADMIN) khôi phục trạng thái làm việc cho nhân viên sau thời gian nghỉ phép. ADMIN thực hiện tìm kiếm nhân viên đang trong trạng thái nghỉ và xác nhận việc quay trở lại. Sau khi xác nhận, hệ thống sẽ khôi phục quyền truy cập và đưa tài khoản của nhân viên về trạng thái hoạt động bình thường.
+
+
+\subsection{Biểu đồ use case phân rã "Luân chuyển vị trí"}
+\label{subsection:2.2.8}
+% Với mỗi use case mức cao trong biểu đồ use case tổng quan, sinh viên tạo một mục riêng như mục \ref{subsection:2.2.2} và tiến hành phân rã use case đó. Lưu ý tên use case cần phân rã trong biểu đồ use case tổng quan phải khớp với tên đề mục.
+
+% Trong mỗi mục như vậy, sinh viên vẽ và giải thích ngắn gọn các use case phân rã.
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth]{Hinhve/UC7.png}
+    \caption{Biểu đồ use case phân rã Luân chuyển vị trí}
+    \label{fig:UC7}
+\end{figure}
+
+Use case \textbf{UC07 -- Luân chuyển công tác} mô tả quy trình quản trị viên (ADMIN) cập nhật thông tin công tác mới cho nhân viên trong hệ thống. ADMIN thực hiện tìm kiếm nhân viên cần luân chuyển và lựa chọn vai trò, vị trí công tác mới phù hợp. Sau khi xác nhận, hệ thống sẽ cập nhật thông tin nhân sự, đồng thời thu hồi các quyền truy cập cũ và thiết lập lại quyền theo vai trò và vị trí mới.
+
+
+\subsection{Quy trình nghiệp vụ}
+\label{subsection:2.2.9}
+% Nếu sản phẩm/hệ thống cần xây dựng có quy trình nghiệp vụ quan trọng/đáng chú ý, sinh viên cần mô tả và vẽ biểu đồ hoạt động minh họa quy trình nghiệp vụ đó. Sinh viên lưu ý đây không phải là luồng sự kiện của từng use case, mà là luồng hoạt động kết hợp nhiều use case để thực hiện một nghiệp vụ nào đó.
+
+% Ví dụ, một hệ thống quản lý thư viện có quy trình nghiệp vụ mượn trả với mô tả sơ bộ như sau: Sinh viên làm thẻ mượn, sau đó sinh viên đăng ký mượn sách, thủ thư cho mượn, và cuối cùng sinh viên trả lại sách cho thư viện. Một hệ thống có thể có một vài quy trình nghiệp vụ quan trọng như vậy.
+
+Phần này trình bày chi tiết các quy trình nghiệp vụ của hệ thống, được hình thành từ sự phối hợp của nhiều use case có liên quan. Qua đó, mô tả cách hệ thống vận hành để thực hiện các chức năng cụ thể trong thực tế.
+
+\subsubsection*{a) Luồng yêu cầu và phê duyệt cấp quyền}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{Hinhve/ACT1.png}
+    \caption{Biểu đồ hoạt động luồng yêu cầu và phê duyệt cấp quyền}
+    \label{fig:act1-permission-request}
+\end{figure}
+
+Nhân viên lập yêu cầu cấp quyền, điền đầy đủ thông tin về ứng dụng, tài nguyên cần truy cập, lý do đề nghị và chỉ định người phê duyệt thuộc ban kiểm soát thay đổi (CAB). Yêu cầu được lưu ở trạng thái nháp, cho phép nhân viên chỉnh sửa trước khi gửi chính thức; khi gửi đi, hệ thống kiểm tra tính hợp lệ và chuyển trạng thái sang chính thức, đồng thời gửi thông báo đến người phê duyệt. Nếu CAB chấp thuận, hệ thống tự động cấp quyền vào cơ sở dữ liệu và gửi thông báo kết quả đến nhân viên; nếu từ chối, lý do được ghi nhận và nhân viên nhận thông báo để điều chỉnh. Toàn bộ lịch sử yêu cầu và quyết định được lưu lại phục vụ kiểm toán nội bộ.
+
+\subsubsection*{b) Luồng tạo người dùng mới}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{Hinhve/ACT2.png}
+    \caption{Biểu đồ hoạt động luồng tạo người dùng mới}
+    \label{fig:act2-create-user}
+\end{figure}
+
+Khi có nhân viên mới gia nhập tổ chức, quản trị viên nhập đầy đủ thông tin hồ sơ bao gồm họ tên, phòng ban, vị trí công tác và vai trò được giao. Hệ thống kiểm tra tính hợp lệ của thông tin, sau đó tự động sinh tên đăng nhập và mã nhân viên theo quy tắc định sẵn và tạo tài khoản vào cơ sở dữ liệu. Ngay sau đó, hai luồng xử lý song song được kích hoạt: cấp quyền truy cập mặc định theo ma trận vai trò × vị trí và gửi email thông báo chào mừng kèm thông tin đăng nhập đến nhân viên mới.
+
+\subsubsection*{c) Luồng tạm nghỉ và quay lại công tác}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{Hinhve/ACT3.png}
+    \caption{Biểu đồ hoạt động luồng tạm nghỉ và quay lại công tác}
+    \label{fig:act3-leave-return}
+\end{figure}
+
+Khi nhân viên nghỉ phép dài ngày (nghỉ bệnh, nghỉ thai sản, v.v.), quản trị viên nhập thời gian bắt đầu và kết thúc nghỉ; hệ thống kiểm tra tính hợp lệ của khoảng thời gian, gắn nhãn tạm nghỉ vào bản ghi quyền và vô hiệu hóa phiên đăng nhập hiện tại tức thì. Khi nhân viên quay lại làm việc, quản trị viên xác nhận và hệ thống xóa nhãn tạm nghỉ, khôi phục đầy đủ quyền truy cập như trước khi nghỉ mà không cần thao tác cấu hình bổ sung.
+
+\subsubsection*{d) Luồng thôi việc}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{Hinhve/ACT4.png}
+    \caption{Biểu đồ hoạt động luồng thôi việc}
+    \label{fig:act4-offboard}
+\end{figure}
+
+Khi nhân viên chấm dứt hợp đồng lao động, quản trị viên xác nhận thôi việc trên hệ thống. Hệ thống đồng thời thu hồi toàn bộ quyền truy cập và vai trò, sau đó chấm dứt ngay lập tức mọi phiên làm việc đang hoạt động mà không phụ thuộc vào thời điểm hết hạn tự nhiên của token. Tài khoản được chuyển sang trạng thái INACTIVE và hệ thống gửi thông báo đến nhân viên, đảm bảo không thể tiếp tục truy cập dữ liệu nội bộ sau khi quyết định có hiệu lực.
+
+\subsubsection*{e) Luồng tiếp nhận lại}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{Hinhve/ACT5.png}
+    \caption{Biểu đồ hoạt động luồng tiếp nhận lại}
+    \label{fig:act5-onboard}
+\end{figure}
+
+Khi một nhân viên cũ được tuyển dụng trở lại, quản trị viên tra cứu hồ sơ và chỉ định vai trò cùng vị trí công tác phù hợp với đợt tiếp nhận lần này. Hệ thống kích hoạt lại tài khoản về trạng thái ACTIVE, sau đó đồng thời cấp toàn bộ quyền mặc định tương ứng với vai trò và vị trí mới và gửi email chào mừng đến nhân viên, không yêu cầu quản trị viên thao tác cấp quyền thủ công.
+
+\subsubsection*{f) Luồng luân chuyển vị trí}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{Hinhve/ACT6.png}
+    \caption{Biểu đồ hoạt động luồng luân chuyển vị trí}
+    \label{fig:act6-transfer}
+\end{figure}
+
+Khi nhân viên được điều chuyển sang bộ phận hoặc vị trí công tác mới, quản trị viên chọn vai trò và vị trí mới rồi xác nhận. Hệ thống đồng thời thu hồi toàn bộ quyền truy cập và vai trò gắn với vị trí cũ, sau đó chấm dứt ngay phiên làm việc hiện hành để đảm bảo nhân viên không còn hoạt động với tập quyền cũ. Tiếp theo, thông tin nhân sự được cập nhật và quyền mặc định tương ứng với vị trí mới được cấp tự động theo ma trận phân quyền đã cấu hình. Khi đăng nhập lại, nhân viên có đúng tập quyền phù hợp với nhiệm vụ mới, không còn giữ bất kỳ quyền nào từ vị trí trước đó.
+
+\section{Đặc tả chức năng}
+\label{section:2.3}
+
+Phần này đặc tả chi tiết sáu use case quan trọng nhất của hệ thống, được chọn lọc dựa trên mức độ ảnh hưởng đến nghiệp vụ quản lý phân quyền trong môi trường ngân hàng. Mỗi đặc tả trình bày tác nhân, tiền điều kiện, luồng sự kiện chính dẫn đến kết quả thành công, các luồng xử lý ngoại lệ tương ứng với các nhánh rẽ trong biểu đồ hoạt động, và hậu điều kiện.
+
+\subsection{UC-0001 — Yêu cầu và phê duyệt cấp quyền}
+
+\begin{table}[H]
+\centering
+\caption{Đặc tả use case UC-0001 — Yêu cầu và phê duyệt cấp quyền}
+\label{tab:uc-0001}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{|p{3.0cm}|p{2.3cm}|p{2.7cm}|p{4.5cm}|}
+\hline
+\textbf{Use case} & UC-0001 & \textbf{Tên use case} & Yêu cầu và phê duyệt cấp quyền \\
+\hline
+\textbf{Tác nhân} & \multicolumn{3}{p{9.5cm}|}{Nhân viên (STAFF), Ban kiểm soát thay đổi (CAB)} \\
+\hline
+\textbf{Tiền điều kiện} & \multicolumn{3}{p{9.5cm}|}{Đăng nhập thành công} \\
+\hline
+\textbf{Sự kiện chính} & \textbf{Thực hiện bởi} & \multicolumn{2}{p{7.2cm}|}{\textbf{Hành động}} \\
+\hline
+1 & STAFF & \multicolumn{2}{p{7.2cm}|}{Yêu cầu tạo phân quyền mới} \\
+\hline
+2 & System & \multicolumn{2}{p{7.2cm}|}{Hiển thị form điền thông tin phân quyền} \\
+\hline
+3 & STAFF & \multicolumn{2}{p{7.2cm}|}{Điền thông tin yêu cầu (ứng dụng, tài nguyên, lý do, người phê duyệt)} \\
+\hline
+4 & STAFF & \multicolumn{2}{p{7.2cm}|}{Gửi yêu cầu chính thức} \\
+\hline
+5 & System & \multicolumn{2}{p{7.2cm}|}{Kiểm tra tính hợp lệ của thông tin yêu cầu phân quyền} \\
+\hline
+6 & System & \multicolumn{2}{p{7.2cm}|}{Lưu yêu cầu; đồng thời gửi thông báo đến CAB và hiển thị xác nhận cho STAFF} \\
+\hline
+7 & CAB & \multicolumn{2}{p{7.2cm}|}{Xem xét và phê duyệt yêu cầu phân quyền} \\
+\hline
+8 & System & \multicolumn{2}{p{7.2cm}|}{Thực hiện cấp quyền vào cơ sở dữ liệu} \\
+\hline
+9 & System & \multicolumn{2}{p{7.2cm}|}{Thông báo kết quả phê duyệt thành công} \\
+\hline
+\textbf{Xử lý ngoại lệ} & \textbf{Thực hiện bởi} & \multicolumn{2}{p{7.2cm}|}{\textbf{Hành động}} \\
+\hline
+5a & System & \multicolumn{2}{p{7.2cm}|}{Thông tin không hợp lệ: hiển thị thông báo lỗi và kết thúc luồng} \\
+\hline
+4a & STAFF & \multicolumn{2}{p{7.2cm}|}{Chọn lưu nháp thay vì gửi: hệ thống lưu yêu cầu ở trạng thái nháp và kết thúc} \\
+\hline
+7a & CAB & \multicolumn{2}{p{7.2cm}|}{Từ chối yêu cầu: hệ thống kết thúc luồng, không thực hiện cấp quyền} \\
+\hline
+\textbf{Sự kiện phụ} & \multicolumn{3}{p{9.5cm}|}{Không có} \\
+\hline
+\textbf{Hậu điều kiện} & \multicolumn{3}{p{9.5cm}|}{Quyền được cấp thành công; lịch sử phê duyệt được lưu phục vụ kiểm toán} \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsection{UC-0002 — Tạo người dùng mới}
+
+\begin{table}[H]
+\centering
+\caption{Đặc tả use case UC-0002 — Tạo người dùng mới}
+\label{tab:uc-0002}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{|p{3.0cm}|p{2.3cm}|p{2.7cm}|p{4.5cm}|}
+\hline
+\textbf{Use case} & UC-0002 & \textbf{Tên use case} & Tạo người dùng mới \\
+\hline
+\textbf{Tác nhân} & \multicolumn{3}{p{9.5cm}|}{Nhân viên (STAFF)} \\
+\hline
+\textbf{Tiền điều kiện} & \multicolumn{3}{p{9.5cm}|}{Đăng nhập thành công} \\
+\hline
+\textbf{Sự kiện chính} & \textbf{Thực hiện bởi} & \multicolumn{2}{p{7.2cm}|}{\textbf{Hành động}} \\
+\hline
+1 & STAFF & \multicolumn{2}{p{7.2cm}|}{Yêu cầu tạo người dùng mới} \\
+\hline
+2 & System & \multicolumn{2}{p{7.2cm}|}{Hiển thị form nhập thông tin người dùng} \\
+\hline
+3 & STAFF & \multicolumn{2}{p{7.2cm}|}{Điền thông tin người dùng} \\
+\hline
+4 & STAFF & \multicolumn{2}{p{7.2cm}|}{Yêu cầu tạo tài khoản} \\
+\hline
+5 & System & \multicolumn{2}{p{7.2cm}|}{Kiểm tra tính hợp lệ của thông tin đầu vào} \\
+\hline
+6 & System & \multicolumn{2}{p{7.2cm}|}{Tạo tài khoản người dùng vào cơ sở dữ liệu} \\
+\hline
+7 & System & \multicolumn{2}{p{7.2cm}|}{Phân quyền mặc định theo vai trò và vị trí công tác} \\
+\hline
+8 & System & \multicolumn{2}{p{7.2cm}|}{Thông báo tạo tài khoản thành công} \\
+\hline
+\textbf{Xử lý ngoại lệ} & \textbf{Thực hiện bởi} & \multicolumn{2}{p{7.2cm}|}{\textbf{Hành động}} \\
+\hline
+5a & System & \multicolumn{2}{p{7.2cm}|}{Thông tin không hợp lệ: hiển thị thông báo thất bại và kết thúc luồng} \\
+\hline
+\textbf{Sự kiện phụ} & \multicolumn{3}{p{9.5cm}|}{Không có} \\
+\hline
+\textbf{Hậu điều kiện} & \multicolumn{3}{p{9.5cm}|}{Tài khoản người dùng được tạo thành công và được phân quyền mặc định} \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsection{UC-0003 — Quản lý nghỉ tạm thời và quay lại công tác}
+
+\begin{table}[H]
+\centering
+\caption{Đặc tả use case UC-0003 — Quản lý nghỉ tạm thời và quay lại công tác}
+\label{tab:uc-0003}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{|p{3.0cm}|p{2.3cm}|p{2.7cm}|p{4.5cm}|}
+\hline
+\textbf{Use case} & UC-0003 & \textbf{Tên use case} & Quản lý nghỉ tạm thời và quay lại công tác \\
+\hline
+\textbf{Tác nhân} & \multicolumn{3}{p{9.5cm}|}{Quản trị viên (ADMIN)} \\
+\hline
+\textbf{Tiền điều kiện} & \multicolumn{3}{p{9.5cm}|}{Đăng nhập thành công} \\
+\hline
+\textbf{Sự kiện chính} & \textbf{Thực hiện bởi} & \multicolumn{2}{p{7.2cm}|}{\textbf{Hành động}} \\
+\hline
+1 & ADMIN & \multicolumn{2}{p{7.2cm}|}{Tìm kiếm nhân viên cần xử lý} \\
+\hline
+2 & System & \multicolumn{2}{p{7.2cm}|}{Hiển thị form nhập thông tin} \\
+\hline
+3 & ADMIN & \multicolumn{2}{p{7.2cm}|}{Nhập mã nhân viên} \\
+\hline
+4 & System & \multicolumn{2}{p{7.2cm}|}{Tìm kiếm và kiểm tra sự tồn tại của nhân viên} \\
+\hline
+5 & System & \multicolumn{2}{p{7.2cm}|}{Hiển thị thông tin nghỉ ngắn hạn của nhân viên} \\
+\hline
+6 & ADMIN & \multicolumn{2}{p{7.2cm}|}{Yêu cầu ghi nhận nghỉ ngắn hạn} \\
+\hline
+7 & System & \multicolumn{2}{p{7.2cm}|}{Xử lý yêu cầu và cập nhật trạng thái nghỉ} \\
+\hline
+8 & System & \multicolumn{2}{p{7.2cm}|}{Thông báo xử lý thành công} \\
+\hline
+\textbf{Xử lý ngoại lệ} & \textbf{Thực hiện bởi} & \multicolumn{2}{p{7.2cm}|}{\textbf{Hành động}} \\
+\hline
+4a & System & \multicolumn{2}{p{7.2cm}|}{Nhân viên không tồn tại: hiển thị thông báo thất bại và kết thúc luồng} \\
+\hline
+\textbf{Sự kiện phụ} & \multicolumn{3}{p{9.5cm}|}{Quay lại công tác: ADMIN tìm kiếm nhân viên đang nghỉ, yêu cầu tiếp nhận trở lại, hệ thống xử lý và thông báo thành công} \\
+\hline
+\textbf{Hậu điều kiện} & \multicolumn{3}{p{9.5cm}|}{Trạng thái nghỉ tạm thời được ghi nhận; hoặc quyền truy cập được khôi phục khi nhân viên quay lại công tác} \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsection{UC-0004 — Thôi việc}
+
+\begin{table}[H]
+\centering
+\caption{Đặc tả use case UC-0004 — Thôi việc}
+\label{tab:uc-0004}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{|p{3.0cm}|p{2.3cm}|p{2.7cm}|p{4.5cm}|}
+\hline
+\textbf{Use case} & UC-0004 & \textbf{Tên use case} & Thôi việc \\
+\hline
+\textbf{Tác nhân} & \multicolumn{3}{p{9.5cm}|}{Quản trị viên (ADMIN)} \\
+\hline
+\textbf{Tiền điều kiện} & \multicolumn{3}{p{9.5cm}|}{Đăng nhập thành công} \\
+\hline
+\textbf{Sự kiện chính} & \textbf{Thực hiện bởi} & \multicolumn{2}{p{7.2cm}|}{\textbf{Hành động}} \\
+\hline
+1 & ADMIN & \multicolumn{2}{p{7.2cm}|}{Tìm kiếm nhân viên cần xử lý thôi việc} \\
+\hline
+2 & System & \multicolumn{2}{p{7.2cm}|}{Hiển thị form nhập thông tin} \\
+\hline
+3 & ADMIN & \multicolumn{2}{p{7.2cm}|}{Nhập mã nhân viên} \\
+\hline
+4 & System & \multicolumn{2}{p{7.2cm}|}{Tìm kiếm và kiểm tra sự tồn tại của nhân viên} \\
+\hline
+5 & System & \multicolumn{2}{p{7.2cm}|}{Hiển thị thông tin nhân viên} \\
+\hline
+6 & ADMIN & \multicolumn{2}{p{7.2cm}|}{Xác nhận thôi việc} \\
+\hline
+7 & System & \multicolumn{2}{p{7.2cm}|}{Thu hồi toàn bộ quyền, hủy phiên làm việc, chuyển tài khoản sang INACTIVE} \\
+\hline
+8 & System & \multicolumn{2}{p{7.2cm}|}{Thông báo xử lý thôi việc thành công} \\
+\hline
+\textbf{Xử lý ngoại lệ} & \textbf{Thực hiện bởi} & \multicolumn{2}{p{7.2cm}|}{\textbf{Hành động}} \\
+\hline
+4a & System & \multicolumn{2}{p{7.2cm}|}{Nhân viên không tồn tại: hiển thị thông báo thất bại và kết thúc luồng} \\
+\hline
+\textbf{Sự kiện phụ} & \multicolumn{3}{p{9.5cm}|}{Không có} \\
+\hline
+\textbf{Hậu điều kiện} & \multicolumn{3}{p{9.5cm}|}{Toàn bộ quyền truy cập và phiên làm việc của nhân viên bị thu hồi; tài khoản chuyển sang INACTIVE} \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsection{UC-0005 — Tiếp nhận lại nhân viên cũ}
+
+\begin{table}[H]
+\centering
+\caption{Đặc tả use case UC-0005 — Tiếp nhận lại nhân viên cũ}
+\label{tab:uc-0005}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{|p{3.0cm}|p{2.3cm}|p{2.7cm}|p{4.5cm}|}
+\hline
+\textbf{Use case} & UC-0005 & \textbf{Tên use case} & Tiếp nhận lại nhân viên cũ \\
+\hline
+\textbf{Tác nhân} & \multicolumn{3}{p{9.5cm}|}{Quản trị viên (ADMIN)} \\
+\hline
+\textbf{Tiền điều kiện} & \multicolumn{3}{p{9.5cm}|}{Đăng nhập thành công} \\
+\hline
+\textbf{Sự kiện chính} & \textbf{Thực hiện bởi} & \multicolumn{2}{p{7.2cm}|}{\textbf{Hành động}} \\
+\hline
+1 & ADMIN & \multicolumn{2}{p{7.2cm}|}{Tìm kiếm nhân viên cũ cần tiếp nhận lại} \\
+\hline
+2 & System & \multicolumn{2}{p{7.2cm}|}{Hiển thị form nhập thông tin} \\
+\hline
+3 & ADMIN & \multicolumn{2}{p{7.2cm}|}{Nhập mã nhân viên} \\
+\hline
+4 & System & \multicolumn{2}{p{7.2cm}|}{Tìm kiếm và kiểm tra sự tồn tại của nhân viên} \\
+\hline
+5 & System & \multicolumn{2}{p{7.2cm}|}{Hiển thị thông tin nhân viên} \\
+\hline
+6 & ADMIN & \multicolumn{2}{p{7.2cm}|}{Yêu cầu tiếp nhận lại vào tổ chức} \\
+\hline
+7 & System & \multicolumn{2}{p{7.2cm}|}{Hiển thị form nhập thông tin bổ sung (chức vụ mới)} \\
+\hline
+8 & ADMIN & \multicolumn{2}{p{7.2cm}|}{Nhập thông tin chức vụ mới} \\
+\hline
+9 & System & \multicolumn{2}{p{7.2cm}|}{Kiểm tra tính hợp lệ của thông tin} \\
+\hline
+10 & System & \multicolumn{2}{p{7.2cm}|}{Cập nhật thông tin nhân sự và kích hoạt lại tài khoản} \\
+\hline
+11 & System & \multicolumn{2}{p{7.2cm}|}{Phân quyền mặc định theo chức vụ mới} \\
+\hline
+12 & System & \multicolumn{2}{p{7.2cm}|}{Thông báo tiếp nhận lại thành công} \\
+\hline
+\textbf{Xử lý ngoại lệ} & \textbf{Thực hiện bởi} & \multicolumn{2}{p{7.2cm}|}{\textbf{Hành động}} \\
+\hline
+4a & System & \multicolumn{2}{p{7.2cm}|}{Nhân viên không tồn tại: hiển thị thông báo thất bại và kết thúc luồng} \\
+\hline
+9a & System & \multicolumn{2}{p{7.2cm}|}{Thông tin không hợp lệ: hiển thị thông báo thất bại và kết thúc luồng} \\
+\hline
+\textbf{Sự kiện phụ} & \multicolumn{3}{p{9.5cm}|}{Không có} \\
+\hline
+\textbf{Hậu điều kiện} & \multicolumn{3}{p{9.5cm}|}{Tài khoản được kích hoạt lại và phân quyền đầy đủ theo chức vụ mới} \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsection{UC-0006 — Luân chuyển vị trí công tác}
+
+\begin{table}[H]
+\centering
+\caption{Đặc tả use case UC-0006 — Luân chuyển vị trí công tác}
+\label{tab:uc-0006}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{|p{3.0cm}|p{2.3cm}|p{2.7cm}|p{4.5cm}|}
+\hline
+\textbf{Use case} & UC-0006 & \textbf{Tên use case} & Luân chuyển vị trí công tác \\
+\hline
+\textbf{Tác nhân} & \multicolumn{3}{p{9.5cm}|}{Quản trị viên (ADMIN)} \\
+\hline
+\textbf{Tiền điều kiện} & \multicolumn{3}{p{9.5cm}|}{Đăng nhập thành công} \\
+\hline
+\textbf{Sự kiện chính} & \textbf{Thực hiện bởi} & \multicolumn{2}{p{7.2cm}|}{\textbf{Hành động}} \\
+\hline
+1 & ADMIN & \multicolumn{2}{p{7.2cm}|}{Tìm kiếm nhân viên cần luân chuyển} \\
+\hline
+2 & System & \multicolumn{2}{p{7.2cm}|}{Hiển thị form nhập thông tin} \\
+\hline
+3 & ADMIN & \multicolumn{2}{p{7.2cm}|}{Nhập mã nhân viên} \\
+\hline
+4 & System & \multicolumn{2}{p{7.2cm}|}{Tìm kiếm và kiểm tra sự tồn tại của nhân viên} \\
+\hline
+5 & System & \multicolumn{2}{p{7.2cm}|}{Hiển thị thông tin nhân viên} \\
+\hline
+6 & ADMIN & \multicolumn{2}{p{7.2cm}|}{Yêu cầu thay đổi vị trí công tác mới} \\
+\hline
+7 & System & \multicolumn{2}{p{7.2cm}|}{Hiển thị form nhập thông tin chức vụ mới} \\
+\hline
+8 & ADMIN & \multicolumn{2}{p{7.2cm}|}{Nhập thông tin chức vụ mới} \\
+\hline
+9 & System & \multicolumn{2}{p{7.2cm}|}{Kiểm tra tính hợp lệ của thông tin} \\
+\hline
+10 & System & \multicolumn{2}{p{7.2cm}|}{Cập nhật thông tin nhân sự theo vị trí mới} \\
+\hline
+11 & System & \multicolumn{2}{p{7.2cm}|}{Thu hồi quyền vị trí cũ và phân quyền theo chức vụ mới} \\
+\hline
+12 & System & \multicolumn{2}{p{7.2cm}|}{Thông báo luân chuyển thành công} \\
+\hline
+\textbf{Xử lý ngoại lệ} & \textbf{Thực hiện bởi} & \multicolumn{2}{p{7.2cm}|}{\textbf{Hành động}} \\
+\hline
+4a & System & \multicolumn{2}{p{7.2cm}|}{Nhân viên không tồn tại: hiển thị thông báo thất bại và kết thúc luồng} \\
+\hline
+9a & System & \multicolumn{2}{p{7.2cm}|}{Thông tin không hợp lệ: hiển thị thông báo thất bại và kết thúc luồng} \\
+\hline
+\textbf{Sự kiện phụ} & \multicolumn{3}{p{9.5cm}|}{Không có} \\
+\hline
+\textbf{Hậu điều kiện} & \multicolumn{3}{p{9.5cm}|}{Quyền vị trí cũ được thu hồi; quyền mặc định theo vị trí mới được cấp đầy đủ} \\
+\hline
+\end{tabular}
+\end{table}
+
+\section{Yêu cầu phi chức năng}
+\label{section:2.4}
+
+Bên cạnh các yêu cầu chức năng, hệ thống phân quyền trong môi trường ngân hàng còn phải đáp ứng một tập hợp các ràng buộc kỹ thuật và chất lượng nghiêm ngặt. Phần này trình bày năm nhóm yêu cầu phi chức năng được xác định dựa trên phân tích đặc thù của bài toán.
+
+\subsection{Độ tin cậy}
+\label{subsection:2.4.1}
+
+Hệ thống phải đảm bảo tính nhất quán dữ liệu trong mọi tình huống, kể cả khi xảy ra lỗi ở tầng giao tiếp bên ngoài. Toàn bộ thao tác thay đổi trạng thái quan trọng — tạo người dùng, cấp quyền, thu hồi quyền, đổi mật khẩu — phải được thực thi trong phạm vi giao dịch cơ sở dữ liệu, đảm bảo nguyên tắc toàn vẹn (all-or-nothing). Việc gửi thông báo và đồng bộ dữ liệu giữa các thành phần phải được tách biệt hoàn toàn khỏi giao dịch cơ sở dữ liệu, đảm bảo rằng lỗi giao tiếp không làm rollback dữ liệu đã được lưu thành công.
+
+Hệ thống phải áp dụng chiến lược xóa mềm (soft delete) cho toàn bộ thực thể nghiệp vụ: người dùng, quyền, vai trò, ứng dụng đều chuyển sang trạng thái vô hiệu thay vì bị xóa vật lý, đảm bảo khả năng truy vết lịch sử và phục hồi khi cần. Mọi ngoại lệ phải được xử lý tập trung tại tầng kiểm soát, trả về mã lỗi có cấu trúc thống nhất để hệ thống phía trước có thể phân tích và hiển thị thông báo phù hợp.
+
+\subsection{Chuẩn xác thực và bảo mật}
+\label{subsection:2.4.2}
+
+Hệ thống phải tuân thủ các chuẩn mở về xác thực và ủy quyền được công nhận rộng rãi trong ngành: OAuth 2.0 \cite{rfc6749} cho luồng ủy quyền, OpenID Connect Core 1.0 cho định danh người dùng, và PKCE \cite{rfc7636} để bảo vệ luồng xác thực từ ứng dụng không lưu trữ bí mật. Token truy cập phải được ký bằng thuật toán bất đối xứng ECDSA P-256 (ES256) theo chuẩn RFC 7518, đảm bảo mỗi thành phần chỉ cần khóa công khai để xác minh mà không cần truy vấn lại máy chủ xác thực.
+
+Khóa ký phải được luân chuyển định kỳ (tối thiểu mỗi ngày) với cơ chế phục vụ khóa công khai theo chuẩn JWK Set \cite{rfc7517}, cho phép các thành phần phụ thuộc tự cập nhật khóa mới khi phát hiện định danh khóa chưa biết. Cơ chế xác thực đa bước (MFA) phải được thiết kế theo mô hình cây luồng có thể mở rộng, để việc bổ sung phương thức xác thực mới không đòi hỏi thay đổi phần lõi của hệ thống.
+
+\subsection{Khả năng mở rộng và bảo trì}
+\label{subsection:2.4.3}
+
+Hệ thống phải được tổ chức theo kiến trúc vi dịch vụ (microservices) với ranh giới trách nhiệm rõ ràng giữa các thành phần: thành phần xác thực, thành phần quản lý định danh, thành phần cấu hình ứng dụng và thành phần điều phối (API Gateway) hoạt động độc lập và có thể triển khai riêng lẻ. Giao tiếp bất đồng bộ giữa các thành phần phải thông qua hàng đợi thông điệp (message broker), đảm bảo các thành phần không phụ thuộc trực tiếp vào nhau tại thời điểm chạy.
+
+Lược đồ cơ sở dữ liệu phải bao gồm cột trạng thái và dấu thời gian (ngày tạo, ngày cập nhật, ngày thu hồi) cho tất cả thực thể nghiệp vụ, phục vụ kiểm toán và truy vết. Mọi thay đổi lược đồ phải được thực hiện qua kịch bản DDL tường minh, không phụ thuộc vào cơ chế tự động sinh lược đồ của framework ORM. Cấu hình quyền truy cập mặc định theo vai trò và vị trí phải được lưu trong cơ sở dữ liệu dưới dạng ma trận có thể chỉnh sửa, không hardcode trong mã nguồn.
+
+\subsection{Chất lượng mã nguồn}
+\label{subsection:2.4.4}
+
+Mã nguồn phải tuân theo cấu trúc phân tầng nhất quán giữa tất cả các dịch vụ: tầng điều khiển (controller), tầng nghiệp vụ (service), tầng truy cập dữ liệu (repository) và tầng ánh xạ dữ liệu (mapper/DTO). Các hằng số nghiệp vụ — mã lỗi, tên chủ đề thông điệp, loại vai trò, trạng thái thực thể — phải được định nghĩa tập trung thay vì phân tán dưới dạng chuỗi ký tự rải rác trong mã nguồn. Lớp đối tượng truyền dữ liệu (DTO) và thực thể phải được sinh tự động các phương thức boilerplate thông qua công cụ xử lý annotation tại thời điểm biên dịch, giảm thiểu mã viết tay dễ gây lỗi.
+
+\subsection{Yêu cầu về công nghệ và kiến trúc}
+\label{subsection:2.4.5}
+
+Cổng API (API Gateway) phải thực thi kiểm tra xác thực và phân quyền tập trung trước khi chuyển tiếp yêu cầu đến dịch vụ nghiệp vụ, theo thứ tự cố định: xác minh chữ ký token, kiểm tra quyền theo tuyến, bổ sung thông tin người dùng vào tiêu đề yêu cầu, và trao đổi token người dùng thành token dịch vụ. Thông tin quyền của người dùng phải được nhúng vào token dưới dạng danh sách chuỗi có cấu trúc, để cổng API có thể kiểm tra mà không cần truy vấn cơ sở dữ liệu tại mỗi yêu cầu.
+
+Hệ thống phải hỗ trợ thu hồi quyền tức thì — khi quyền bị thu hồi, mọi phiên làm việc liên quan phải bị chấm dứt trong vòng vài giây mà không cần chờ token hết hạn tự nhiên. Dữ liệu phiên làm việc và token ngắn hạn phải được lưu trong bộ nhớ đệm phân tán (Redis) với thời gian sống xác định, đảm bảo hiệu năng cao và tự động giải phóng tài nguyên. Toàn bộ hạ tầng phải có khả năng đóng gói và triển khai bằng container, đảm bảo môi trường nhất quán giữa phát triển và vận hành.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\end{document}

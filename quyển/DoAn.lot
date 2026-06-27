@@ -1,0 +1,51 @@
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {2.1}{\ignorespaces Đặc tả use case UC-0001 — Yêu cầu và phê duyệt cấp quyền}}{25}{table.caption.22}%
+\contentsline {table}{\numberline {2.2}{\ignorespaces Đặc tả use case UC-0002 — Tạo người dùng mới}}{26}{table.caption.23}%
+\contentsline {table}{\numberline {2.3}{\ignorespaces Đặc tả use case UC-0003 — Quản lý nghỉ tạm thời và quay lại công tác}}{27}{table.caption.24}%
+\contentsline {table}{\numberline {2.4}{\ignorespaces Đặc tả use case UC-0004 — Thôi việc}}{28}{table.caption.25}%
+\contentsline {table}{\numberline {2.5}{\ignorespaces Đặc tả use case UC-0005 — Tiếp nhận lại nhân viên cũ}}{29}{table.caption.26}%
+\contentsline {table}{\numberline {2.6}{\ignorespaces Đặc tả use case UC-0006 — Luân chuyển vị trí công tác}}{30}{table.caption.27}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {3.1}{\ignorespaces So sánh các ngôn ngữ và framework cho hệ thống IAM}}{37}{table.caption.30}%
+\contentsline {table}{\numberline {3.2}{\ignorespaces So sánh Apache Kafka và RabbitMQ}}{38}{table.caption.31}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {4.1}{\ignorespaces So sánh kiến trúc Microservices và Monolithic}}{40}{table.caption.32}%
+\contentsline {table}{\numberline {4.2}{\ignorespaces So sánh giao tiếp Event-Driven (Kafka) và REST đồng bộ}}{41}{table.caption.33}%
+\contentsline {table}{\numberline {4.3}{\ignorespaces Các Kafka topic trong hệ thống IAM}}{42}{table.caption.34}%
+\contentsline {table}{\numberline {4.4}{\ignorespaces Bảng màu thiết kế IAM Banking Portal}}{51}{table.caption.41}%
+\contentsline {table}{\numberline {4.5}{\ignorespaces Cấu trúc bảng AUTH\_USER}}{65}{table.caption.55}%
+\contentsline {table}{\numberline {4.6}{\ignorespaces Cấu trúc bảng AUTH\_USER\_PROFILE}}{66}{table.caption.56}%
+\contentsline {table}{\numberline {4.7}{\ignorespaces Cấu trúc bảng AUTH\_USER\_ADDRESS}}{66}{table.caption.57}%
+\contentsline {table}{\numberline {4.8}{\ignorespaces Cấu trúc bảng AUTH\_DEPARTMENT}}{67}{table.caption.58}%
+\contentsline {table}{\numberline {4.9}{\ignorespaces Cấu trúc bảng AUTH\_POSITION}}{67}{table.caption.59}%
+\contentsline {table}{\numberline {4.10}{\ignorespaces Cấu trúc bảng AUTH\_ROLE}}{67}{table.caption.60}%
+\contentsline {table}{\numberline {4.11}{\ignorespaces Cấu trúc bảng AUTH\_USER\_ROLE}}{67}{table.caption.61}%
+\contentsline {table}{\numberline {4.12}{\ignorespaces Cấu trúc bảng AUTH\_PROVINCE}}{68}{table.caption.62}%
+\contentsline {table}{\numberline {4.13}{\ignorespaces Cấu trúc bảng AUTH\_WARD}}{68}{table.caption.63}%
+\contentsline {table}{\numberline {4.14}{\ignorespaces Cấu trúc bảng AUTH\_RESOURCE}}{68}{table.caption.64}%
+\contentsline {table}{\numberline {4.15}{\ignorespaces Cấu trúc bảng AUTH\_APP\_PERMISSION}}{69}{table.caption.65}%
+\contentsline {table}{\numberline {4.16}{\ignorespaces Cấu trúc bảng AUTH\_USER\_RESOURCE}}{69}{table.caption.66}%
+\contentsline {table}{\numberline {4.17}{\ignorespaces Cấu trúc bảng AUTH\_DEFAULT\_APP\_PERMISSION}}{70}{table.caption.67}%
+\contentsline {table}{\numberline {4.18}{\ignorespaces Cấu trúc bảng AUTH\_DEFAULT\_RESOURCE}}{70}{table.caption.68}%
+\contentsline {table}{\numberline {4.19}{\ignorespaces Cấu trúc bảng AUTH\_REQUEST\_HEADER}}{71}{table.caption.69}%
+\contentsline {table}{\numberline {4.20}{\ignorespaces Cấu trúc bảng AUTH\_REQUEST\_DETAIL}}{71}{table.caption.70}%
+\contentsline {table}{\numberline {4.21}{\ignorespaces Cấu trúc bảng AUTH\_CLIENT\_GROUP}}{72}{table.caption.71}%
+\contentsline {table}{\numberline {4.22}{\ignorespaces Cấu trúc bảng AUTH\_APPLICATION}}{72}{table.caption.72}%
+\contentsline {table}{\numberline {4.23}{\ignorespaces Cấu trúc bảng AUTH\_CLIENT}}{72}{table.caption.73}%
+\contentsline {table}{\numberline {4.24}{\ignorespaces Cấu trúc bảng AUTH\_CLIENT\_OAUTH}}{73}{table.caption.74}%
+\contentsline {table}{\numberline {4.25}{\ignorespaces Cấu trúc bảng AUTH\_METHOD}}{73}{table.caption.75}%
+\contentsline {table}{\numberline {4.26}{\ignorespaces Cấu trúc bảng AUTH\_CLIENT\_METHOD}}{74}{table.caption.76}%
+\contentsline {table}{\numberline {4.27}{\ignorespaces Cấu trúc bảng AUTH\_FLOW}}{74}{table.caption.77}%
+\contentsline {table}{\numberline {4.28}{\ignorespaces Cấu trúc bảng AUTH\_FLOW\_EXECUTION}}{75}{table.caption.78}%
+\contentsline {table}{\numberline {4.29}{\ignorespaces Danh sách công cụ và thư viện sử dụng}}{76}{table.caption.79}%
+\contentsline {table}{\numberline {4.30}{\ignorespaces Thống kê mã nguồn từng thành phần hệ thống}}{77}{table.caption.80}%
+\contentsline {table}{\numberline {4.31}{\ignorespaces Các trường hợp kiểm thử chức năng tạo người dùng}}{83}{table.caption.90}%
+\contentsline {table}{\numberline {4.32}{\ignorespaces Các trường hợp kiểm thử chức năng tạo yêu cầu phân quyền}}{83}{table.caption.91}%
+\contentsline {table}{\numberline {4.33}{\ignorespaces Các trường hợp kiểm thử chức năng phê duyệt và từ chối của CAB}}{84}{table.caption.92}%
+\contentsline {table}{\numberline {4.34}{\ignorespaces Danh sách container và cổng triển khai cục bộ}}{85}{table.caption.93}%
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\contentsfinish 
+\contentsfinish 

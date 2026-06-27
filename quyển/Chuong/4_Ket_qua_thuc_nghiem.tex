@@ -1,0 +1,1170 @@
+\documentclass[../DoAn.tex]{subfiles}
+\begin{document}
+
+\section{Thiết kế kiến trúc}
+\label{section:4.1}
+
+\subsection{Lựa chọn kiến trúc phần mềm}
+\label{subsection:4.1.1}
+
+\subsubsection{Nền tảng kiến trúc và lý do lựa chọn}
+
+Hệ thống IAM được xây dựng dựa trên sự kết hợp của hai kiến trúc bổ sung cho nhau: kiến trúc Microservices để phân tách các miền nghiệp vụ theo ranh giới rõ ràng, và kiến trúc hướng sự kiện (Event-Driven Architecture) để điều phối giao tiếp bất đồng bộ giữa các service. Mỗi lựa chọn đều được phân tích so sánh với phương án thay thế nhằm chứng minh sự phù hợp với đặc thù bài toán.
+
+Kiến trúc microservices phân chia ứng dụng thành các dịch vụ nhỏ, độc lập, mỗi dịch vụ đảm nhiệm một miền nghiệp vụ (bounded context) cụ thể và có thể được phát triển, kiểm thử, triển khai, mở rộng hoàn toàn độc lập với các dịch vụ còn lại. Theo khảo sát CNCF Annual Cloud Native Survey 2025, 46\% backend developer đang tích cực triển khai microservices và 89\% tổ chức đã áp dụng công nghệ cloud-native \cite{cncf_survey_2025}. Bảng~\ref{tab:microservices-vs-monolithic} so sánh với kiến trúc nguyên khối (Monolithic) theo các tiêu chí liên quan:
+
+\begin{table}[H]
+\centering
+\caption{So sánh kiến trúc Microservices và Monolithic}
+\label{tab:microservices-vs-monolithic}
+\begin{tabular}{|p{3.5cm}|p{5cm}|p{5cm}|}
+\hline
+\textbf{Tiêu chí} & \textbf{Monolithic} & \textbf{Microservices} \\
+\hline
+Độ phức tạp ban đầu & Thấp — một codebase duy nhất & Cao — nhiều service, nhiều module \\
+\hline
+Triển khai & Toàn bộ hệ thống phải deploy cùng lúc & Từng service deploy hoàn toàn độc lập \\
+\hline
+Khả năng mở rộng & Phải scale toàn bộ ứng dụng & Scale riêng từng service theo nhu cầu \\
+\hline
+Xử lý lỗi & Lỗi một module có thể ảnh hưởng toàn hệ thống & Lỗi được cô lập tại ranh giới từng service \\
+\hline
+Phù hợp khi & Team nhỏ, domain đơn giản & Domain phức tạp, nhiều bounded context tách biệt \\
+\hline
+\end{tabular}
+\end{table}
+
+Kiến trúc hướng sự kiện (Event-Driven Architecture — EDA) là mô hình trong đó các thành phần giao tiếp thông qua việc phát và tiêu thụ sự kiện bất đồng bộ thay vì gọi trực tiếp lẫn nhau theo kiểu đồng bộ. Trong mô hình Publish/Subscribe, bên phát sự kiện không cần biết có bao nhiêu bên tiêu thụ đang lắng nghe — thêm mới hoặc thay đổi một subscriber không đòi hỏi chỉnh sửa publisher, tạo ra sự tách rời (loose coupling) tự nhiên. Bảng~\ref{tab:eda-vs-rest} so sánh với REST đồng bộ:
+
+\begin{table}[H]
+\centering
+\caption{So sánh giao tiếp Event-Driven (Kafka) và REST đồng bộ}
+\label{tab:eda-vs-rest}
+\begin{tabular}{|p{3.5cm}|p{5cm}|p{5cm}|}
+\hline
+\textbf{Tiêu chí} & \textbf{REST đồng bộ} & \textbf{Event-Driven (Kafka)} \\
+\hline
+Coupling & Chặt — caller phải biết endpoint của callee & Lỏng — chỉ cần biết tên event topic \\
+\hline
+Khả năng chịu lỗi & Thấp — consumer down gây lỗi tức thì & Cao — event được giữ lại chờ consumer phục hồi \\
+\hline
+Hiệu năng & Blocking — caller chờ response & Non-blocking — fire-and-forget \\
+\hline
+Fan-out & Phức tạp — gọi lần lượt từng service & Tự nhiên — nhiều consumer group cùng nhận \\
+\hline
+Audit trail & Không có sẵn & Có — Kafka log giữ lại toàn bộ sự kiện \\
+\hline
+Độ phức tạp vận hành & Thấp & Cao — cần quản lý Kafka cluster \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsubsection{Áp dụng vào hệ thống IAM}
+
+Dựa trên hai nền tảng kiến trúc trên, hệ thống IAM được tổ chức thành bốn service độc lập giao tiếp với nhau qua hai kênh: REST đồng bộ (qua gateway) cho luồng chính từ người dùng, và Kafka bất đồng bộ cho các sự kiện nghiệp vụ nội bộ.
+
+Về phân chia service, bốn bounded context được tách biệt theo đặc thù kỹ thuật và yêu cầu hiệu năng riêng biệt. \textit{iam-auth-service} là service có yêu cầu hiệu năng cao nhất — đảm nhiệm toàn bộ runtime xác thực gồm xử lý luồng OAuth 2.0, điều phối các bước MFA, ký và kiểm tra JWT, quản lý phiên làm việc; service này duy trì hai tầng cache (Caffeine cho cấu hình luồng xác thực theo từng ứng dụng, Redis cho mã xác thực tạm thời) và hầu như không truy vấn cơ sở dữ liệu trong luồng xử lý thông thường. \textit{iam-identity-service} đảm nhiệm toàn bộ vòng đời người dùng (tiếp nhận, thôi việc, nghỉ phép, luân chuyển) và quy trình CAB phê duyệt yêu cầu phân quyền — service có logic nghiệp vụ phức tạp nhất, truy vấn Oracle nhiều nhất và là đầu mối phát toàn bộ sự kiện Kafka. \textit{iam-app-service} quản lý mặt phẳng cấu hình: danh mục ứng dụng, OAuth2 client, cây luồng xác thực, tài nguyên và ma trận quyền mặc định theo Role $\times$ Position — service có tần suất đọc cao, ít thay đổi và không tham gia vào luồng xác thực runtime. \textit{iam-gateway} là điểm vào duy nhất của hệ thống, thực hiện nhiệm vụ duy nhất là route môi request đến service đích để thực hiện các yêu cầu từ \textit{client}.
+
+Về vấn đề giao tiếp giứa các Microservice, \textit{iam-identity-service} và \textit{iam-app-service} đóng vai trò publisher; \textit{iam-auth-service} và \textit{iam-notify-service} đóng vai trò consumer. Bảng~\ref{tab:kafka-topics} liệt kê các topic Kafka và luồng xử lý tương ứng:
+
+\begin{table}[H]
+\centering
+\caption{Các Kafka topic trong hệ thống IAM}
+\label{tab:kafka-topics}
+\begin{tabular}{|p{5.5cm}|p{2.5cm}|p{2.5cm}|p{2.5cm}|}
+\hline
+\textbf{Topic} & \textbf{Publisher} & \textbf{Consumer} & \textbf{Kích hoạt khi} \\
+\hline
+\texttt{CREATE-SUCCESS-USER-NOTIFY} & identity & notify & Tạo mới / tiếp nhận người dùng \\
+\hline
+\texttt{DEFAULT-GRANT-PERMISSION-USER} & identity & identity & Tiếp nhận / luân chuyển / gán role \\
+\hline
+\texttt{USER-CHANGED-PASSWORD} & identity & auth & Đổi / đặt lại mật khẩu \\
+\hline
+\texttt{REQUEST-PERMISSION-NOTIFY} & identity & notify & Gửi yêu cầu phân quyền chính thức \\
+\hline
+\texttt{APPROVE-PERMISSION-NOTIFY} & identity & notify & CAB phê duyệt hoặc từ chối \\
+\hline
+\texttt{REVOKED-PERMISSION-NOTIFY} & identity & auth, notify & Thu hồi quyền ứng dụng / tài nguyên \\
+\hline
+\texttt{CLIENT-SECRET-RESET-NOTIFY} & app & auth & Đặt lại client secret \\
+\hline
+\end{tabular}
+\end{table}
+
+Topic \textit{REVOKED-PERMISSION-NOTIFY} minh họa rõ nhất lợi thế fan-out: khi quyền bị thu hồi, một sự kiện duy nhất kích hoạt đồng thời \textit{iam-auth-service} vô hiệu hóa phiên làm việc ngay lập tức và \textit{iam-notify-service} gửi email thông báo — hai hành động độc lập, không có sự phụ thuộc nào giữa hai consumer. Nguyên tắc bất biến xuyên suốt toàn bộ hệ thống là mọi sự kiện đều được phát sau khi một giao dịch của database hoàn toàn thành công, đảm bảo tính nhất quán dữ liệu kể cả khi message broker gặp sự cố.
+
+\subsection{Thiết kế tổng quan}
+\label{subsection:4.1.2}
+
+Với kiến trúc Microservices, thiết kế tổng quan không mô tả các gói bên trong một ứng dụng đơn mà mô tả sự phân chia và phụ thuộc giữa các service --- mỗi service là một đơn vị triển khai độc lập tương ứng với một miền nghiệp vụ (bounded context) xác định. Hình~\ref{fig:system-overview} trình bày kiến trúc tổng thể của hệ thống IAM với bốn service nghiệp vụ chính, một service thông báo và ba thành phần hạ tầng dùng chung.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{Hinhve/System_Overview.png}
+    \caption{Sơ đồ kiến trúc tổng thể hệ thống IAM}
+    \label{fig:system-overview}
+\end{figure}
+
+Hệ thống IAM được tổ chức thành năm service độc lập, mỗi service đảm nhiệm một miền nghiệp vụ riêng biệt và không có service nào tiếp nhận kết nối trực tiếp từ phía client ngoài API Gateway. Vai trò và mục đích của từng service được trình bày dưới đây:
+
+\begin{itemize}
+  \item \textbf{iam-gateway} --- API Gateway, điểm vào duy nhất của toàn bộ hệ thống. Mọi yêu cầu từ Angular Portal đều đi qua gateway trước khi được định tuyến đến service đích. Gateway thực hiện bốn nhiệm vụ tuần tự: xác minh chữ ký JWT, kiểm tra quyền truy cập theo route, gắn thông tin người dùng vào header và trao đổi token người dùng thành token dịch vụ.
+
+  \item \textbf{iam-auth-service} --- Authorization Server, miền xác thực. Service chịu trách nhiệm xử lý toàn bộ luồng OAuth 2.0, điều phối các bước MFA, ký và kiểm tra JWT, quản lý phiên làm việc. Đây là service có yêu cầu hiệu năng cao nhất, duy trì hai tầng cache (Caffeine và Redis) để giảm thiểu truy vấn cơ sở dữ liệu trong luồng xử lý thông thường.
+
+  \item \textbf{iam-identity-service} --- Miền quản lý danh tính và phân quyền. Service đảm nhiệm toàn bộ vòng đời người dùng (tiếp nhận, thôi việc, nghỉ phép, luân chuyển) và quy trình CAB phê duyệt yêu cầu phân quyền. Đây là service có logic nghiệp vụ phức tạp nhất và là đầu mối phát toàn bộ sự kiện Kafka trong hệ thống.
+
+  \item \textbf{iam-app-service} --- Miền cấu hình hệ thống. Service quản lý mặt phẳng cấu hình bao gồm danh mục ứng dụng, tài nguyên, OAuth2 client, cây luồng xác thực và ma trận quyền mặc định theo Role $\times$ Position. Service có tần suất đọc cao, ít thay đổi và không tham gia vào luồng xác thực runtime.
+
+  \item \textbf{iam-notify-service} --- Service thông báo, đóng vai trò Kafka consumer thuần túy. Service lắng nghe các topic từ \textit{iam-identity-service} và \textit{iam-app-service} để gửi email thông báo đến người dùng. Không có HTTP endpoint nào được expose ra ngoài.
+\end{itemize}
+
+Về phụ thuộc giữa các service, cấu trúc phân tầng là một chiều và không bỏ qua tầng. Tầng trên (\textit{Angular Portal}) chỉ giao tiếp với \textit{iam-gateway}; gateway định tuyến đến các service nghiệp vụ; các service nghiệp vụ truy cập trực tiếp vào hạ tầng (Oracle, Redis, Kafka); \textit{iam-notify-service} chỉ nhận từ Kafka, không gọi bất kỳ service nào khác. Không có service nào gọi trực tiếp vào service khác theo kiểu đồng bộ --- mọi phối hợp nội bộ đều đi qua Kafka.
+
+\bigskip
+Trong số các service trên, \textit{iam-identity-service} là service trung tâm của bài toán phân quyền. Hình~\ref{fig:package-identity} trình bày biểu đồ gói UML của service này, được tổ chức theo kiến trúc phân tầng nghiêm ngặt.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{Hinhve/Package_IdentityService.png}
+    \caption{Biểu đồ gói UML của iam-identity-service}
+    \label{fig:package-identity}
+\end{figure}
+
+Gói \textit{controller} chịu trách nhiệm tiếp nhận các yêu cầu HTTP từ phía client, kiểm tra tính hợp lệ của đầu vào ở mức sơ bộ và chuyển tiếp sang tầng nghiệp vụ để xử lý. Gói này chỉ phụ thuộc vào \textit{service}, tách biệt hoàn toàn việc xử lý giao thức HTTP ra khỏi logic nghiệp vụ.
+
+Gói \textit{service} nhận yêu cầu từ \textit{controller}, thực thi toàn bộ logic nghiệp vụ của hệ thống và phối hợp với \textit{repository} để truy cập dữ liệu. Đây là tầng trung tâm, nơi tập trung mọi quy tắc xử lý và điều phối các luồng nghiệp vụ phức tạp như quy trình phê duyệt phân quyền hay vòng đời nhân sự.
+
+Gói \textit{repository} đóng vai trò giao diện truy cập dữ liệu, cung cấp các thao tác đọc, ghi và cập nhật lên cơ sở dữ liệu Oracle thông qua Spring Data JPA. Gói này gồm hai sub-package: \textit{repository.jpa} cho các truy vấn thông thường và \textit{repository.cache} cho các thao tác cần tối ưu hiệu năng.
+
+Gói \textit{domain} chứa các thực thể JPA, mỗi thực thể ánh xạ trực tiếp đến một bảng trong cơ sở dữ liệu Oracle. Đây là tầng dữ liệu thấp nhất, không phụ thuộc vào bất kỳ tầng nào phía trên.
+
+Gói \textit{kafka.consumer} đảm nhiệm việc lắng nghe và tiêu thụ các sự kiện từ các topic Kafka. Sau khi nhận sự kiện, consumer không tự xử lý mà ủy thác toàn bộ cho \textit{service}, đảm bảo logic nghiệp vụ được tập trung tại một nơi duy nhất.
+
+Các gói \textit{dto}, \textit{mapper}, \textit{enums} và \textit{utils} là các gói hỗ trợ không thuộc tầng nghiệp vụ cụ thể nào. Chúng cung cấp các đối tượng truyền dữ liệu, bộ chuyển đổi giữa entity và DTO, hằng số trạng thái và các phương thức tiện ích dùng chung cho toàn bộ service.
+
+Nguyên tắc phụ thuộc được tuân thủ nhất quán: chiều phụ thuộc chỉ đi từ tầng trên xuống tầng dưới, không có chiều ngược lại; không có gói nào bỏ qua tầng trung gian (\textit{controller} không gọi \textit{repository} trực tiếp); các gói cùng tầng độc lập với nhau (\textit{controller} và \textit{kafka.consumer} đều chỉ gọi \textit{service}, không gọi lẫn nhau).
+
+\subsection{Thiết kế chi tiết gói}
+\label{subsection:4.1.3}
+
+Để làm rõ sự tham gia của từng gói vào các chức năng nghiệp vụ trọng tâm, phần này trình bày biểu đồ gói chi tiết cho bốn luồng xử lý chính của \textit{iam-identity-service}: tạo người dùng mới, yêu cầu và phê duyệt phân quyền, tạm nghỉ và quay trở lại, và luân chuyển vị trí. Mỗi biểu đồ chỉ thể hiện các lớp và giao diện trực tiếp tham gia vào luồng xử lý tương ứng; các lớp hỗ trợ không liên quan đến luồng đó được lược bỏ để giữ sự rõ ràng. Quan hệ giữa các gói trong tất cả biểu đồ đều là quan hệ phụ thuộc (dependency), thể hiện bằng mũi tên nét đứt, với chiều phụ thuộc nhất quán từ tầng trên xuống tầng dưới.
+
+\subsubsection{Luồng tạo người dùng mới}
+
+Hình~\ref{fig:package-create-user} trình bày các gói tham gia vào quá trình tạo một tài khoản nhân viên mới. \textit{UserInfoController} tiếp nhận yêu cầu HTTP và ủy thác cho giao diện \textit{UserInfoService}. Tầng nghiệp vụ phối hợp với ba lớp trong \textit{service.common}: \textit{CheckInfor} kiểm tra dữ liệu trùng lặp và tính hợp lệ của địa chỉ, vị trí; \textit{GenDataService} sinh tên đăng nhập và mã nhân viên theo quy tắc nghiệp vụ; \textit{SavedService} lưu toàn bộ thực thể xuống cơ sở dữ liệu trong một giao dịch thống nhất. Sau khi giao dịch thành công, \textit{IdentityEventProducer} phát hai sự kiện Kafka để kích hoạt đồng thời luồng gửi email thông báo và luồng cấp quyền mặc định theo vai trò và vị trí của người dùng.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{Hinhve/Package_CreateUser.png}
+    \caption{Biểu đồ gói chi tiết --- Luồng tạo người dùng mới}
+    \label{fig:package-create-user}
+\end{figure}
+
+\subsubsection{Luồng yêu cầu và phê duyệt phân quyền}
+
+Hình~\ref{fig:package-permission-request} mô tả toàn bộ vòng đời của một yêu cầu phân quyền, từ khi nhân viên khởi tạo đến khi CAB phê duyệt và quyền thực sự được cấp. \textit{UserPermissionController} xử lý tất cả các endpoint trong luồng này: tạo yêu cầu nháp, gửi yêu cầu chính thức, và phê duyệt hoặc từ chối. Giao diện \textit{UserPermissionService} điều phối toàn bộ logic. Yêu cầu phân quyền được lưu trữ qua \textit{AuthRequestHeaderRepository} (thông tin tổng quát của yêu cầu) và \textit{AuthRequestDetailRepository} (từng mục quyền cụ thể). Khi CAB phê duyệt, \textit{AuthAppPermissionRepository} và \textit{AuthUserResourceRepository} được cập nhật trực tiếp để hiện thực hóa việc cấp quyền. Mỗi bước chuyển trạng thái đều kích hoạt một sự kiện Kafka thông báo thông qua \textit{IdentityEventProducer}.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{Hinhve/Package_PermissionRequest.png}
+    \caption{Biểu đồ gói chi tiết --- Luồng yêu cầu và phê duyệt phân quyền}
+    \label{fig:package-permission-request}
+\end{figure}
+
+\subsubsection{Luồng tạm nghỉ và quay trở lại}
+
+Hình~\ref{fig:package-leave-return} thể hiện luồng nghiệp vụ quản lý trạng thái công tác tạm thời. \textit{UserLifecycleController} xử lý cả hai yêu cầu \textit{/leave} (tạm nghỉ) và \textit{/return} (quay trở lại), ủy thác cho \textit{UserLifecycleService}. Khi tạm nghỉ, \textit{ValidateInput} kiểm tra tính hợp lệ của khoảng thời gian nghỉ và \textit{CheckInfor} xác nhận người dùng tồn tại hợp lệ; sau đó \textit{AuthAppPermissionRepository} cập nhật trạng thái SUSPENDED và gắn mốc thời gian tương ứng. \textit{IdentityEventProducer} phát sự kiện \texttt{REVOKED-PERMISSION-NOTIFY} để \textit{iam-auth-service} vô hiệu hóa phiên làm việc ngay lập tức. Khi nhân viên quay trở lại, quyền được khôi phục nguyên trạng mà không cần tạo lại từ đầu và không phát sự kiện Kafka.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{Hinhve/Package_LeaveReturn.png}
+    \caption{Biểu đồ gói chi tiết --- Luồng tạm nghỉ và quay trở lại}
+    \label{fig:package-leave-return}
+\end{figure}
+
+\subsubsection{Luồng luân chuyển vị trí}
+
+Hình~\ref{fig:package-transfer} trình bày luồng xử lý khi một nhân viên được luân chuyển sang vị trí hoặc phòng ban mới. Đây là luồng có tác động lớn nhất lên dữ liệu phân quyền: \textit{UserLifecycleService} thu hồi toàn bộ vai trò và quyền cũ thông qua \textit{AuthUserRoleRepository}, \textit{AuthAppPermissionRepository}, sau đó gán vai trò mới và cập nhật hồ sơ nhân sự qua \textit{AuthUserProfileRepository}. \textit{CheckInfor} và \textit{ValidateInput} xác thực tính hợp lệ của thông tin đầu vào, còn \textit{GenDataService} hỗ trợ kiểm tra vị trí và phòng ban mới. Sau khi giao dịch hoàn tất, \textit{IdentityEventProducer} phát đồng thời sự kiện \texttt{REVOKED-PERMISSION-NOTIFY} để thu hồi phiên cũ và sự kiện \texttt{DEFAULT-GRANT-PERMISSION-USER} để kích hoạt cấp quyền mặc định theo vị trí mới. Sự kiện thứ hai được \textit{GrantPermissionConsumer} trong gói \textit{kafka.consumer} tiêu thụ ngay trong chính service, thực hiện việc cấp quyền tự động mà không cần thêm bất kỳ lời gọi HTTP nào.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{Hinhve/Package_Transfer.png}
+    \caption{Biểu đồ gói chi tiết --- Luồng luân chuyển vị trí}
+    \label{fig:package-transfer}
+\end{figure}
+
+\section{Thiết kế chi tiết}
+\subsection{Thiết kế giao diện}
+\label{subsection:4.2.1}
+
+\subsubsection{Đặc tả môi trường hiển thị}
+
+Hệ thống IAM Banking Portal hướng đến môi trường trình duyệt web trên máy tính để bàn, phù hợp với điều kiện làm việc của cán bộ ngân hàng tại văn phòng. Độ phân giải mục tiêu là 1440×900 điểm ảnh trở lên; ở mức tối thiểu 1280×768 giao diện vẫn hiển thị đầy đủ chức năng mà không cần cuộn ngang. Màu sắc hỗ trợ 24-bit truecolor (16,7 triệu màu), đảm bảo hiển thị chính xác bảng màu thiết kế. Toàn bộ ứng dụng được xây dựng theo mô hình Single Page Application với Angular 19: các trang thay đổi nội dung mà không tải lại trình duyệt, mang lại trải nghiệm mượt mà tương đương ứng dụng desktop. Màn hình đăng nhập được phục vụ riêng bởi \textit{iam-auth-service} thông qua Thymeleaf template; toàn bộ các màn hình nghiệp vụ còn lại thuộc Angular portal.
+
+\subsubsection{Hệ màu và kiểu chữ}
+
+Giao diện áp dụng bảng màu MB Bank Navy --- dải xanh đậm đặc trưng của ngân hàng MB --- làm màu chủ đạo, kết hợp nền xám xanh nhạt để tạo tương phản vừa phải, phù hợp khi sử dụng nhiều giờ liên tục. Toàn bộ giá trị màu được khai báo dưới dạng CSS Custom Properties trong \textit{styles.css} toàn cục, cho phép điều chỉnh theme chỉ tại một nơi duy nhất mà không cần can thiệp từng component. Bảng~\ref{tab:color-palette} liệt kê các biến màu chính cùng mục đích sử dụng:
+
+\begin{table}[H]
+\centering
+\caption{Bảng màu thiết kế IAM Banking Portal}
+\label{tab:color-palette}
+\begin{tabular}{|l|l|p{5.5cm}|}
+\hline
+\textbf{Biến CSS} & \textbf{Giá trị hex} & \textbf{Mục đích} \\
+\hline
+\textit{--iam-primary}      & \textit{\#003B8E} & Màu chủ đạo: header, nút chính, tiêu đề, tab active \\
+\hline
+\textit{--iam-primary-dark} & \textit{\#002868} & Trạng thái hover của màu chủ đạo \\
+\hline
+\textit{--iam-body-bg}      & \textit{\#F0F4F9} & Nền trang (xám xanh nhạt) \\
+\hline
+\textit{--iam-surface}      & \textit{\#FFFFFF} & Nền card, bảng, modal \\
+\hline
+\textit{--iam-border}       & \textit{\#D5E3F5} & Viền component, đường kẻ bảng \\
+\hline
+\textit{--iam-text}         & \textit{\#0F2044} & Văn bản chính (xanh đen đậm) \\
+\hline
+\textit{--iam-text-muted}   & \textit{\#5A6E8C} & Văn bản phụ, nhãn trường form \\
+\hline
+\end{tabular}
+\end{table}
+
+Kiểu chữ sử dụng \textbf{Inter} (Google Fonts), một typeface sans-serif hiện đại được tối ưu hóa cho màn hình với khả năng đọc tốt ở kích thước nhỏ. Cỡ chữ cơ bản là 0.875rem (14px) với chiều cao dòng 1.6, phù hợp cho giao diện quản trị có mật độ thông tin cao. Tiêu đề sử dụng font-weight 600--700; nhãn form dùng 500; văn bản phụ dùng 400, tạo hệ thống phân cấp thị giác rõ ràng mà không cần thay đổi màu sắc.
+
+\subsubsection{Chuẩn hóa thành phần giao diện}
+
+\textbf{Bố cục tổng thể.} Mọi màn hình nghiệp vụ đều chia thành ba vùng cố định: header ngang (cao 58px) áp dụng gradient xanh đậm từ \textit{\#003B8E} đến \textit{\#002060}, chứa logo, tên hệ thống và menu người dùng dạng pill ở góc phải; sidebar dọc bên trái áp dụng gradient tối hơn từ \textit{\#002270} đến \textit{\#001040}, chứa menu điều hướng theo nhóm chức năng có thể thu gọn; vùng nội dung chính chiếm phần còn lại với nền \textit{\#F0F4F9}. Sự phân tầng màu sắc từ tối (sidebar) qua trung bình (header) đến sáng (nội dung) tạo chiều sâu thị giác tự nhiên và định hướng sự chú ý vào nội dung trung tâm.
+
+\textbf{Nút bấm và hành động.} Nút chính (\textit{btn-primary}) dùng màu \textit{\#003B8E} với hiệu ứng nổi nhẹ khi hover (dịch -1px theo trục Y, tăng shadow). Nút phụ (\textit{btn-outline-primary}) dùng viền màu primary trên nền trắng. Bán kính bo góc thống nhất 6px trên toàn bộ nút. Floating Action Button (FAB) là nút tròn đường kính 52px đặt cố định ở góc dưới bên phải, dùng cho thao tác tạo mới --- thiết kế này tránh chiếm diện tích trong layout bảng khi dữ liệu nhiều.
+
+\textbf{Trường nhập liệu.} Tất cả \textit{input} và \textit{select} dùng viền \textit{\#D5E3F5}, bo góc 6px. Khi được focus, viền chuyển sang \textit{\#7BA7D8} với hiệu ứng glow xanh nhạt (box-shadow), phản hồi trực quan tức thì về trường đang được chọn. Nhãn trường (\textit{form-label}) hiển thị chữ in hoa nhỏ màu muted, tách biệt rõ ràng khỏi nội dung nhập. Thanh tìm kiếm (\textit{search-bar}) thêm đường viền trái 3px màu primary, tạo điểm nhấn thị giác phân biệt khu vực lọc khỏi bảng kết quả.
+
+\textbf{Bảng dữ liệu.} Tiêu đề bảng dùng nền gradient xanh rất nhạt, chữ in hoa nhỏ màu primary với letter-spacing 0.05em, tạo sự chuyên nghiệp và dễ phân biệt từng cột. Hàng dữ liệu được tô xen kẽ (striped) và highlight xanh nhạt \texttt{\#ECF3FD} khi hover. Thay vì cột hành động riêng, toàn bộ hàng là vùng nhấn được để điều hướng đến trang chi tiết --- thiết kế này tăng vùng nhấn và giảm số lượng phần tử thị giác trong bảng.
+
+\textbf{Badge trạng thái.} Mỗi trạng thái nghiệp vụ được biểu diễn bằng badge màu riêng theo ngữ nghĩa quy ước: ACTIVE (xanh lá), PENDING (xanh dương), APPROVED (xanh ngọc), REJECTED (đỏ), REVOKED (cam), INACTIVE/DRAFT (xám). Tất cả badge dùng màu nền nhạt ghép với màu chữ đậm cùng tông, đảm bảo tỷ lệ tương phản đạt chuẩn WCAG AA mà không gây cảm giác chói.
+
+\textbf{Modal và thông báo phản hồi.} Modal dùng overlay nền tối mờ với backdrop-filter blur 2px, panel trắng bo góc 14px và header gradient xanh rất nhạt. Thông báo phản hồi (\textit{alert-floating}) hiển thị cố định ở góc trên bên phải màn hình với hiệu ứng shadow nổi, tự ẩn sau vài giây mà không chặn tương tác bên dưới.
+
+\subsubsection{Minh họa màn hình thiết kế}
+
+Hình~\ref{fig:ui-login} trình bày màn hình đăng nhập do \textit{iam-auth-service} phục vụ. Thiết kế áp dụng gradient xanh đậm ba lớp (\textit{\#001F52} → \textit{\#003B8E} → \textit{\#0056C8}) phủ toàn màn hình, kết hợp với hiệu ứng ánh sáng hình cầu mờ ở hai góc để tạo chiều sâu. Card đăng nhập trắng bo góc 20px nổi bật trên nền tối, chứa biểu tượng khóa trong vòng tròn gradient, tên hệ thống và nút đăng nhập qua MB Bank SSO. Thông điệp ``Kết nối bảo mật · OAuth2 PKCE'' ở chân card thể hiện rõ cơ chế xác thực được áp dụng.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.6\textwidth]{Hinhve/UI_Login.png}
+    \caption{Màn hình đăng nhập --- IAM Banking Portal}
+    \label{fig:ui-login}
+\end{figure}
+
+Hình~\ref{fig:ui-userlist} minh họa màn hình danh sách người dùng, thể hiện ba thành phần thiết kế quan trọng trong một khung nhìn duy nhất. Phần đầu trang có thanh tìm kiếm với đường viền trái xanh (\textit{search-bar}) chứa năm bộ lọc bao gồm họ tên, tên đăng nhập, mã nhân viên, phòng ban và trạng thái; kết quả lọc cập nhật tức thì khi nhấn tìm kiếm. Bảng dữ liệu phía dưới hiển thị thông tin tóm tắt người dùng với badge trạng thái màu sắc, hàng highlight khi hover và toàn bộ hàng là vùng nhấn để vào chi tiết. FAB xanh dương ở góc dưới bên phải là điểm vào duy nhất để tạo người dùng mới, hiển thị có điều kiện chỉ khi người dùng hiện tại có quyền \textit{user:update} và vai trò ADMIN.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{Hinhve/UI_UserList.png}
+    \caption{Màn hình danh sách người dùng}
+    \label{fig:ui-userlist}
+\end{figure}
+
+Hình~\ref{fig:ui-userdetail} thể hiện màn hình chi tiết và chỉnh sửa thông tin người dùng. Trang này áp dụng mô hình inline editing: thay vì chuyển đổi giữa chế độ xem và chế độ sửa, các trường được hiển thị trực tiếp dưới dạng input khi người dùng có quyền chỉnh sửa. Các trường chỉ đọc và trường có thể chỉnh sửa phân biệt nhau qua nền màu: nền trắng với viền cho trường nhập liệu, nền trong suốt cho giá trị chỉ đọc. Phần ``Quyền hiện tại'' ở cuối trang chỉ hiển thị khi người xem là ADMIN và không phải đang xem hồ sơ cá nhân của mình, thể hiện nguyên tắc hiển thị có điều kiện theo vai trò.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{Hinhve/UI_UserDetail.png}
+    \caption{Màn hình chi tiết và chỉnh sửa người dùng}
+    \label{fig:ui-userdetail}
+\end{figure}
+
+Hình~\ref{fig:ui-permission} minh họa màn hình quản lý yêu cầu phân quyền --- chức năng trung tâm của bài toán phân quyền. Màn hình chia thành ba tab ngang: tab đầu hiển thị danh sách quyền hiện có của nhân viên phân theo hai loại (quyền ứng dụng và quyền tài nguyên) thông qua pill nav; tab thứ hai hiển thị danh sách yêu cầu phân quyền với năm bộ lọc và bảng kết quả có thể nhấn vào từng hàng để xem chi tiết; tab thứ ba dành cho CAB duyệt yêu cầu. FAB xanh dương ở tab danh sách yêu cầu hiển thị label ``Tạo yêu cầu'' khi hover, điều hướng đến trang tạo yêu cầu đầy đủ. Thiết kế tab phân tầng này cho phép ba nhóm người dùng khác nhau (nhân viên xem quyền, nhân viên tạo yêu cầu, CAB phê duyệt) sử dụng cùng một URL mà không gây nhầm lẫn về luồng thao tác.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{Hinhve/UI_Permission.png}
+    \caption{Màn hình quản lý yêu cầu phân quyền}
+    \label{fig:ui-permission}
+\end{figure}
+\subsection{Thiết kế lớp}
+\label{subsection:4.2.2}
+
+Để làm rõ thiết kế ở mức đối tượng, mục này trình bày biểu đồ lớp và biểu đồ trình tự cho bốn luồng nghiệp vụ trọng tâm đã phân tích trong mục~\ref{subsection:4.1.3}. Biểu đồ lớp tập trung vào các lớp trực tiếp tham gia vào từng luồng, bao gồm controller, service interface, các lớp dùng chung (common services), repository và entity domain; quan hệ phụ thuộc giữa các lớp được biểu diễn bằng mũi tên nét đứt theo quy ước UML. Biểu đồ trình tự minh họa thứ tự truyền thông điệp từ thời điểm người dùng gọi API đến khi hệ thống phản hồi kết quả, kể cả các tương tác bất đồng bộ qua Kafka.
+
+\subsubsection{Luồng tạo người dùng mới}
+
+Hình~\ref{fig:class-create-user} trình bày biểu đồ lớp cho luồng tạo người dùng mới. \textit{UserInfoController} tiếp nhận yêu cầu HTTP và ủy thác toàn bộ logic nghiệp vụ cho \textit{UserInfoService} --- service interface trung tâm điều phối ba nhóm xử lý chính. Trước tiên, \textit{CheckInfor} thực hiện chuỗi kiểm tra đầu vào: phát hiện dữ liệu trùng lặp (tên đăng nhập, email, số điện thoại), xác nhận tuổi hợp lệ, kiểm tra vị trí và phòng ban tồn tại trong hệ thống. Tiếp theo, \textit{GenDataService} sinh tự động tên đăng nhập theo quy tắc đặt tên, mật khẩu tạm thời và mã nhân viên. Cuối cùng, \textit{SavedService} đóng gói toàn bộ thao tác ghi vào một đơn vị giao dịch \textit{@Transactional} duy nhất, đảm bảo bốn bảng liên quan --- người dùng, hồ sơ, địa chỉ, vai trò --- được cập nhật nguyên tử. Sau khi giao dịch thành công, \textit{IdentityEventProducer} phát hai sự kiện Kafka ra ngoài phạm vi giao dịch để thông báo qua email và kích hoạt cấp quyền mặc định.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{Hinhve/Class_CreateUser.png}
+    \caption{Biểu đồ lớp --- Luồng tạo người dùng mới}
+    \label{fig:class-create-user}
+\end{figure}
+
+Biểu đồ trình tự tại hình~\ref{fig:seq-create-user} thể hiện thứ tự gửi thông điệp giữa các đối tượng trong luồng này. Sau khi Admin gọi \textit{POST /users}, controller chuyển yêu cầu xuống service; service gọi tuần tự \textit{CheckInfor} để kiểm tra toàn bộ điều kiện hợp lệ, sau đó \textit{GenDataService} để sinh dữ liệu, rồi gọi \textit{SavedService} thực hiện ghi nguyên tử qua bốn lần lưu tuần tự vào cơ sở dữ liệu. Điểm quan trọng trong thiết kế là hai lời gọi \textit{IdentityEventProducer} nằm ngoài phạm vi \textit{@Transactional} của \textit{SavedService}: ngay cả khi Kafka tạm thời không khả dụng, dữ liệu người dùng vẫn được bảo toàn trong cơ sở dữ liệu Oracle.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{Hinhve/Seq_CreateUser.png}
+    \caption{Biểu đồ trình tự --- Luồng tạo người dùng mới}
+    \label{fig:seq-create-user}
+\end{figure}
+
+\subsubsection{Luồng yêu cầu và phê duyệt phân quyền}
+
+Hình~\ref{fig:class-perm-request} mô tả thiết kế lớp cho luồng yêu cầu và phê duyệt phân quyền. \textit{UserPermissionController} phục vụ năm endpoint tương ứng với năm thao tác trên vòng đời của một yêu cầu: tạo nháp, gửi chính thức, phê duyệt, từ chối và hủy. Hai entity domain chủ đạo là \textit{AuthRequestHeader} --- lưu thông tin phiếu yêu cầu gồm người xin, người duyệt, trạng thái và thời gian --- và \textit{AuthRequestDetail} --- lưu chi tiết các quyền được xin với trường actions kiểu chuỗi CSV; một phiếu yêu cầu có quan hệ một-nhiều với các dòng chi tiết. \textit{AuthRequestHeaderRepository} dùng \textit{saveAndFlush} thay cho \textit{save} thông thường để lấy ID được sinh ngay lập tức trong cùng giao dịch, phục vụ việc liên kết các bản ghi detail sau đó. \textit{IdentityEventProducer} thông báo cho người duyệt khi có yêu cầu mới và thông báo kết quả khi yêu cầu được xử lý.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{Hinhve/Class_PermRequest.png}
+    \caption{Biểu đồ lớp --- Luồng yêu cầu và phê duyệt phân quyền}
+    \label{fig:class-perm-request}
+\end{figure}
+
+Biểu đồ trình tự tại hình~\ref{fig:seq-perm-request} chia luồng thành ba giai đoạn. Giai đoạn một: nhân viên tạo yêu cầu ở trạng thái \textit{DRAFT} hoặc \textit{OFFICIAL}; service kiểm tra tính hợp lệ của người duyệt (phải có vai trò CAB và trạng thái ACTIVE) cùng các tài nguyên được xin (phải tồn tại và đang hoạt động) trước khi lưu vào cơ sở dữ liệu. Giai đoạn hai: nhân viên gửi chính thức yêu cầu đang ở trạng thái \textit{DRAFT} thông qua endpoint \textit{/submit}; hệ thống chuyển trạng thái sang \textit{OFFICIAL} và gửi thông báo Kafka đến người duyệt. Giai đoạn ba: CAB phê duyệt; service thực hiện cấp quyền thực sự --- ghi vào \textit{AUTH\_APP\_PERMISSION} (bỏ qua nếu đã tồn tại) và merge actions vào \textit{AUTH\_USER\_RESOURCE} (union với actions hiện có) --- trong một giao dịch duy nhất, sau đó phát sự kiện thông báo kết quả.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{Hinhve/Seq_PermRequest.png}
+    \caption{Biểu đồ trình tự --- Luồng yêu cầu và phê duyệt phân quyền}
+    \label{fig:seq-perm-request}
+\end{figure}
+
+\subsubsection{Luồng tạm nghỉ và quay trở lại}
+
+Hình~\ref{fig:class-leave-return} trình bày thiết kế lớp cho luồng quản lý trạng thái tạm nghỉ. \textit{UserLifecycleController} cung cấp hai endpoint riêng biệt cho thao tác tạm nghỉ (\textit{/leave}) và quay trở lại (\textit{/return}), cùng ủy thác cho \textit{UserLifecycleService}. \textit{ValidateInput} kiểm tra tính hợp lệ của khoảng thời gian nghỉ (ngày bắt đầu phải trước ngày kết thúc), trong khi \textit{CheckInfor} xác nhận người dùng tồn tại và đang ở trạng thái hoạt động hợp lệ. Thiết kế đặc biệt của entity \textit{AuthAppPermission} nằm ở chỗ trạng thái tạm nghỉ không thay đổi cột \textit{STATUS} (vẫn giữ giá trị \textit{ACTIVE}) mà chỉ cập nhật hai cột \textit{INACTIVE\_FROM\_DATE} và \textit{INACTIVE\_TO\_DATE}; điều này phân biệt rõ ràng giữa tạm nghỉ có thời hạn và thôi việc vĩnh viễn (trong đó STATUS sẽ bị set về \textit{REVOKED}). \textit{AuthAppPermissionRepository} cung cấp các phương thức chuyên biệt \textit{setInactiveDates} và \textit{clearInactiveDates} để xử lý hai chiều của luồng. Khi nhân viên nghỉ, \textit{IdentityEventProducer} phát sự kiện thu hồi phiên đăng nhập hiện tại; khi nhân viên quay lại, không cần phát sự kiện vì quyền chưa bao giờ bị thu hồi thực sự.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{Hinhve/Class_LeaveReturn.png}
+    \caption{Biểu đồ lớp --- Luồng tạm nghỉ và quay trở lại}
+    \label{fig:class-leave-return}
+\end{figure}
+
+Biểu đồ trình tự tại hình~\ref{fig:seq-leave-return} chia thành hai khung màu phân biệt. Luồng tạm nghỉ: sau khi \textit{ValidateInput} kiểm tra khoảng thời gian và \textit{CheckInfor} xác nhận người dùng, service gọi \textit{setInactiveDates} để ghi nhãn thời gian rồi phát sự kiện Kafka thu hồi phiên đăng nhập hiện tại. Luồng quay trở lại: service chỉ cần xác nhận người dùng tồn tại rồi gọi \textit{clearInactiveDates} để xóa nhãn tạm nghỉ mà không cần phát sự kiện Kafka, vì \textit{iam-auth-service} sẽ tự kiểm tra ngày hiệu lực khi nhân viên thực hiện đăng nhập lại.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{Hinhve/Seq_LeaveReturn.png}
+    \caption{Biểu đồ trình tự --- Luồng tạm nghỉ và quay trở lại}
+    \label{fig:seq-leave-return}
+\end{figure}
+
+\subsubsection{Luồng luân chuyển vị trí}
+
+Hình~\ref{fig:class-transfer} trình bày thiết kế lớp cho luồng luân chuyển vị trí --- luồng có tác động phân quyền lớn nhất trong hệ thống. \textit{UserLifecycleService} phụ thuộc đồng thời vào ba repository: \textit{AuthUserRoleRepository} để thu hồi toàn bộ vai trò cũ và gán vai trò mới, \textit{AuthAppPermissionRepository} để thu hồi quyền ứng dụng cũ, và \textit{AuthUserResourceRepository} để thu hồi quyền tài nguyên cũ; ba thao tác thu hồi và một thao tác gán vai trò mới được bao bởi cùng một giao dịch. Sau khi giao dịch kết thúc, \textit{IdentityEventProducer} phát đồng thời hai sự kiện Kafka độc lập: sự kiện \textit{REVOKED\_PERMISSION\_NOTIFY} để \textit{iam-auth-service} vô hiệu hóa phiên đăng nhập cũ ngay lập tức, và sự kiện \textit{DEFAULT\_GRANT\_PERMISSION} để kích hoạt cấp quyền theo vị trí mới. Sự kiện thứ hai được \textit{GrantPermissionConsumer} --- Kafka consumer nội bộ trong cùng service --- tiêu thụ và ủy thác cho \textit{ExecuteEventService} thực hiện cấp quyền mặc định theo ma trận vị trí.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{Hinhve/Class_Transfer.png}
+    \caption{Biểu đồ lớp --- Luồng luân chuyển vị trí}
+    \label{fig:class-transfer}
+\end{figure}
+
+Biểu đồ trình tự tại hình~\ref{fig:seq-transfer} thể hiện rõ đặc điểm bất đồng bộ của luồng: sau khi giao dịch chính hoàn tất và hai sự kiện Kafka được phát ra, \textit{GrantPermissionConsumer} nhận sự kiện \textit{DEFAULT\_GRANT\_PERMISSION} và gọi \textit{ExecuteEventService} để tự động cấp quyền mặc định cho vị trí mới mà không cần thêm bất kỳ lời gọi HTTP nào từ phía người dùng. \textit{ExecuteEventService} áp dụng hai cơ chế chống trùng lặp: với quyền ứng dụng, dùng \textit{HashSet} để loại bỏ trùng lặp kể cả trong cùng một batch; với quyền tài nguyên, thực hiện union actions từ nhiều vai trò nếu cùng tài nguyên để đảm bảo tính nhất quán dữ liệu ngay cả khi nhân viên được gán nhiều vai trò có tài nguyên chung.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{Hinhve/Seq_Transfer.png}
+    \caption{Biểu đồ trình tự --- Luồng luân chuyển vị trí}
+    \label{fig:seq-transfer}
+\end{figure}
+\subsection{Thiết kế cơ sở dữ liệu}
+
+Hệ thống IAM sử dụng Oracle Database với schema \texttt{AUTH\_USER1} làm nền tảng lưu trữ dữ liệu dùng chung cho toàn bộ các microservice. Tổng cộng 28 bảng được tổ chức theo ba cụm chức năng chính, phản ánh ba miền nghiệp vụ cốt lõi: cụm người dùng, cụm phân quyền, và cụm cấu hình ứng dụng. Hình~\ref{fig:erd-iam} mô tả sơ đồ thực thể liên kết toàn hệ thống với đầy đủ các mối quan hệ giữa các thực thể.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{Hinhve/ERD_IAM_Banking.png}
+    \caption{Sơ đồ thực thể liên kết (ERD) hệ thống IAM}
+    \label{fig:erd-iam}
+\end{figure}
+
+\subsubsection{Cụm thông tin người dùng}
+
+Cụm này bao gồm chín bảng lưu trữ toàn bộ dữ liệu định danh, hồ sơ, địa chỉ và vai trò của nhân viên ngân hàng, cùng các bảng tra cứu tham chiếu về cơ cấu tổ chức và địa giới hành chính.
+
+\begin{table}[H]
+\centering
+\caption{Cấu trúc bảng AUTH\_USER}
+\label{tab:auth-user}
+\footnotesize
+\begin{tabular}{|p{3.0cm}|p{2.3cm}|p{2.7cm}|p{4.5cm}|}
+\hline
+\textbf{Tên trường} & \textbf{Kiểu dữ liệu} & \textbf{Ràng buộc} & \textbf{Mô tả} \\ \hline
+ID & NUMBER & Khóa chính & Sinh tự động bởi SEQ\_AUTH\_USER \\ \hline
+USERNAME & VARCHAR2(100) & NOT NULL, UNIQUE & Tên đăng nhập, duy nhất trong hệ thống \\ \hline
+EMAIL & VARCHAR2(200) & & Email công việc do tổ chức cấp \\ \hline
+DISPLAY\_NAME & VARCHAR2(200) & & Tên hiển thị ngắn \\ \hline
+PASSWORD & VARCHAR2(500) & NOT NULL & Mật khẩu đã mã hóa BCrypt (rounds=10) \\ \hline
+STATUS & VARCHAR2(20) & NOT NULL & Trạng thái: ACTIVE / INACTIVE / DELETED \\ \hline
+MOBILE & VARCHAR2(20) & & Số điện thoại liên hệ \\ \hline
+FORCE\_CHANGE\_PASSWORD & NUMBER(1) & & 1 = bắt buộc đổi mật khẩu lần đăng nhập tiếp theo \\ \hline
+MS365\_SYNCED & NUMBER(1) & & 1 = tài khoản đã đồng bộ Microsoft 365 \\ \hline
+CREATED\_AT & TIMESTAMP(6) & NOT NULL & Thời điểm tạo tài khoản \\ \hline
+UPDATED\_AT & TIMESTAMP(6) & NOT NULL & Thời điểm cập nhật gần nhất \\ \hline
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Cấu trúc bảng AUTH\_USER\_PROFILE}
+\label{tab:auth-user-profile}
+\footnotesize
+\begin{tabular}{|p{3.0cm}|p{2.3cm}|p{2.7cm}|p{4.5cm}|}
+\hline
+\textbf{Tên trường} & \textbf{Kiểu dữ liệu} & \textbf{Ràng buộc} & \textbf{Mô tả} \\ \hline
+USER\_ID & NUMBER & Khóa chính & Quan hệ 1-1 với AUTH\_USER \\ \hline
+FIRST\_NAME & VARCHAR2(100) & & Họ \\ \hline
+LAST\_NAME & VARCHAR2(100) & & Tên \\ \hline
+FULL\_NAME & VARCHAR2(200) & & Họ và tên đầy đủ \\ \hline
+DISPLAY\_NAME & VARCHAR2(200) & & Tên hiển thị do người dùng tự chỉnh \\ \hline
+GENDER & VARCHAR2(10) & & Giới tính \\ \hline
+DOB & DATE & & Ngày sinh \\ \hline
+EMAIL\_PERSONAL & VARCHAR2(200) & & Email cá nhân (dùng nhận thông báo) \\ \hline
+CCCD & VARCHAR2(20) & & Số căn cước công dân \\ \hline
+CCCD\_ISSUED\_DATE & DATE & & Ngày cấp CCCD \\ \hline
+CCCD\_ISSUED\_PLACE & VARCHAR2(200) & & Nơi cấp CCCD \\ \hline
+EMPLOYEE\_CODE & VARCHAR2(50) & & Mã nhân viên nội bộ \\ \hline
+JOIN\_DATE & DATE & & Ngày vào làm việc \\ \hline
+DEPARTMENT\_ID & NUMBER & & Phòng ban đang công tác \\ \hline
+POSITION & VARCHAR2(200) & & Mã chức danh \\ \hline
+AVATAR\_URL & VARCHAR2(500) & & Đường dẫn ảnh đại diện \\ \hline
+CREATED\_AT & TIMESTAMP(6) & NOT NULL & Thời điểm tạo \\ \hline
+UPDATED\_AT & TIMESTAMP(6) & NOT NULL & Thời điểm cập nhật \\ \hline
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Cấu trúc bảng AUTH\_USER\_ADDRESS}
+\label{tab:auth-user-address}
+\footnotesize
+\begin{tabular}{|p{3.0cm}|p{2.3cm}|p{2.7cm}|p{4.5cm}|}
+\hline
+\textbf{Tên trường} & \textbf{Kiểu dữ liệu} & \textbf{Ràng buộc} & \textbf{Mô tả} \\ \hline
+ID & NUMBER & Khóa chính & Sinh tự động bởi SEQ\_AUTH\_USER\_ADDRESS \\ \hline
+USER\_ID & NUMBER & NOT NULL & Người dùng sở hữu địa chỉ \\ \hline
+TYPE & VARCHAR2(10) & NOT NULL, CHECK & Loại địa chỉ: PERMANENT / TEMPORARY / BIRTH \\ \hline
+PROVINCE\_CODE & NUMBER & & Tỉnh / thành phố \\ \hline
+WARD\_CODE & NUMBER & & Phường / xã \\ \hline
+DETAIL & VARCHAR2(500) & & Số nhà, đường, tổ dân phố \\ \hline
+CREATED\_AT & TIMESTAMP(6) & NOT NULL & Thời điểm tạo \\ \hline
+UPDATED\_AT & TIMESTAMP(6) & NOT NULL & Thời điểm cập nhật \\ \hline
+\multicolumn{4}{|l|}{\textit{Ràng buộc UNIQUE: (USER\_ID, TYPE) — mỗi người dùng tối đa một địa chỉ mỗi loại}} \\ \hline
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Cấu trúc bảng AUTH\_DEPARTMENT}
+\label{tab:auth-department}
+\footnotesize
+\begin{tabular}{|p{3.0cm}|p{2.3cm}|p{2.7cm}|p{4.5cm}|}
+\hline
+\textbf{Tên trường} & \textbf{Kiểu dữ liệu} & \textbf{Ràng buộc} & \textbf{Mô tả} \\ \hline
+ID & NUMBER & Khóa chính & Sinh tự động bởi SEQ\_AUTH\_DEPARTMENT \\ \hline
+CODE & VARCHAR2(50) & & Mã phòng ban viết tắt \\ \hline
+NAME & VARCHAR2(200) & NOT NULL & Tên phòng ban đầy đủ \\ \hline
+PARENT\_ID & NUMBER & & Phòng ban cha; NULL nếu là gốc (cấu trúc cây đệ quy) \\ \hline
+STATUS & NUMBER(1) & & 1 = đang hoạt động, 0 = đã giải thể \\ \hline
+CREATED\_AT & TIMESTAMP(6) & & Thời điểm tạo \\ \hline
+UPDATED\_AT & TIMESTAMP(6) & & Thời điểm cập nhật \\ \hline
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Cấu trúc bảng AUTH\_POSITION}
+\label{tab:auth-position}
+\footnotesize
+\begin{tabular}{|p{3.0cm}|p{2.3cm}|p{2.7cm}|p{4.5cm}|}
+\hline
+\textbf{Tên trường} & \textbf{Kiểu dữ liệu} & \textbf{Ràng buộc} & \textbf{Mô tả} \\ \hline
+CODE & VARCHAR2(50) & Khóa chính & Mã chức danh (VD: DEV, TESTER, BA) \\ \hline
+NAME & VARCHAR2(200) & NOT NULL & Tên chức danh đầy đủ \\ \hline
+DESCRIPTION & VARCHAR2(500) & & Mô tả nhiệm vụ \\ \hline
+STATUS & VARCHAR2(20) & & ACTIVE / INACTIVE \\ \hline
+CREATED\_AT & TIMESTAMP(6) & & Thời điểm tạo \\ \hline
+UPDATED\_AT & TIMESTAMP(6) & & Thời điểm cập nhật \\ \hline
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Cấu trúc bảng AUTH\_ROLE}
+\label{tab:auth-role}
+\footnotesize
+\begin{tabular}{|p{3.0cm}|p{2.3cm}|p{2.7cm}|p{4.5cm}|}
+\hline
+\textbf{Tên trường} & \textbf{Kiểu dữ liệu} & \textbf{Ràng buộc} & \textbf{Mô tả} \\ \hline
+ID & NUMBER & Khóa chính & Sinh tự động bởi SEQ\_AUTH\_ROLE \\ \hline
+CODE & VARCHAR2(50) & UNIQUE & Mã vai trò: STAFF / CAB / ADMIN \\ \hline
+NAME & VARCHAR2(200) & & Tên vai trò đầy đủ \\ \hline
+DESCRIPTION & VARCHAR2(500) & & Mô tả phạm vi quyền hạn \\ \hline
+CREATED\_AT & TIMESTAMP(6) & & Thời điểm tạo \\ \hline
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Cấu trúc bảng AUTH\_USER\_ROLE}
+\label{tab:auth-user-role}
+\footnotesize
+\begin{tabular}{|p{3.0cm}|p{2.3cm}|p{2.7cm}|p{4.5cm}|}
+\hline
+\textbf{Tên trường} & \textbf{Kiểu dữ liệu} & \textbf{Ràng buộc} & \textbf{Mô tả} \\ \hline
+ID & NUMBER & Khóa chính & Sinh tự động bởi SEQ\_AUTH\_USER\_ROLE \\ \hline
+USER\_ID & NUMBER & NOT NULL & Người dùng được gán vai trò \\ \hline
+ROLE\_ID & NUMBER & NOT NULL & Vai trò được gán \\ \hline
+GRANTED\_BY & VARCHAR2(100) & & Mã nhân viên người thực hiện gán \\ \hline
+GRANTED\_AT & TIMESTAMP(6) & & Thời điểm gán vai trò \\ \hline
+EXPIRED\_AT & TIMESTAMP(6) & & Thời điểm hết hạn; NULL = vô thời hạn \\ \hline
+STATUS & VARCHAR2(20) & & ACTIVE / REVOKED \\ \hline
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Cấu trúc bảng AUTH\_PROVINCE}
+\label{tab:auth-province}
+\footnotesize
+\begin{tabular}{|p{3.0cm}|p{2.3cm}|p{2.7cm}|p{4.5cm}|}
+\hline
+\textbf{Tên trường} & \textbf{Kiểu dữ liệu} & \textbf{Ràng buộc} & \textbf{Mô tả} \\ \hline
+CODE & NUMBER & Khóa chính & Mã hành chính tỉnh / thành phố \\ \hline
+NAME & VARCHAR2(200) & NOT NULL & Tên tỉnh / thành phố \\ \hline
+DIVISION\_TYPE & VARCHAR2(50) & NOT NULL & Loại đơn vị: tỉnh, thành phố trực thuộc trung ương \\ \hline
+CODENAME & VARCHAR2(200) & NOT NULL & Tên viết tắt không dấu \\ \hline
+PHONE\_CODE & NUMBER & & Mã vùng điện thoại \\ \hline
+STATUS & VARCHAR2(10) & NOT NULL, CHECK & ACTIVE / INACTIVE \\ \hline
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Cấu trúc bảng AUTH\_WARD}
+\label{tab:auth-ward}
+\footnotesize
+\begin{tabular}{|p{3.0cm}|p{2.3cm}|p{2.7cm}|p{4.5cm}|}
+\hline
+\textbf{Tên trường} & \textbf{Kiểu dữ liệu} & \textbf{Ràng buộc} & \textbf{Mô tả} \\ \hline
+CODE & NUMBER & Khóa chính & Mã hành chính phường / xã / thị trấn \\ \hline
+NAME & VARCHAR2(200) & NOT NULL & Tên đơn vị hành chính \\ \hline
+DIVISION\_TYPE & VARCHAR2(50) & NOT NULL & Loại: phường, xã, thị trấn \\ \hline
+CODENAME & VARCHAR2(200) & NOT NULL & Tên không dấu \\ \hline
+PROVINCE\_CODE & NUMBER & NOT NULL & Tỉnh / thành phố trực thuộc \\ \hline
+STATUS & VARCHAR2(10) & NOT NULL, CHECK & ACTIVE / INACTIVE \\ \hline
+\end{tabular}
+\end{table}
+
+\subsubsection{Cụm thông tin phân quyền}
+
+Cụm phân quyền là trung tâm nghiệp vụ của hệ thống, gồm bảy bảng lưu trữ cấu hình tài nguyên, quyền thực tế của người dùng, quyền mặc định theo vai trò và chức danh, cùng luồng phê duyệt quyền theo quy trình CAB.
+
+\begin{table}[H]
+\centering
+\caption{Cấu trúc bảng AUTH\_RESOURCE}
+\label{tab:auth-resource}
+\footnotesize
+\begin{tabular}{|p{3.0cm}|p{2.3cm}|p{2.7cm}|p{4.5cm}|}
+\hline
+\textbf{Tên trường} & \textbf{Kiểu dữ liệu} & \textbf{Ràng buộc} & \textbf{Mô tả} \\ \hline
+ID & NUMBER & Khóa chính & Sinh tự động bởi SEQ\_AUTH\_RESOURCE \\ \hline
+APP\_ID & NUMBER & NOT NULL & Ứng dụng sở hữu tài nguyên \\ \hline
+RESOURCE\_CODE & VARCHAR2(100) & NOT NULL & Mã tài nguyên (VD: user, orders, reports) \\ \hline
+RESOURCE\_NAME & VARCHAR2(200) & & Tên mô tả tài nguyên \\ \hline
+RESOURCE\_TYPE & VARCHAR2(50) & & Loại tài nguyên (API, FUNCTION, DATA...) \\ \hline
+ACTIONS & VARCHAR2(500) & & Danh sách hành động hỗ trợ, phân cách bằng dấu phẩy \\ \hline
+LDAP\_GROUP\_NAME & VARCHAR2(200) & & Tên nhóm LDAP ánh xạ tương ứng \\ \hline
+DESCRIPTION & VARCHAR2(500) & & Mô tả tài nguyên \\ \hline
+STATUS & VARCHAR2(20) & & ACTIVE / INACTIVE \\ \hline
+CREATED\_AT & TIMESTAMP(6) & & Thời điểm tạo \\ \hline
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Cấu trúc bảng AUTH\_APP\_PERMISSION}
+\label{tab:auth-app-permission}
+\footnotesize
+\begin{tabular}{|p{3.0cm}|p{2.3cm}|p{2.7cm}|p{4.5cm}|}
+\hline
+\textbf{Tên trường} & \textbf{Kiểu dữ liệu} & \textbf{Ràng buộc} & \textbf{Mô tả} \\ \hline
+ID & NUMBER & Khóa chính & Sinh tự động bởi SEQ\_AUTH\_APP\_PERMISSION \\ \hline
+USER\_ID & NUMBER & NOT NULL & Người dùng được cấp quyền \\ \hline
+APP\_ID & NUMBER & NOT NULL & Ứng dụng được phép truy cập \\ \hline
+STATUS & VARCHAR2(20) & NOT NULL & ACTIVE / INACTIVE / REVOKED \\ \hline
+GRANTED\_BY & VARCHAR2(100) & & Mã nhân viên người cấp quyền \\ \hline
+GRANTED\_AT & TIMESTAMP(6) & & Thời điểm cấp quyền \\ \hline
+EXPIRED\_AT & TIMESTAMP(6) & & Thời điểm hết hạn; NULL = vô hạn \\ \hline
+REVOKED\_BY & VARCHAR2(100) & & Mã nhân viên người thu hồi \\ \hline
+REVOKED\_AT & TIMESTAMP(6) & & Thời điểm thu hồi \\ \hline
+REASON\_REVOKED & VARCHAR2(500) & & Lý do thu hồi quyền \\ \hline
+GRANT\_SOURCE & VARCHAR2(50) & & Nguồn cấp: default (tự động) / request (CAB duyệt) \\ \hline
+REQUEST\_ID & NUMBER & & Yêu cầu phê duyệt tương ứng \\ \hline
+INACTIVE\_FROM\_DATE & TIMESTAMP(6) & & Bắt đầu tạm hoãn quyền (nghỉ phép) \\ \hline
+INACTIVE\_TO\_DATE & TIMESTAMP(6) & & Kết thúc tạm hoãn quyền \\ \hline
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Cấu trúc bảng AUTH\_USER\_RESOURCE}
+\label{tab:auth-user-resource}
+\footnotesize
+\begin{tabular}{|p{3.0cm}|p{2.3cm}|p{2.7cm}|p{4.5cm}|}
+\hline
+\textbf{Tên trường} & \textbf{Kiểu dữ liệu} & \textbf{Ràng buộc} & \textbf{Mô tả} \\ \hline
+ID & NUMBER & Khóa chính & Sinh tự động bởi SEQ\_AUTH\_USER\_RESOURCE \\ \hline
+USER\_ID & NUMBER & & Người dùng được cấp quyền \\ \hline
+RESOURCE\_ID & NUMBER & & Tài nguyên được cấp \\ \hline
+ACTION & VARCHAR2(500) & & Danh sách hành động được phép (CSV); 1 dòng cho mỗi cặp user-resource \\ \hline
+STATUS & VARCHAR2(20) & & ACTIVE / INACTIVE / REVOKED \\ \hline
+GRANTED\_BY & VARCHAR2(100) & & Mã nhân viên người cấp \\ \hline
+GRANTED\_AT & TIMESTAMP(6) & & Thời điểm cấp \\ \hline
+EXPIRED\_AT & TIMESTAMP(6) & & Thời điểm hết hạn \\ \hline
+REVOKED\_BY & VARCHAR2(100) & & Mã nhân viên người thu hồi \\ \hline
+REVOKED\_AT & TIMESTAMP(6) & & Thời điểm thu hồi \\ \hline
+REQUEST\_ID & NUMBER & & Yêu cầu CAB tương ứng \\ \hline
+GRANT\_SOURCE & VARCHAR2(50) & & default / request \\ \hline
+INACTIVE\_FROM\_DATE & TIMESTAMP(6) & & Bắt đầu tạm hoãn \\ \hline
+INACTIVE\_TO\_DATE & TIMESTAMP(6) & & Kết thúc tạm hoãn \\ \hline
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Cấu trúc bảng AUTH\_DEFAULT\_APP\_PERMISSION}
+\label{tab:auth-default-app-perm}
+\footnotesize
+\begin{tabular}{|p{3.0cm}|p{2.3cm}|p{2.7cm}|p{4.5cm}|}
+\hline
+\textbf{Tên trường} & \textbf{Kiểu dữ liệu} & \textbf{Ràng buộc} & \textbf{Mô tả} \\ \hline
+ID & NUMBER & Khóa chính & Sinh tự động bởi SEQ\_AUTH\_DEFAULT\_APP\_PERM \\ \hline
+ROLE\_ID & VARCHAR2(50) & NOT NULL & Mã vai trò (STAFF / CAB / ADMIN) \\ \hline
+POSITION\_CODE & VARCHAR2(50) & & Mã chức danh áp dụng \\ \hline
+APPLICATION\_ID & NUMBER & & Ứng dụng được cấp mặc định \\ \hline
+STATUS & VARCHAR2(20) & & ACTIVE / INACTIVE \\ \hline
+CREATED\_BY & VARCHAR2(100) & & Mã nhân viên người cấu hình \\ \hline
+CREATED\_AT & TIMESTAMP(6) & & Thời điểm tạo \\ \hline
+UPDATED\_AT & TIMESTAMP(6) & & Thời điểm cập nhật \\ \hline
+\multicolumn{4}{|l|}{\textit{Ràng buộc UNIQUE: (ROLE\_ID, POSITION\_CODE, APPLICATION\_ID)}} \\ \hline
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Cấu trúc bảng AUTH\_DEFAULT\_RESOURCE}
+\label{tab:auth-default-resource}
+\footnotesize
+\begin{tabular}{|p{3.0cm}|p{2.3cm}|p{2.7cm}|p{4.5cm}|}
+\hline
+\textbf{Tên trường} & \textbf{Kiểu dữ liệu} & \textbf{Ràng buộc} & \textbf{Mô tả} \\ \hline
+ID & NUMBER & Khóa chính & Sinh tự động bởi SEQ\_AUTH\_DEFAULT\_RESOURCE \\ \hline
+ROLE\_ID & NUMBER & NOT NULL & ID vai trò (kiểu số, khác AUTH\_DEFAULT\_APP\_PERMISSION dùng mã) \\ \hline
+POSITION\_CODE & VARCHAR2(50) &  & Mã chức danh áp dụng \\ \hline
+RESOURCE\_ID & NUMBER & & Tài nguyên được cấp mặc định \\ \hline
+ACTIONS & VARCHAR2(500) & & Tập con hành động từ AUTH\_RESOURCE.ACTIONS (CSV) \\ \hline
+STATUS & VARCHAR2(20) & & ACTIVE / INACTIVE \\ \hline
+CREATED\_BY & VARCHAR2(100) & & Mã nhân viên người cấu hình \\ \hline
+CREATED\_AT & TIMESTAMP(6) & & Thời điểm tạo \\ \hline
+UPDATED\_AT & TIMESTAMP(6) & & Thời điểm cập nhật \\ \hline
+\multicolumn{4}{|l|}{\textit{Ràng buộc UNIQUE: (ROLE\_ID, POSITION\_CODE, RESOURCE\_ID)}} \\ \hline
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Cấu trúc bảng AUTH\_REQUEST\_HEADER}
+\label{tab:auth-request-header}
+\footnotesize
+\begin{tabular}{|p{3.0cm}|p{2.3cm}|p{2.7cm}|p{4.5cm}|}
+\hline
+\textbf{Tên trường} & \textbf{Kiểu dữ liệu} & \textbf{Ràng buộc} & \textbf{Mô tả} \\ \hline
+ID & NUMBER & Khóa chính & Sinh tự động bởi SEQ\_AUTH\_REQUEST\_HEADER \\ \hline
+REQUESTED\_BY & VARCHAR2(100) & & Mã nhân viên người tạo yêu cầu \\ \hline
+REVIEWED\_BY & VARCHAR2(100) & & Mã nhân viên CAB được chỉ định duyệt \\ \hline
+REQUEST\_FOR & VARCHAR2(100) & & Mã nhân viên được cấp quyền \\ \hline
+REASON & VARCHAR2(1000) & & Lý do yêu cầu cấp quyền \\ \hline
+NOTE & VARCHAR2(1000) & & Ghi chú khi duyệt hoặc từ chối \\ \hline
+STATUS & VARCHAR2(20) & & DRAFT / OFFICIAL / APPROVED / REJECTED / CANCELLED \\ \hline
+REQUESTED\_AT & TIMESTAMP(6) & & Thời điểm gửi yêu cầu chính thức \\ \hline
+REVIEWED\_AT & TIMESTAMP(6) & & Thời điểm CAB thực hiện phê duyệt \\ \hline
+CREATED\_AT & TIMESTAMP(6) & NOT NULL & Thời điểm tạo bản nháp \\ \hline
+UPDATED\_AT & TIMESTAMP(6) & NOT NULL & Thời điểm cập nhật \\ \hline
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Cấu trúc bảng AUTH\_REQUEST\_DETAIL}
+\label{tab:auth-request-detail}
+\footnotesize
+\begin{tabular}{|p{3.0cm}|p{2.3cm}|p{2.7cm}|p{4.5cm}|}
+\hline
+\textbf{Tên trường} & \textbf{Kiểu dữ liệu} & \textbf{Ràng buộc} & \textbf{Mô tả} \\ \hline
+ID & NUMBER & Khóa chính & Sinh tự động bởi SEQ\_AUTH\_REQUEST\_DETAIL \\ \hline
+REQUEST\_ID & NUMBER & NOT NULL & Phiếu yêu cầu chứa chi tiết này \\ \hline
+APP\_ID & NUMBER & & Ứng dụng được yêu cầu quyền truy cập \\ \hline
+RESOURCE\_ID & NUMBER & & Tài nguyên cụ thể (NULL nếu chỉ yêu cầu quyền app) \\ \hline
+ACTIONS & VARCHAR2(500) & & Hành động được yêu cầu trên tài nguyên (CSV) \\ \hline
+STATUS & VARCHAR2(20) & & ACTIVE / INACTIVE \\ \hline
+CREATED\_AT & TIMESTAMP(6) & NOT NULL & Thời điểm tạo \\ \hline
+UPDATED\_AT & TIMESTAMP(6) & NOT NULL & Thời điểm cập nhật \\ \hline
+\end{tabular}
+\end{table}
+
+\subsubsection{Cụm thông tin ứng dụng}
+
+Cụm này gồm tám bảng định nghĩa cấu hình đầy đủ của các ứng dụng đăng ký trên hệ thống IAM: thông tin ứng dụng, cấu hình OAuth2 client, các phương thức xác thực được kích hoạt, và cây luồng xác thực đa bước.
+
+\begin{table}[H]
+\centering
+\caption{Cấu trúc bảng AUTH\_CLIENT\_GROUP}
+\label{tab:auth-client-group}
+\footnotesize
+\begin{tabular}{|p{3.0cm}|p{2.3cm}|p{2.7cm}|p{4.5cm}|}
+\hline
+\textbf{Tên trường} & \textbf{Kiểu dữ liệu} & \textbf{Ràng buộc} & \textbf{Mô tả} \\ \hline
+ID & NUMBER & Khóa chính & ID nhóm ứng dụng \\ \hline
+NAME & VARCHAR2(200) & NOT NULL & Tên nhóm (VD: Ngân hàng lõi, Nội bộ) \\ \hline
+DESCRIPTION & VARCHAR2(500) & & Mô tả nhóm \\ \hline
+CREATED\_AT & TIMESTAMP(6) & & Thời điểm tạo \\ \hline
+UPDATED\_AT & TIMESTAMP(6) & & Thời điểm cập nhật \\ \hline
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Cấu trúc bảng AUTH\_APPLICATION}
+\label{tab:auth-application}
+\footnotesize
+\begin{tabular}{|p{3.0cm}|p{2.3cm}|p{2.7cm}|p{4.5cm}|}
+\hline
+\textbf{Tên trường} & \textbf{Kiểu dữ liệu} & \textbf{Ràng buộc} & \textbf{Mô tả} \\ \hline
+ID & NUMBER & Khóa chính & Sinh tự động bởi SEQ\_AUTH\_APPLICATION \\ \hline
+NAME & VARCHAR2(200) & NOT NULL & Tên ứng dụng \\ \hline
+DESCRIPTION & VARCHAR2(500) & & Mô tả mục đích ứng dụng \\ \hline
+APP\_TYPE & VARCHAR2(50) & & INTERNAL / THIRD\_PARTY\_LDAP \\ \hline
+LOGO\_URI & VARCHAR2(500) & & Đường dẫn logo \\ \hline
+DEFAULT\_URL & VARCHAR2(500) & & URL trang chủ ứng dụng \\ \hline
+STATUS & VARCHAR2(20) & & ACTIVE / INACTIVE \\ \hline
+SERVICE\_CODE & VARCHAR2(100) & UNIQUE & Mã định danh service trong chuỗi phân quyền (VD: iam-service) \\ \hline
+DEPARTMENT\_ID & NUMBER & & Phòng ban chủ quản \\ \hline
+GROUP\_ID & NUMBER & & Nhóm ứng dụng \\ \hline
+ACR\_LEVEL & NUMBER & & Mức độ xác thực tối thiểu yêu cầu (ACR) \\ \hline
+CREATED\_AT & TIMESTAMP(6) & NOT NULL & Thời điểm tạo \\ \hline
+UPDATED\_AT & TIMESTAMP(6) & NOT NULL & Thời điểm cập nhật \\ \hline
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Cấu trúc bảng AUTH\_CLIENT}
+\label{tab:auth-client}
+\footnotesize
+\begin{tabular}{|p{3.0cm}|p{2.3cm}|p{2.7cm}|p{4.5cm}|}
+\hline
+\textbf{Tên trường} & \textbf{Kiểu dữ liệu} & \textbf{Ràng buộc} & \textbf{Mô tả} \\ \hline
+ID & NUMBER & Khóa chính & Sinh tự động bởi SEQ\_AUTH\_CLIENT \\ \hline
+CLIENT\_ID & VARCHAR2(200) & UNIQUE & Chuỗi định danh OAuth2 gửi trong request \\ \hline
+CLIENT\_SECRET & VARCHAR2(500) & & Mật khẩu client đã mã hóa BCrypt; NULL với public client \\ \hline
+NAME & VARCHAR2(200) & & Tên mô tả client \\ \hline
+CLIENT\_TYPE & VARCHAR2(20) & & public / confidential \\ \hline
+DEFAULT\_URL & VARCHAR2(500) & & URL chuyển hướng mặc định \\ \hline
+ENABLED & NUMBER(1) & & 1 = đang hoạt động, 0 = vô hiệu hóa \\ \hline
+APP\_ID & NUMBER & NOT NULL & Ứng dụng sở hữu client \\ \hline
+CREATED\_AT & TIMESTAMP(6) & & Thời điểm tạo \\ \hline
+UPDATED\_AT & TIMESTAMP(6) & & Thời điểm cập nhật \\ \hline
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Cấu trúc bảng AUTH\_CLIENT\_OAUTH}
+\label{tab:auth-client-oauth}
+\footnotesize
+\begin{tabular}{|p{3.0cm}|p{2.3cm}|p{2.7cm}|p{4.5cm}|}
+\hline
+\textbf{Tên trường} & \textbf{Kiểu dữ liệu} & \textbf{Ràng buộc} & \textbf{Mô tả} \\ \hline
+ID & NUMBER & Khóa chính & Sinh tự động bởi SEQ\_AUTH\_CLIENT\_OAUTH \\ \hline
+CLIENT\_ID & NUMBER & NOT NULL & Quan hệ 1-1 với AUTH\_CLIENT \\ \hline
+GRANT\_TYPES & VARCHAR2(500) & & Grant type CSV (authorization\_code, client\_credentials...) \\ \hline
+REDIRECT\_URIS & VARCHAR2(1000) & & Danh sách redirect URI hợp lệ \\ \hline
+ALLOWED\_SCOPES & VARCHAR2(500) & & Scopes được phép, phân cách bằng dấu cách \\ \hline
+ACCESS\_TOKEN\_TTL & NUMBER & & Thời gian sống access token (giây) \\ \hline
+REFRESH\_TOKEN\_TTL & NUMBER & & Thời gian sống refresh token (giây) \\ \hline
+ID\_TOKEN\_TTL & NUMBER & & Thời gian sống ID token (giây) \\ \hline
+TOKEN\_ENDPOINT\_AUTH & VARCHAR2(50) & & Phương thức xác thực tại token endpoint \\ \hline
+REQUIRE\_PKCE & NUMBER(1) & & 1 = bắt buộc PKCE (Proof Key for Code Exchange) \\ \hline
+REQUIRE\_CONSENT & NUMBER(1) & & 1 = hiển thị màn hình đồng ý \\ \hline
+POST\_LOGOUT\_REDIRECT & VARCHAR2(500) & & URL chuyển hướng sau đăng xuất \\ \hline
+CREATED\_AT & TIMESTAMP(6) & & Thời điểm tạo \\ \hline
+UPDATED\_AT & TIMESTAMP(6) & & Thời điểm cập nhật \\ \hline
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Cấu trúc bảng AUTH\_METHOD}
+\label{tab:auth-method}
+\footnotesize
+\begin{tabular}{|p{3.0cm}|p{2.3cm}|p{2.7cm}|p{4.5cm}|}
+\hline
+\textbf{Tên trường} & \textbf{Kiểu dữ liệu} & \textbf{Ràng buộc} & \textbf{Mô tả} \\ \hline
+ID & NUMBER & Khóa chính & Sinh tự động bởi SEQ\_AUTH\_METHOD \\ \hline
+METHOD & VARCHAR2(100) & UNIQUE & Tên phương thức: USERNAME\_PASSWORD / OTP\_EMAIL / TOTP \\ \hline
+STATUS & NUMBER(1) & & 1 = hệ thống hỗ trợ, 0 = tạm tắt \\ \hline
+CREATED\_AT & TIMESTAMP(6) & & Thời điểm tạo \\ \hline
+UPDATED\_AT & TIMESTAMP(6) & & Thời điểm cập nhật \\ \hline
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Cấu trúc bảng AUTH\_CLIENT\_METHOD}
+\label{tab:auth-client-method}
+\footnotesize
+\begin{tabular}{|p{3.0cm}|p{2.3cm}|p{2.7cm}|p{4.5cm}|}
+\hline
+\textbf{Tên trường} & \textbf{Kiểu dữ liệu} & \textbf{Ràng buộc} & \textbf{Mô tả} \\ \hline
+ID & NUMBER & Khóa chính & Sinh tự động bởi SEQ\_AUTH\_CLIENT\_METHOD \\ \hline
+APP\_ID & NUMBER & NOT NULL & Ứng dụng kích hoạt phương thức này \\ \hline
+METHOD\_ID & NUMBER & NOT NULL & Phương thức xác thực được kích hoạt \\ \hline
+CONFIG & VARCHAR2(2000) & & Cấu hình JSON đặc thù từng phương thức (maxLoginAttempts, otpLength, otpExpirySeconds...) \\ \hline
+STATUS & VARCHAR2(20) & & ACTIVE / INACTIVE \\ \hline
+CREATED\_AT & TIMESTAMP(6) & & Thời điểm tạo \\ \hline
+UPDATED\_AT & TIMESTAMP(6) & & Thời điểm cập nhật \\ \hline
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Cấu trúc bảng AUTH\_FLOW}
+\label{tab:auth-flow}
+\footnotesize
+\begin{tabular}{|p{3.0cm}|p{2.3cm}|p{2.7cm}|p{4.5cm}|}
+\hline
+\textbf{Tên trường} & \textbf{Kiểu dữ liệu} & \textbf{Ràng buộc} & \textbf{Mô tả} \\ \hline
+ID & NUMBER & Khóa chính & Sinh tự động bởi SEQ\_AUTH\_FLOW \\ \hline
+APP\_ID & NUMBER & NOT NULL & Ứng dụng sở hữu luồng xác thực \\ \hline
+ALIAS & VARCHAR2(100) & UNIQUE per APP\_ID & Tên định danh luồng, duy nhất trong mỗi ứng dụng \\ \hline
+DESCRIPTION & VARCHAR2(500) & & Mô tả luồng xác thực \\ \hline
+IS\_BUILT\_IN & NUMBER(1) & & 1 = luồng hệ thống, không được vô hiệu hóa \\ \hline
+STATUS & VARCHAR2(20) & & ACTIVE / INACTIVE; mỗi ứng dụng chỉ có tối đa một luồng ACTIVE \\ \hline
+CREATED\_AT & TIMESTAMP(6) & & Thời điểm tạo \\ \hline
+UPDATED\_AT & TIMESTAMP(6) & & Thời điểm cập nhật \\ \hline
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Cấu trúc bảng AUTH\_FLOW\_EXECUTION}
+\label{tab:auth-flow-execution}
+\footnotesize
+\begin{tabular}{|p{3.0cm}|p{2.3cm}|p{2.7cm}|p{4.5cm}|}
+\hline
+\textbf{Tên trường} & \textbf{Kiểu dữ liệu} & \textbf{Ràng buộc} & \textbf{Mô tả} \\ \hline
+ID & NUMBER & Khóa chính & Sinh tự động bởi SEQ\_AUTH\_FLOW\_EXECUTION \\ \hline
+FLOW\_ID & NUMBER & NOT NULL & Luồng xác thực chứa node này \\ \hline
+PARENT\_NODE\_ID & NUMBER &  & Node cha; NULL nếu là node gốc (tự tham chiếu) \\ \hline
+CLIENT\_METHOD\_ID & NUMBER & NOT NULL & Phương thức xác thực ứng với node này \\ \hline
+REQUIREMENT & VARCHAR2(20) & CHECK & REQUIRED / OPTIONAL / ALTERNATIVE / DISABLED \\ \hline
+IS\_DEFAULT & NUMBER(1) & & 1 = node mặc định trong nhóm sibling \\ \hline
+STATUS & VARCHAR2(20) & & ACTIVE / INACTIVE \\ \hline
+CREATED\_AT & TIMESTAMP(6) & & Thời điểm tạo \\ \hline
+UPDATED\_AT & TIMESTAMP(6) & & Thời điểm cập nhật \\ \hline
+\end{tabular}
+\end{table}
+
+\section{Xây dựng ứng dụng}
+\subsection{Thư viện và công cụ sử dụng}
+
+Quá trình thiết kế và xây dựng hệ thống IAM sử dụng một tập hợp các framework, thư viện và công cụ hỗ trợ trải dài trên bốn nhóm chức năng: phát triển backend, phát triển frontend, hỗ trợ vận hành và tích hợp trí tuệ nhân tạo. Bảng~\ref{tab:tools-used} tổng hợp toàn bộ danh sách cùng phiên bản sử dụng.
+
+\begin{table}[H]
+\centering
+\caption{Danh sách công cụ và thư viện sử dụng}
+\label{tab:tools-used}
+\footnotesize
+\begin{tabular}{|p{3.5cm}|p{7.0cm}|p{2.5cm}|}
+\hline
+\textbf{Tên công cụ / thư viện} & \textbf{Mục đích sử dụng} & \textbf{Phiên bản} \\ \hline
+\multicolumn{3}{|l|}{\textit{Framework và thư viện backend}} \\ \hline
+Spring Boot & Framework nền tảng cho các microservice Java (iam-auth, iam-identity, iam-app, iam-gateway) & 3.2.x / 3.5.x \\ \hline
+Spring Security \& OAuth2 & Bảo mật, triển khai Authorization Server chuẩn OAuth2 / OIDC, JWT resource server & 6.x \\ \hline
+Spring Cloud Gateway & API Gateway: xác thực token, kiểm tra quyền, chuyển tiếp request tới service & 4.x \\ \hline
+Spring Data JPA & ORM kết nối Oracle Database, ánh xạ entity — bảng, validate schema & 3.x \\ \hline
+Oracle Database & Hệ quản trị cơ sở dữ liệu quan hệ lưu toàn bộ dữ liệu IAM (schema \texttt{AUTH\_USER1}) & 19c \\ \hline
+Redis & Lưu authorization code (TTL 60s), quản lý phiên xác thực và cache token & 7.x \\ \hline
+Apache Kafka & Message broker xử lý sự kiện bất đồng bộ giữa các microservice & 3.x (KRaft) \\ \hline
+Lombok & Tự động sinh getter / setter / builder, giảm boilerplate code & 1.18.x \\ \hline
+MapStruct & Ánh xạ tự động giữa DTO và entity tại thời điểm biên dịch & 1.5.x \\ \hline
+\multicolumn{3}{|l|}{\textit{Framework và thư viện frontend}} \\ \hline
+Angular & Framework SPA xây dựng IAM Admin Portal (\texttt{iam-web-service}) & 19 \\ \hline
+Angular (demo app) & Framework SPA xây dựng giao diện ứng dụng demo Change Management & 17 \\ \hline
+TypeScript & Ngôn ngữ lập trình chính phía frontend, kiểm tra kiểu tĩnh & 5.x \\ \hline
+Bootstrap Icons & Bộ icon sử dụng xuyên suốt giao diện quản trị & 1.x \\ \hline
+\multicolumn{3}{|l|}{\textit{Công cụ phát triển và vận hành}} \\ \hline
+Visual Studio Code & IDE phát triển Angular, soạn thảo LaTeX & 1.x \\ \hline
+IntelliJ IDEA & IDE phát triển Java Spring Boot & 2024.x \\ \hline
+Postman & Kiểm thử API thủ công, soạn collection test & 11.x \\ \hline
+Docker \& Docker Compose & Đóng gói microservice thành container, quản lý môi trường tích hợp & 27.x \\ \hline
+draw.io & Vẽ sơ đồ kiến trúc, ERD, sequence diagram & Web (app.diagrams.net) \\ \hline
+DBeaver & Công cụ truy vấn và quản lý Oracle Database & 24.x \\ \hline
+Git & Quản lý phiên bản mã nguồn & 2.x \\ \hline
+\multicolumn{3}{|l|}{\textit{Công cụ trí tuệ nhân tạo hỗ trợ}} \\ \hline
+Claude Code & Hỗ trợ viết code, thiết kế kiến trúc hệ thống và soạn thảo tài liệu đồ án & Sonnet 4.6 \\ \hline
+ChatGPT & Hỗ trợ tra cứu kỹ thuật, giải thích lỗi và đề xuất giải pháp & GPT-4o \\ \hline
+\end{tabular}
+\end{table}
+
+\subsection{Kết quả đạt được}
+
+Hệ thống IAM được tổ chức theo kiến trúc microservice, chia thành hai nhóm thành phần chính: backend gồm năm service độc lập viết bằng Java/Spring Boot, và frontend gồm hai ứng dụng Angular đảm nhận vai trò giao diện quản trị và ứng dụng demo nghiệp vụ. Toàn bộ mã nguồn được phát triển trên môi trường Windows 11, quản lý phiên bản bằng Git.
+
+\textbf{Các tác nhân trong hệ thống.} Hệ thống phân quyền phục vụ ba nhóm người dùng với vai trò và quyền hạn khác nhau. Nhân viên (STAFF) là tác nhân phổ biến nhất, đại diện cho lập trình viên và nhân viên ngân hàng sử dụng các ứng dụng nội bộ hàng ngày; họ có thể gửi yêu cầu cấp quyền truy cập ứng dụng hoặc tài nguyên thông qua luồng phê duyệt CAB. Thành viên Hội đồng Tư vấn Thay đổi (CAB) là người được chỉ định xem xét và phê duyệt hoặc từ chối các yêu cầu đó; vai trò này đảm bảo mọi thay đổi về quyền đều có sự kiểm soát độc lập trước khi áp dụng. Quản trị viên IAM (ADMIN) nắm quyền quản lý toàn bộ hệ thống: tạo tài khoản, gán vai trò, cấu hình ứng dụng, tài nguyên, luồng xác thực và quyền mặc định; đây là tác nhân duy nhất có thể thu hồi quyền tức thì mà không cần qua luồng phê duyệt.
+
+\textbf{Thống kê mã nguồn.} Bảng~\ref{tab:service-stats} trình bày số liệu thống kê về từng thành phần của hệ thống, bao gồm ngôn ngữ lập trình chính, môi trường phát triển và số dòng mã nguồn (tính trên các tệp \texttt{.java}, \texttt{.ts}, \texttt{.html}, \texttt{.css}, \texttt{.xml}, \texttt{.yml}).
+
+\begin{table}[H]
+\centering
+\caption{Thống kê mã nguồn từng thành phần hệ thống}
+\label{tab:service-stats}
+\footnotesize
+\begin{tabular}{|p{3.5cm}|p{2.0cm}|p{3.0cm}|p{2.2cm}|p{1.8cm}|}
+\hline
+\textbf{Thành phần} & \textbf{Loại} & \textbf{Ngôn ngữ chính} & \textbf{Môi trường} & \textbf{Số dòng} \\ \hline
+iam-auth-service & Backend & Java 21, Spring Boot 3.5 & Windows 11 & $\approx$8\,100 \\ \hline
+iam-identity-service & Backend & Java 21, Spring Boot 3.2 & Windows 11 & $\approx$7\,700 \\ \hline
+iam-app-service & Backend & Java 21, Spring Boot 3.2 & Windows 11 & $\approx$6\,500 \\ \hline
+iam-gateway & Backend & Java 21, Spring Boot 3.2 & Windows 11 & $\approx$770 \\ \hline
+iam-notify-service & Backend & Java 21, Spring Boot 3.2 & Windows 11 & $\approx$1\,260 \\ \hline
+iam-web-service & Frontend & TypeScript, Angular 19 & Windows 11 & $\approx$10\,200 \\ \hline
+demo-change-app & Full-stack & Java 21 + TypeScript, Angular 17 & Windows 11 & $\approx$8\,800 \\ \hline
+\multicolumn{4}{|r|}{\textbf{Tổng cộng}} & \textbf{$\approx$43\,330} \\ \hline
+\end{tabular}
+\end{table}
+
+Toàn bộ hệ thống đạt xấp xỉ 43\,000 dòng mã nguồn, phân bổ đều giữa các service backend và hai ứng dụng frontend. Service \texttt{iam-auth-service} có số dòng lớn nhất do phải triển khai toàn bộ engine xác thực OAuth2/OIDC, quản lý phiên và ký token bằng ES256; trong khi \texttt{iam-gateway} nhỏ gọn nhất vì chỉ đảm nhận ba bộ lọc trung chuyển chính. Kết quả này cho thấy việc tách biệt rõ trách nhiệm giữa các service đã được thực hiện tốt, giúp mỗi thành phần tập trung vào một miền nghiệp vụ cụ thể và dễ dàng bảo trì độc lập.
+
+\subsection{Minh họa các chức năng chính}
+
+Phần này trình bày giao diện minh họa cho các use case quan trọng nhất của hệ thống, được tổ chức theo từng nhóm tác nhân. Mỗi màn hình phản ánh một bước cụ thể trong vòng đời phân quyền, từ xác thực đăng nhập đến cấp phát, phê duyệt và thu hồi quyền.
+
+\subsubsection{Xác thực và đăng nhập}
+
+Hệ thống sử dụng luồng OAuth2 Authorization Code với PKCE để xác thực người dùng. Khi truy cập cổng quản trị, người dùng được chuyển hướng về trang đăng nhập do \texttt{iam-auth-service} phục vụ. Sau khi nhập thông tin hợp lệ, hệ thống hoàn tất các bước xác thực đa yếu tố (nếu được cấu hình) rồi cấp phát token và chuyển người dùng về ứng dụng.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{Hinhve/feature/01_login.png}
+    \caption{Trang đăng nhập — luồng OAuth2 PKCE qua iam-auth-service}
+    \label{fig:feat-login}
+\end{figure}
+
+\subsubsection{Giao diện quản trị viên (ADMIN)}
+
+Quản trị viên IAM có quyền truy cập đầy đủ vào tất cả các chức năng quản lý. Hình~\ref{fig:feat-user-list} thể hiện màn hình danh sách người dùng với bộ lọc đa chiều (họ tên, username, mã nhân viên, phòng ban, trạng thái), cho phép ADMIN tra cứu nhanh bất kỳ tài khoản nào trong hệ thống.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{Hinhve/feature/02_user_list.png}
+    \caption{Danh sách người dùng với bộ lọc đa chiều (ADMIN)}
+    \label{fig:feat-user-list}
+\end{figure}
+
+Khi chọn một người dùng cụ thể, ADMIN được chuyển đến trang chi tiết (Hình~\ref{fig:feat-user-detail}) hiển thị đầy đủ thông tin hồ sơ, địa chỉ và danh sách quyền hiện tại. Tại đây, ADMIN có thể chỉnh sửa thông tin hoặc thu hồi từng quyền ứng dụng và quyền tài nguyên cụ thể.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{Hinhve/feature/03_user_detail_perm.png}
+    \caption{Chi tiết người dùng — mục quyền hiện tại và nút thu hồi (ADMIN)}
+    \label{fig:feat-user-detail}
+\end{figure}
+
+\subsubsection{Quản lý vòng đời nhân sự (ADMIN)}
+
+Chức năng biến động nhân sự hỗ trợ bốn nghiệp vụ: tiếp nhận (onboard), thôi việc (offboard), nghỉ phép và luân chuyển. Hình~\ref{fig:feat-onboard} minh họa màn hình tiếp nhận nhân viên mới, trong đó ADMIN chọn vai trò (hỗ trợ chọn đa vai trò), chức danh và xác nhận. Sau khi tiếp nhận, hệ thống tự động cấp quyền mặc định tương ứng với vai trò và chức danh thông qua sự kiện Kafka.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{Hinhve/feature/04_lifecycle_onboard.png}
+    \caption{Tiếp nhận nhân viên mới — chọn vai trò và chức danh (ADMIN)}
+    \label{fig:feat-onboard}
+\end{figure}
+
+Hình~\ref{fig:feat-transfer} thể hiện nghiệp vụ luân chuyển, trong đó ADMIN cập nhật phòng ban, vai trò và chức danh mới cho nhân viên. Hệ thống tự động thu hồi quyền mặc định cũ và cấp lại quyền mặc định phù hợp với vị trí mới.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{Hinhve/feature/05_lifecycle_transfer.png}
+    \caption{Luân chuyển nhân viên — cập nhật vai trò và tự động cấp lại quyền mặc định}
+    \label{fig:feat-transfer}
+\end{figure}
+
+\subsubsection{Cấu hình hệ thống (ADMIN)}
+
+ADMIN có thể cấu hình toàn bộ thông tin ứng dụng, tài nguyên và quyền mặc định thông qua cổng quản trị. Hình~\ref{fig:feat-default-perm} minh họa màn hình quản lý quyền mặc định theo vai trò: mỗi dòng tương ứng một cặp (vai trò, chức danh, ứng dụng) và ADMIN bật/tắt trực tiếp bằng công tắc hình viên thuốc (pill toggle) mà không cần thao tác lưu thêm.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{Hinhve/feature/06_default_perm.png}
+    \caption{Cấu hình quyền mặc định theo vai trò và chức danh (ADMIN)}
+    \label{fig:feat-default-perm}
+\end{figure}
+
+
+\subsubsection{Gửi yêu cầu phân quyền (STAFF)}
+
+Nhân viên (STAFF) có thể chủ động gửi yêu cầu cấp quyền truy cập ứng dụng hoặc tài nguyên cụ thể. Hình~\ref{fig:feat-perm-create} minh họa form tạo yêu cầu: người dùng chọn người duyệt (CAB), điền lý do, chọn ứng dụng và tài nguyên kèm hành động được yêu cầu. Yêu cầu có thể lưu nháp (DRAFT) hoặc gửi chính thức (OFFICIAL) để bắt đầu luồng phê duyệt.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{Hinhve/feature/08_perm_request_create.png}
+    \caption{Tạo yêu cầu phân quyền — chọn ứng dụng, tài nguyên và hành động (STAFF)}
+    \label{fig:feat-perm-create}
+\end{figure}
+
+Sau khi gửi, STAFF theo dõi trạng thái yêu cầu qua danh sách phiếu (Hình~\ref{fig:feat-perm-list}). Danh sách hỗ trợ lọc theo mã nhân viên yêu cầu, người duyệt, trạng thái và khoảng thời gian.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{Hinhve/feature/09_perm_request_list.png}
+    \caption{Danh sách yêu cầu phân quyền — theo dõi trạng thái (STAFF)}
+    \label{fig:feat-perm-list}
+\end{figure}
+
+\subsubsection{Phê duyệt yêu cầu phân quyền (CAB)}
+
+Thành viên CAB nhận thông báo qua email khi có yêu cầu mới cần xem xét. Hình~\ref{fig:feat-perm-detail} thể hiện màn hình chi tiết phiếu yêu cầu, hiển thị đầy đủ thông tin người yêu cầu, người được cấp quyền, lý do, danh sách ứng dụng và tài nguyên kèm hành động. CAB có thể phê duyệt hoặc từ chối kèm ghi chú ngay trên cùng giao diện.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{Hinhve/feature/10_perm_request_approve.png}
+    \caption{Chi tiết yêu cầu phân quyền — phê duyệt hoặc từ chối (CAB)}
+    \label{fig:feat-perm-detail}
+\end{figure}
+
+Sau khi CAB phê duyệt, hệ thống tự động ghi nhận quyền vào \texttt{AUTH\_APP\_PERMISSION} và \texttt{AUTH\_USER\_RESOURCE}, đồng thời gửi thông báo email đến người yêu cầu và phát sự kiện Kafka để cập nhật token ngay lần đăng nhập tiếp theo.
+
+
+\section{Kiểm thử}
+
+Hệ thống được kiểm thử theo kỹ thuật kiểm thử hộp đen (black-box testing), tập trung vào hành vi đầu ra của hệ thống khi nhận các đầu vào khác nhau mà không cần biết cấu trúc bên trong. Phương pháp này phù hợp để xác minh rằng các luồng nghiệp vụ chính — từ tạo tài khoản đến cấp phát và phê duyệt quyền — hoạt động đúng với đặc tả.
+
+\subsection{Kiểm thử chức năng tạo người dùng mới}
+
+\begin{table}[H]
+\centering
+\caption{Các trường hợp kiểm thử chức năng tạo người dùng}
+\label{tab:tc-user-create}
+\footnotesize
+\begin{tabular}{|p{2.3cm}|p{3.8cm}|p{2.6cm}|p{2.6cm}|p{1.2cm}|}
+\hline
+\textbf{Tên trường hợp} & \textbf{Các bước thực hiện} & \textbf{Kỳ vọng} & \textbf{Thực tế} & \textbf{Trạng thái} \\ \hline
+Tạo người dùng hợp lệ
+& 1. Đăng nhập ADMIN \newline 2. Vào Quản lý User \newline 3. Nhấn nút tạo mới \newline 4. Điền đầy đủ thông tin hợp lệ \newline 5. Nhấn Tạo
+& Hệ thống tạo tài khoản, hiển thị thông báo thành công, chuyển về danh sách
+& Tài khoản được tạo thành công, thông báo hiển thị, redirect đúng trang
+& Pass \\ \hline
+Tạo người dùng với username đã tồn tại
+& 1. Đăng nhập ADMIN \newline 2. Vào Quản lý User \newline 3. Nhấn nút tạo mới \newline 4. Nhập username đã có trong hệ thống \newline 5. Nhấn Tạo
+& Hệ thống từ chối, hiển thị thông báo lỗi username đã tồn tại
+& Hệ thống trả lỗi trùng username, thông báo hiển thị đúng
+& Pass \\ \hline
+Tạo người dùng thiếu trường bắt buộc
+& 1. Đăng nhập ADMIN \newline 2. Vào Quản lý User \newline 3. Nhấn nút tạo mới \newline 4. Để trống username hoặc mật khẩu \newline 5. Nhấn Tạo
+& Form ngăn gửi, hiển thị cảnh báo thiếu thông tin bắt buộc
+& Form validate thất bại, không gửi request lên server, cảnh báo hiển thị đúng
+& Pass \\ \hline
+\end{tabular}
+\end{table}
+
+\subsection{Kiểm thử chức năng yêu cầu và phê duyệt phân quyền}
+
+\begin{table}[H]
+\centering
+\caption{Các trường hợp kiểm thử chức năng tạo yêu cầu phân quyền}
+\label{tab:tc-perm-request}
+\footnotesize
+\begin{tabular}{|p{2.3cm}|p{3.8cm}|p{2.6cm}|p{2.6cm}|p{1.2cm}|}
+\hline
+\textbf{Tên trường hợp} & \textbf{Các bước thực hiện} & \textbf{Kỳ vọng} & \textbf{Thực tế} & \textbf{Trạng thái} \\ \hline
+Tạo yêu cầu phân quyền thành công
+& 1. Đăng nhập STAFF \newline 2. Vào Phân quyền, chọn Tạo yêu cầu \newline 3. Chọn người duyệt (CAB) \newline 4. Chọn ứng dụng và tài nguyên \newline 5. Điền lý do \newline 6. Nhấn Gửi
+& Phiếu lưu trạng thái OFFICIAL, CAB nhận email thông báo
+& Phiếu OFFICIAL tạo thành công, email gửi đến CAB đúng nội dung
+& Pass \\ \hline
+Tạo yêu cầu thiếu thông tin bắt buộc
+& 1. Đăng nhập STAFF \newline 2. Vào Phân quyền, chọn Tạo yêu cầu \newline 3. Bỏ trống người duyệt hoặc lý do \newline 4. Nhấn Gửi
+& Form báo lỗi thiếu thông tin, không gửi request
+& Form validate thất bại, hiển thị cảnh báo đúng trường còn thiếu
+& Pass \\ \hline
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Các trường hợp kiểm thử chức năng phê duyệt và từ chối của CAB}
+\label{tab:tc-cab-review}
+\footnotesize
+\begin{tabular}{|p{2.3cm}|p{3.8cm}|p{2.6cm}|p{2.6cm}|p{1.2cm}|}
+\hline
+\textbf{Tên trường hợp} & \textbf{Các bước thực hiện} & \textbf{Kỳ vọng} & \textbf{Thực tế} & \textbf{Trạng thái} \\ \hline
+CAB phê duyệt yêu cầu
+& 1. Đăng nhập CAB \newline 2. Vào Phân quyền, mục Duyệt yêu cầu \newline 3. Chọn phiếu trạng thái OFFICIAL \newline 4. Xem chi tiết yêu cầu \newline 5. Nhấn Phê duyệt và xác nhận
+& Phiếu chuyển APPROVED, quyền được cấp cho người dùng, email thông báo được gửi
+& Phiếu APPROVED thành công, quyền ghi nhận vào cơ sở dữ liệu, email gửi đúng
+& Pass \\ \hline
+CAB từ chối yêu cầu
+& 1. Đăng nhập CAB \newline 2. Vào Phân quyền, mục Duyệt yêu cầu \newline 3. Chọn phiếu trạng thái OFFICIAL \newline 4. Nhấn Từ chối \newline 5. Nhập lý do từ chối \newline 6. Xác nhận
+& Phiếu chuyển REJECTED, không cấp quyền, email từ chối gửi đến người yêu cầu
+& Phiếu REJECTED thành công, không có quyền nào được cấp, email thông báo từ chối gửi đúng người
+& Pass \\ \hline
+\end{tabular}
+\end{table}
+
+Tổng cộng, bảy trường hợp kiểm thử đã được thiết kế và thực thi cho hai chức năng nghiệp vụ trọng tâm. Tất cả bảy trường hợp đều đạt kết quả Pass, xác nhận rằng hệ thống xử lý đúng cả luồng hợp lệ lẫn các tình huống đầu vào không đầy đủ hoặc dữ liệu trùng lặp. Đặc biệt, luồng phê duyệt CAB hoạt động nhất quán với thiết kế: quyền chỉ được ghi nhận vào cơ sở dữ liệu sau khi có quyết định phê duyệt rõ ràng, và email thông báo được phát đi trong cả hai tình huống chấp thuận và từ chối.
+\section{Triển khai}
+
+Hệ thống được triển khai thử nghiệm cục bộ trên máy tính cá nhân chạy Windows 11, sử dụng Docker và Docker Compose để đóng gói và quản lý toàn bộ các thành phần. Môi trường này không kết nối Internet mà hoạt động hoàn toàn trong mạng nội bộ máy, phù hợp cho giai đoạn phát triển và kiểm thử tích hợp.
+
+\subsection{Mô hình triển khai}
+
+Tất cả các service và thành phần hạ tầng được khởi động thông qua Docker Compose với nhiều file overlay, mỗi file quản lý một nhóm thành phần riêng biệt. Các container giao tiếp với nhau qua một mạng bridge nội bộ có tên \texttt{iam-internal-network} do Docker tạo và quản lý. Từ máy host, người dùng truy cập hệ thống qua các cổng được ánh xạ ra ngoài như mô tả trong Bảng~\ref{tab:deploy-services}.
+
+\begin{table}[H]
+\centering
+\caption{Danh sách container và cổng triển khai cục bộ}
+\label{tab:deploy-services}
+\footnotesize
+\begin{tabular}{|p{4.0cm}|p{2.0cm}|p{7.0cm}|}
+\hline
+\textbf{Container} & \textbf{Cổng (host)} & \textbf{Vai trò} \\ \hline
+\multicolumn{3}{|l|}{\textit{Hạ tầng}} \\ \hline
+kafka-1, kafka-2, kafka-3 & 19092 -- 19094 & Cụm Kafka 3 broker, chế độ KRaft, xác thực SASL/PLAIN \\ \hline
+redis & 6379 & Cache authorization code, session và token \\ \hline
+\multicolumn{3}{|l|}{\textit{Microservice IAM}} \\ \hline
+iam-auth-service & 8888 & OAuth2 Authorization Server, OIDC IdP, engine xác thực \\ \hline
+iam-identity-service & 8081 & Quản lý người dùng, vai trò, vòng đời nhân sự, phân quyền \\ \hline
+iam-app-service & 8082 & Quản lý ứng dụng, tài nguyên, OAuth2 client, auth flow \\ \hline
+iam-gateway & 8080 & API Gateway — xác thực JWT, kiểm tra quyền, chuyển tiếp request \\ \hline
+iam-notify-service & 8083 & Kafka consumer, gửi email thông báo qua Gmail SMTP \\ \hline
+\multicolumn{3}{|l|}{\textit{Ứng dụng}} \\ \hline
+demo-change-app & 8085 & Ứng dụng demo Change Management (Angular + Spring Boot, 1 image) \\ \hline
+\end{tabular}
+\end{table}
+
+\subsection{Cấu hình môi trường}
+
+Mỗi service được đóng gói thành Docker image riêng bằng Dockerfile đặt tại thư mục gốc của từng service. Các biến môi trường (URL kết nối Oracle, thông tin Kafka, Redis, khóa JWT) được truyền vào container qua file \texttt{docker-compose} overlay tương ứng, không nhúng cứng vào image. Oracle Database 19c chạy ngoài Docker trên máy host và được các service kết nối qua địa chỉ \texttt{host.docker.internal}, đảm bảo dữ liệu không bị mất khi container được tạo lại.
+
+Quy trình khởi động toàn bộ hệ thống được thực hiện theo hai bước: trước tiên khởi động hạ tầng (Kafka cluster và Redis) bằng lệnh \texttt{docker compose up -d} với các file overlay tương ứng, sau đó lần lượt khởi động các microservice IAM và ứng dụng demo. Nhờ cơ chế healthcheck được cấu hình trong Docker Compose, các service tự động chờ đến khi Kafka và Redis sẵn sàng trước khi khởi tạo kết nối.
+
+\subsection{Kết quả triển khai}
+
+Toàn bộ hệ thống khởi động thành công trên máy cục bộ với thời gian khởi động toàn bộ cụm khoảng 60 -- 90 giây, bao gồm cả thời gian cụm Kafka KRaft bầu controller và sẵn sàng nhận kết nối. Sau khi khởi động, người dùng truy cập cổng quản trị IAM qua trình duyệt tại địa chỉ \texttt{http://localhost:4200} (chế độ phát triển) hoặc \texttt{http://localhost:8080} (qua gateway), và ứng dụng demo tại \texttt{http://localhost:8085}. Luồng đăng nhập OAuth2 PKCE, cấp phát quyền, phê duyệt CAB và gửi email thông báo đều hoạt động ổn định trong môi trường này, xác nhận tính tích hợp đầy đủ giữa các thành phần của hệ thống.
+
+\end{document}
