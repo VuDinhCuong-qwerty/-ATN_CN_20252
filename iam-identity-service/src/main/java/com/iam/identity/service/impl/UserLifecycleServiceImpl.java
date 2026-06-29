@@ -401,9 +401,9 @@ public class UserLifecycleServiceImpl implements UserLifecycleService {
             }
         }
 
-        // Revoke all app permissions and resources
-        appPermissionRepository.revokeAllByUserId(userId, now);
-        userResourceRepository.revokeAllByUserId(userId, now);
+        // Revoke SYSTEM-granted permissions only; REQUEST-sourced permissions survive transfer
+        appPermissionRepository.revokeSystemGrantByUserId(userId, now);
+        userResourceRepository.revokeSystemGrantByUserId(userId, now);
 
         List<String> transferRoleCodes = transferRoles.stream().map(AuthRole::getCode).toList();
 

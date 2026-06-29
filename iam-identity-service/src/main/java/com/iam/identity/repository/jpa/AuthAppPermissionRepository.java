@@ -52,6 +52,11 @@ public interface AuthAppPermissionRepository extends JpaRepository<AuthAppPermis
     @Query(value = "UPDATE AUTH_APP_PERMISSION SET STATUS = 'REVOKED', REVOKED_AT = :revokedAt WHERE USER_ID = :userId AND STATUS IN ('ACTIVE', 'SUSPENDED')", nativeQuery = true)
     void revokeAllByUserId(@Param("userId") Long userId, @Param("revokedAt") LocalDateTime revokedAt);
 
+    @Modifying
+    @Query(value = "UPDATE AUTH_APP_PERMISSION SET STATUS = 'REVOKED', REVOKED_AT = :revokedAt " +
+                   "WHERE USER_ID = :userId AND STATUS IN ('ACTIVE', 'SUSPENDED') AND GRANT_SOURCE = 'SYSTEM'", nativeQuery = true)
+    void revokeSystemGrantByUserId(@Param("userId") Long userId, @Param("revokedAt") LocalDateTime revokedAt);
+
     @Query(value = "SELECT * FROM AUTH_APP_PERMISSION WHERE USER_ID = :userId AND APP_ID IN (:appIds) AND STATUS = 'ACTIVE'", nativeQuery = true)
     List<AuthAppPermission> findAllActiveByUserIdAndAppIdIn(@Param("userId") Long userId, @Param("appIds") Set<Long> appIds);
 

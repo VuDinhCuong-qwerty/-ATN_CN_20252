@@ -44,6 +44,11 @@ public interface AuthUserResourceRepository extends JpaRepository<AuthUserResour
     @Query(value = "UPDATE AUTH_USER_RESOURCE SET STATUS = 'REVOKED', REVOKED_AT = :revokedAt WHERE USER_ID = :userId AND STATUS IN ('ACTIVE', 'SUSPENDED')", nativeQuery = true)
     void revokeAllByUserId(@Param("userId") Long userId, @Param("revokedAt") LocalDateTime revokedAt);
 
+    @Modifying
+    @Query(value = "UPDATE AUTH_USER_RESOURCE SET STATUS = 'REVOKED', REVOKED_AT = :revokedAt " +
+                   "WHERE USER_ID = :userId AND STATUS IN ('ACTIVE', 'SUSPENDED') AND GRANT_SOURCE = 'SYSTEM'", nativeQuery = true)
+    void revokeSystemGrantByUserId(@Param("userId") Long userId, @Param("revokedAt") LocalDateTime revokedAt);
+
     @Query(value = "SELECT COUNT(*) FROM AUTH_USER_RESOURCE WHERE USER_ID = :userId AND RESOURCE_ID = :resourceId AND STATUS = 'ACTIVE'", nativeQuery = true)
     int countActiveByUserIdAndResourceId(@Param("userId") Long userId, @Param("resourceId") Long resourceId);
 

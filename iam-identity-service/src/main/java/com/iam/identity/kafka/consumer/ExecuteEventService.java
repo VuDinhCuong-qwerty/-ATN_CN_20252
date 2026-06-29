@@ -56,7 +56,7 @@ public class ExecuteEventService {
                         .status("ACTIVE")
                         .grantedBy("system").grantedAt(LocalDateTime.now())
                         .revokedBy(null).revokedAt(null)
-                        .grantSource("AUTO").requestId(null)
+                        .grantSource("SYSTEM").requestId(null)
                         .inactiveFromDate(null).inactiveToDate(null)
                         .build());
             } else {
@@ -67,7 +67,7 @@ public class ExecuteEventService {
                     record.setGrantedAt(LocalDateTime.now());
                     record.setRevokedBy(null);
                     record.setRevokedAt(null);
-                    record.setGrantSource("AUTO");
+                    record.setGrantSource("SYSTEM");
                     record.setInactiveFromDate(null);
                     record.setInactiveToDate(null);
                     appPermissionRepository.save(record);
