@@ -15,8 +15,7 @@ target/
 *.tar.gz
 *.rar
 
-# Maven wrapper
-.mvn/wrapper/maven-wrapper.properties
+# Maven wrapper scripts
 mvnw
 mvnw.cmd
 
@@ -50,6 +49,9 @@ demo-change-app/change-web-service/dist/
 demo-change-app/change-web-service/.angular/
 demo-change-app/change-web-service/.cache/
 demo-change-app/change-web-service/package-lock.json
+demo-change-app/change-web-service/out-tsc/
+demo-change-app/change-web-service/coverage/
+demo-change-app/change-web-service/tmp/
 
 # ============================================================
 #  IDE / Editor
@@ -63,8 +65,7 @@ demo-change-app/change-web-service/package-lock.json
 .settings/
 .factorypath
 
-.vscode/settings.json
-.vscode/launch.json
+.vscode/
 *.code-workspace
 
 *.swp
