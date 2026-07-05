@@ -14,6 +14,7 @@ import com.iam.notify.domain.AuthUserProfile;
 import com.iam.notify.kafka.payload.PasswordChangedPayload;
 import com.iam.notify.kafka.payload.PermissionApprovedPayload;
 import com.iam.notify.kafka.payload.PermissionRequestPayload;
+import com.iam.notify.kafka.payload.PermissionRevokedPayload;
 import com.iam.notify.kafka.payload.UserCreatedPayload;
 import com.iam.notify.repository.AuthUserProfileRepository;
 import com.iam.notify.service.EmailService;
@@ -146,6 +147,17 @@ public class EmailServiceImpl implements EmailService {
                 ? "[IAM] Yêu cầu #" + p.getRequestId() + " đã được phê duyệt"
                 : "[IAM] Yêu cầu #" + p.getRequestId() + " đã bị từ chối";
         send(requesterEmail, subject, "permission-approved", ctx);
+    }
+
+    @Override
+    public void sendPermissionRevokedEmail(PermissionRevokedPayload p, String userEmail) {
+        Context ctx = new Context();
+        ctx.setVariable("employeeCode", p.getEmployeeCode());
+        ctx.setVariable("appName", p.getAppName());
+        ctx.setVariable("revokedBy", p.getRevokedBy());
+        ctx.setVariable("revokedAt", p.getRevokedAt());
+        ctx.setVariable("portalUrl", portalUrl);
+        send(userEmail, "[IAM] Quyền truy cập của bạn đã bị thu hồi", "permission-revoked", ctx);
     }
 
     // ── Internal helper ───────────────────────────────────────────────────────

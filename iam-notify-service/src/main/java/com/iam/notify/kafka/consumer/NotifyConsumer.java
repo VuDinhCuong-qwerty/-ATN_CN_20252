@@ -12,6 +12,7 @@ import com.iam.notify.kafka.event.BaseEvent;
 import com.iam.notify.kafka.payload.PasswordChangedPayload;
 import com.iam.notify.kafka.payload.PermissionApprovedPayload;
 import com.iam.notify.kafka.payload.PermissionRequestPayload;
+import com.iam.notify.kafka.payload.PermissionRevokedPayload;
 import com.iam.notify.kafka.payload.UserCreatedPayload;
 import com.iam.notify.repository.UserEmailRepository;
 import com.iam.notify.service.EmailService;
@@ -157,6 +158,37 @@ public class NotifyConsumer {
             }
         } catch (Exception e) {
             log.error("handlePermissionApproved failed offset={} partition={}: {}",
+                    record.offset(), record.partition(), e.getMessage(), e);
+        } finally {
+            ack.acknowledge();
+        }
+    }
+
+    // ── 6. Thu hồi quyền — thông báo đến người dùng bị thu hồi ────────────────
+
+    @KafkaListener(topics = KafkaConfig.TOPIC_PERMISSION_REVOKED)
+    public void handlePermissionRevoked(ConsumerRecord<String, String> record, Acknowledgment ack) {
+        try {
+            BaseEvent<PermissionRevokedPayload> event = objectMapper.readValue(
+                    record.value(), new TypeReference<BaseEvent<PermissionRevokedPayload>>() {});
+            PermissionRevokedPayload payload = event.getPayload();
+
+            if (payload == null || payload.getEmployeeCode() == null) {
+                log.warn("PermissionRevoked: missing employeeCode — skipping. eventId={}", event.getEventId());
+                ack.acknowledge();
+                return;
+            }
+
+            String userEmail = userEmailRepository.findEmailByEmployeeCode(payload.getEmployeeCode());
+            if (userEmail != null) {
+                emailService.sendPermissionRevokedEmail(payload, userEmail);
+                log.info("PermissionRevoked email sent to={} employeeCode={} appIds={}",
+                        userEmail, payload.getEmployeeCode(), payload.getRevokedAppIds());
+            } else {
+                log.warn("PermissionRevoked: user email not found for employeeCode={}", payload.getEmployeeCode());
+            }
+        } catch (Exception e) {
+            log.error("handlePermissionRevoked failed offset={} partition={}: {}",
                     record.offset(), record.partition(), e.getMessage(), e);
         } finally {
             ack.acknowledge();

@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="vi">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Thông báo thu hồi quyền truy cập</title>
+</head>
+<body style="margin:0;padding:0;background-color:#F0F4F9;font-family:Arial,Helvetica,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background-color:#F0F4F9;padding:30px 0;">
+  <tr>
+    <td align="center">
+      <table width="600" cellpadding="0" cellspacing="0"
+             style="background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+
+        <!-- Header -->
+        <tr>
+          <td style="background:linear-gradient(135deg,#003B8E,#002868);padding:28px 32px;text-align:center;">
+            <img src="cid:logo" alt="IAM Banking" width="48" height="48"
+                 style="display:inline-block;vertical-align:middle;margin-right:12px;"
+                 onerror="this.style.display='none'"/>
+            <span style="color:#ffffff;font-size:20px;font-weight:700;vertical-align:middle;">IAM Banking System</span>
+          </td>
+        </tr>
+
+        <!-- Warning banner -->
+        <tr>
+          <td style="background:#fff3cd;padding:12px 32px;border-bottom:1px solid #ffeeba;text-align:center;">
+            <span style="font-size:24px;">&#9888;</span>
+            <strong style="font-size:14px;color:#856404;margin-left:8px;">Quyền truy cập đã bị THU HỒI</strong>
+          </td>
+        </tr>
+
+        <!-- Body -->
+        <tr>
+          <td style="padding:32px;">
+            <p style="margin:0 0 20px;font-size:14px;color:#555;line-height:1.7;">
+              Một hoặc nhiều quyền truy cập ứng dụng của bạn vừa bị <strong style="color:#721c24;">thu hồi</strong>
+              trong hệ thống IAM. Các phiên đăng nhập liên quan đã được vô hiệu hóa;
+              nếu đang sử dụng ứng dụng bị ảnh hưởng, bạn sẽ cần đăng nhập lại.
+            </p>
+
+            <!-- Detail info -->
+            <table width="100%" cellpadding="0" cellspacing="0"
+                   style="background:#F0F4F9;border-radius:6px;margin-bottom:24px;overflow:hidden;">
+              <tr>
+                <td style="padding:14px 20px;border-bottom:1px solid #C8D8F0;">
+                  <span style="font-size:12px;color:#888;text-transform:uppercase;letter-spacing:.5px;">Mã nhân viên</span><br/>
+                  <strong style="font-size:15px;color:#003B8E;font-family:monospace;" th:text="${employeeCode}">EMP001</strong>
+                </td>
+              </tr>
+              <tr th:if="${appName != null}">
+                <td style="padding:14px 20px;border-bottom:1px solid #C8D8F0;">
+                  <span style="font-size:12px;color:#888;text-transform:uppercase;letter-spacing:.5px;">Ứng dụng</span><br/>
+                  <strong style="font-size:15px;color:#333;" th:text="${appName}">Demo Change App</strong>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:14px 20px;">
+                  <span style="font-size:12px;color:#888;text-transform:uppercase;letter-spacing:.5px;">Thời điểm thu hồi</span><br/>
+                  <strong style="font-size:15px;color:#333;font-family:monospace;" th:text="${revokedAt}">2026-07-05T10:00</strong>
+                </td>
+              </tr>
+            </table>
+
+            <p style="margin:0 0 24px;font-size:14px;color:#555;line-height:1.7;">
+              Nếu bạn cho rằng đây là nhầm lẫn, hãy tạo yêu cầu cấp quyền mới qua cổng IAM
+              hoặc liên hệ quản trị viên.
+            </p>
+
+            <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
+              <tr>
+                <td align="center">
+                  <a th:href="${portalUrl + '/users/permissions'}" href="#"
+                     style="display:inline-block;background:#003B8E;color:#ffffff;text-decoration:none;
+                            padding:12px 30px;border-radius:6px;font-size:14px;font-weight:700;">
+                    Xem quyền của tôi
+                  </a>
+                </td>
+              </tr>
+            </table>
+
+            <div style="border-top:1px solid #E8EFF9;padding-top:16px;">
+              <p style="margin:0;font-size:13px;color:#888;line-height:1.6;">
+                Email này được gửi tự động. Vui lòng không trả lời.
+                Nếu có thắc mắc, hãy liên hệ bộ phận IT.
+              </p>
+            </div>
+          </td>
+        </tr>
+
+        <!-- Footer -->
+        <tr>
+          <td style="background:#F0F4F9;padding:16px 32px;text-align:center;border-top:1px solid #E8EFF9;">
+            <p style="margin:0;font-size:12px;color:#aaa;">
+              &copy; 2026 IAM Banking System &nbsp;|&nbsp;
+              <a th:href="${portalUrl}" style="color:#003B8E;text-decoration:none;">Truy cập hệ thống</a>
+            </p>
+          </td>
+        </tr>
+
+      </table>
+    </td>
+  </tr>
+</table>
+</body>
+</html>

@@ -28,6 +28,7 @@ public class KafkaConfig {
     public static final String TOPIC_PASSWORD_CHANGED    = "USER-CHANGED-PASSWORD";
     public static final String TOPIC_PERMISSION_REQUEST  = "REQUEST-PERMISSION-NOTIFY";
     public static final String TOPIC_PERMISSION_APPROVED = "APPROVE-PERMISSION-NOTIFY";
+    public static final String TOPIC_PERMISSION_REVOKED  = "REVOKED-PERMISSION-NOTIFY";
 
     private final KafkaProperties kafkaProperties;
 

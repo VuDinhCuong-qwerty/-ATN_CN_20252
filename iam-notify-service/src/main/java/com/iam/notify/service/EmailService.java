@@ -3,6 +3,7 @@ package com.iam.notify.service;
 import com.iam.notify.kafka.payload.PasswordChangedPayload;
 import com.iam.notify.kafka.payload.PermissionApprovedPayload;
 import com.iam.notify.kafka.payload.PermissionRequestPayload;
+import com.iam.notify.kafka.payload.PermissionRevokedPayload;
 import com.iam.notify.kafka.payload.UserCreatedPayload;
 
 public interface EmailService {
@@ -34,4 +35,7 @@ public interface EmailService {
 
     /** Thông báo kết quả (APPROVED / REJECTED) đến requester. */
     void sendPermissionApprovedEmail(PermissionApprovedPayload payload, String requesterEmail);
+
+    /** Thông báo đến người dùng khi quyền truy cập ứng dụng/tài nguyên bị thu hồi. */
+    void sendPermissionRevokedEmail(PermissionRevokedPayload payload, String userEmail);
 }
