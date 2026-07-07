@@ -615,6 +615,15 @@ public class ChangeServiceImpl implements ChangeService {
         approverRepository.saveAll(approvers);
     }
 
+    private void assertNotSelfApproval(ChangeRequest change, String approverUsername, String approverCode) {
+        boolean sameCode = approverCode != null && approverCode.equalsIgnoreCase(change.getCreatedByCode());
+        boolean sameUsername = approverUsername != null && approverUsername.equalsIgnoreCase(change.getCreatedBy());
+        if (sameCode || sameUsername) {
+            throw new BusinessException(ErrorCode.VALIDATION_FAILED,
+                    "Người tạo change request không thể tự phê duyệt hoặc từ chối yêu cầu của chính mình");
+        }
+    }
+
     // ── approveChange ─────────────────────────────────────────────────────────
 
     @Override
@@ -628,6 +637,9 @@ public class ChangeServiceImpl implements ChangeService {
         if (!ChangeRequest.STATUS.PENDING.equals(change.getStatus())) {
             throw new BusinessException(ErrorCode.VALIDATION_FAILED, "Change request không ở trạng thái PENDING");
         }
+
+        // Separation of duties: người tạo change request không được tự phê duyệt
+        assertNotSelfApproval(change, approverUsername, approverCode);
 
         Approver approver = approverRepository.findActiveByChangeRequestIdAndUsername(id, approverUsername)
                 .orElseThrow(() -> new BusinessException(ErrorCode.VALIDATION_FAILED,
@@ -669,6 +681,9 @@ public class ChangeServiceImpl implements ChangeService {
         if (!ChangeRequest.STATUS.PENDING.equals(change.getStatus())) {
             throw new BusinessException(ErrorCode.VALIDATION_FAILED, "Change request không ở trạng thái PENDING");
         }
+
+        // Separation of duties: người tạo change request không được tự quyết định
+        assertNotSelfApproval(change, approverUsername, approverCode);
 
         Approver approver = approverRepository.findActiveByChangeRequestIdAndUsername(id, approverUsername)
                 .orElseThrow(() -> new BusinessException(ErrorCode.VALIDATION_FAILED,
