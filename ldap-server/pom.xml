@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.2.5</version>
+        <relativePath/>
+    </parent>
+
+    <groupId>com.iam</groupId>
+    <artifactId>ldap-server</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+    <name>ldap-server</name>
+    <description>IAM LDAP Gateway — Apache Directory Server backed by Oracle DB</description>
+
+    <properties>
+        <java.version>21</java.version>
+        <apacheds.version>2.0.0.AM27</apacheds.version>
+    </properties>
+
+    <dependencies>
+        <!-- Spring Boot base (no web, no JPA) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter</artifactId>
+        </dependency>
+
+        <!-- Spring JDBC for Oracle access -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-jdbc</artifactId>
+        </dependency>
+
+        <!--
+            apacheds-all là fat/uber jar — nhúng trực tiếp SLF4J 1.7.x vào bên trong.
+            Maven <exclusion> không loại được class đã embed. Fix: khai báo slf4j-api
+            như direct dependency (level 1) và đứng TRƯỚC apacheds-all trong pom.xml,
+            đảm bảo JVM tìm thấy SLF4J 2.x trước khi gặp class 1.x trong apacheds-all.
+        -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <!-- version 2.x managed by Spring Boot BOM -->
+        </dependency>
+
+        <!-- Apache Directory Server — embedded LDAP server -->
+        <dependency>
+            <groupId>org.apache.directory.server</groupId>
+            <artifactId>apacheds-all</artifactId>
+            <version>${apacheds.version}</version>
+            <exclusions>
+                <!--
+                    ApacheDS dùng SLF4J 1.7.x và Log4j cũ.
+                    Spring Boot 3.x quản lý SLF4J 2.x + Logback → loại bỏ hoàn toàn
+                    để tránh conflict "multiple SLF4J bindings".
+                -->
+                <exclusion>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-log4j12</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>log4j</groupId>
+                    <artifactId>log4j</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>commons-logging</groupId>
+                    <artifactId>commons-logging</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <!--
+            api-all ĐÃ ĐƯỢC nhúng bên trong apacheds-all (uber jar).
+            Khai báo cả 2 → classpath có 2 bản schema LDIF → UniqueResourceException.
+            Xóa api-all, dùng duy nhất apacheds-all.
+        -->
+
+<!-- BCrypt password verification (cho LDAP BIND authenticate) -->
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-crypto</artifactId>
+            <!-- version managed by Spring Boot BOM -->
+        </dependency>
+
+        <!-- Oracle JDBC driver -->
+        <dependency>
+            <groupId>com.oracle.database.jdbc</groupId>
+            <artifactId>ojdbc11</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!-- Lombok -->
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- Test -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <excludes>
+                        <exclude>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                        </exclude>
+                    </excludes>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                            <version>${lombok.version}</version>
+                        </path>
+                    </annotationProcessorPaths>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>

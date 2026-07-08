@@ -12,6 +12,9 @@ docker compose ^
   -f docker-compose.iam-gateway.yml ^
   -f docker-compose.iam-notify-service.yml ^
   -f docker-compose.demo-change-app.yml ^
+  -f docker-compose.ldap-server.yml ^
+  -f docker-compose.kibana.yml ^
+  -f docker-compose.fluent-bit.yml ^
   down
 
 echo Xong!

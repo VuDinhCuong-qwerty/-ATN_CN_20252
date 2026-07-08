@@ -1,0 +1,3 @@
+# ES LDAP Role Mapping (file-based) — không dùng cho Kibana.
+# Kibana role mapping dùng ES API (/_security/role_mapping) với metadata.description.
+# Xem Bước A trong project_logapp.md để biết các curl command tạo role mapping.

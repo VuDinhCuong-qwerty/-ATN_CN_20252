@@ -17,6 +17,9 @@ docker compose ^
   -f docker-compose.iam-gateway.yml ^
   -f docker-compose.iam-notify-service.yml ^
   -f docker-compose.demo-change-app.yml ^
+  -f docker-compose.ldap-server.yml ^
+  -f docker-compose.kibana.yml ^
+  -f docker-compose.fluent-bit.yml ^
   up -d
 
 echo.
@@ -26,5 +29,7 @@ echo   - IAM Auth:     http://localhost:8888
 echo   - IAM Gateway:  http://localhost:8080
 echo   - Change App:   http://localhost:8085
 echo   - Kafka UI:     http://localhost:8090
+echo   - Kibana:       http://localhost:5601
+echo   - LDAP:         localhost:10389
 echo ============================================
 pause

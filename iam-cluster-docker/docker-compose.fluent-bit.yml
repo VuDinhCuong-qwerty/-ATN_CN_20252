@@ -1,0 +1,15 @@
+services:
+  fluent-bit:
+    image: fluent/fluent-bit:3.2
+    container_name: fluent-bit
+    restart: unless-stopped
+    ports:
+      - "5044:5044"    # TCP — nhận JSON log từ Spring Boot trên host
+    environment:
+      - ES_PASSWORD=${ES_PASSWORD}
+    volumes:
+      - ./config/fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf:ro
+    networks:
+      - iam-internal-network
+    depends_on:
+      - elasticsearch
