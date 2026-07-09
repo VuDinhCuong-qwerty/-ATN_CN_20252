@@ -4,7 +4,7 @@
       <a href="javascript:void(0)" class="text-decoration-none small" (click)="back()">Quản lý cấu hình</a>
     </li>
     <li class="breadcrumb-item">
-      <a href="javascript:void(0)" class="text-decoration-none small" (click)="back()">Ứng dụng</a>
+      <a routerLink="/config/apps" class="text-decoration-none small">Ứng dụng</a>
     </li>
     <li class="breadcrumb-item active small fw-semibold">Thông tin chi tiết</li>
   </ol>
@@ -22,23 +22,28 @@
     </h5>
   </div>
   <div class="d-flex align-items-center gap-2" *ngIf="detail">
-    <span class="badge px-3 py-2 fs-6"
-          [class.bg-success]="detail.status === 'ACTIVE'"
-          [class.bg-secondary]="detail.status !== 'ACTIVE'">
-      <i class="bi bi-circle-fill me-1" style="font-size:0.55rem;vertical-align:middle"></i>
-      {{ detail.status === 'ACTIVE' ? 'Đang hoạt động' : 'Không hoạt động' }}
-    </span>
-    <button class="btn btn-sm"
-            [class.btn-outline-warning]="detail.status === 'ACTIVE'"
-            [class.btn-outline-success]="detail.status !== 'ACTIVE'"
-            (click)="toggleStatus()" [disabled]="loadingToggle"
-            *ngIf="perm.has('application','update')">
-      <span *ngIf="loadingToggle" class="spinner-border spinner-border-sm me-1"></span>
-      <i *ngIf="!loadingToggle" class="bi me-1"
-         [class.bi-power]="detail.status === 'ACTIVE'"
-         [class.bi-play-fill]="detail.status !== 'ACTIVE'"></i>
-      {{ detail.status === 'ACTIVE' ? 'Tắt ứng dụng' : 'Bật ứng dụng' }}
-    </button>
+    <ng-container *ngIf="perm.has('application','update'); else statusBadgeOnly">
+      <button class="pill-toggle"
+              [class.pill-on]="detail.status === 'ACTIVE'"
+              [class.pill-off]="detail.status !== 'ACTIVE'"
+              (click)="toggleStatus()"
+              [disabled]="loadingToggle"
+              [title]="detail.status === 'ACTIVE' ? 'Đang hoạt động — click để tắt' : 'Đang tắt — click để bật'">
+        <span *ngIf="loadingToggle" class="spinner-border spinner-border-sm" style="width:12px;height:12px;border-width:2px"></span>
+        <ng-container *ngIf="!loadingToggle">
+          <span class="pill-knob"></span>
+          <span class="pill-label">{{ detail.status === 'ACTIVE' ? 'ON' : 'OFF' }}</span>
+        </ng-container>
+      </button>
+    </ng-container>
+    <ng-template #statusBadgeOnly>
+      <span class="badge px-3 py-2 fs-6"
+            [class.bg-success]="detail.status === 'ACTIVE'"
+            [class.bg-secondary]="detail.status !== 'ACTIVE'">
+        <i class="bi bi-circle-fill me-1" style="font-size:0.55rem;vertical-align:middle"></i>
+        {{ detail.status === 'ACTIVE' ? 'Đang hoạt động' : 'Không hoạt động' }}
+      </span>
+    </ng-template>
   </div>
 </div>
 
@@ -48,13 +53,32 @@
   <div class="text-muted small mt-2">Đang tải dữ liệu...</div>
 </div>
 
-<!-- Detail card -->
-<div class="card" *ngIf="!loading && detail">
-  <div class="card-header py-2 d-flex align-items-center justify-content-between">
-    <span class="fw-semibold small">Thông tin ứng dụng</span>
-    <span class="text-muted small">ID: <code>{{ appId }}</code></span>
+<!-- ===== Banner: chưa hoàn tất thiết lập ===== -->
+<div class="alert alert-warning d-flex align-items-center justify-content-between py-2 mb-3"
+     *ngIf="!loading && detail && setupStatus && !setupStatus.overallComplete">
+  <div>
+    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+    Ứng dụng chưa hoàn tất thiết lập — còn thiếu:
+    <strong>{{ missingStepLabels() }}</strong>
   </div>
-  <div class="card-body p-4">
+  <button class="btn btn-sm btn-warning" (click)="resumeOnboarding()">
+    <i class="bi bi-magic me-1"></i>Tiếp tục thiết lập
+  </button>
+</div>
+
+<!-- ===== 5 tab ngang hàng: Thông tin chi tiết / Tài nguyên / OAuth2 Client / Luồng MFA / Quyền mặc định ===== -->
+<div class="card" *ngIf="!loading && detail">
+  <ul class="nav nav-tabs px-2 pt-2">
+    <li class="nav-item" *ngFor="let t of visibleConfigTabs">
+      <button class="nav-link" [class.active]="activeConfigTab === t.key" (click)="switchConfigTab(t.key)">
+        <i class="bi {{ t.icon }} me-1"></i>{{ t.label }}
+        <i *ngIf="t.key !== 'INFO' && isStepDone(t.key)" class="bi bi-check-circle-fill text-success ms-1" style="font-size:0.7rem"></i>
+      </button>
+    </li>
+  </ul>
+
+  <!-- ===== Tab: Thông tin chi tiết ===== -->
+  <div class="card-body p-4" *ngIf="activeConfigTab === 'INFO'">
     <div class="row g-3">
 
       <!-- Tên ứng dụng -->
@@ -200,5 +224,13 @@
       </button>
     </div>
 
+  </div>
+
+  <!-- ===== Tab: Tài nguyên / OAuth2 Client / Luồng MFA / Quyền mặc định ===== -->
+  <div class="card-body p-3" *ngIf="activeConfigTab !== 'INFO'">
+    <app-resource-list *ngIf="activeConfigTab === 'RESOURCE'" [embeddedAppId]="+appId"></app-resource-list>
+    <app-client-list *ngIf="activeConfigTab === 'CLIENT'" [embeddedAppId]="+appId"></app-client-list>
+    <app-flow-list *ngIf="activeConfigTab === 'AUTH_FLOW'" [embeddedAppId]="+appId"></app-flow-list>
+    <app-default-perm-list *ngIf="activeConfigTab === 'DEFAULT_PERMISSION'" [embeddedAppId]="+appId"></app-default-perm-list>
   </div>
 </div>

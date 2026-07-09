@@ -18,6 +18,7 @@ import com.iam.app.dto.response.ApiResponse;
 import com.iam.app.dto.response.ApplicationResponse;
 import com.iam.app.dto.response.GetApplicationsResponse;
 import com.iam.app.dto.response.GetDetailAppResponse;
+import com.iam.app.dto.response.SetupStatusResponse;
 import com.iam.app.service.ApplicationService;
 
 import lombok.RequiredArgsConstructor;
@@ -84,5 +85,13 @@ public class ApplicationController {
             @RequestBody @Valid ToggleStatusRequest body) {
         ApplicationResponse response = appService.toggleAppStatus(id, body.getStatus());
         return ResponseEntity.ok(ApiResponse.ok(response, BASE_URL + "/" + id + "/status"));
+    }
+
+    @GetMapping("/{id}/setup-status")
+    @PreAuthorize("hasAuthority('SCOPE_iam-read')")
+    public ResponseEntity<ApiResponse<SetupStatusResponse>> getSetupStatus(
+            @PathVariable Long id) {
+        SetupStatusResponse response = appService.getSetupStatus(id);
+        return ResponseEntity.ok(ApiResponse.ok(response, BASE_URL + "/" + id + "/setup-status"));
     }
 }

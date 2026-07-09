@@ -1,22 +1,24 @@
-<nav aria-label="breadcrumb" class="mb-2">
-  <ol class="breadcrumb mb-0">
-    <li class="breadcrumb-item text-muted small">Quản lý cấu hình</li>
-    <li class="breadcrumb-item active small fw-semibold">Tài nguyên</li>
-  </ol>
-</nav>
+<ng-container *ngIf="!embeddedAppId">
+  <nav aria-label="breadcrumb" class="mb-2">
+    <ol class="breadcrumb mb-0">
+      <li class="breadcrumb-item text-muted small">Quản lý cấu hình</li>
+      <li class="breadcrumb-item active small fw-semibold">Tài nguyên</li>
+    </ol>
+  </nav>
 
-<div class="row mb-3">
-  <div class="col-12">
-    <h4><i class="bi bi-boxes me-2 text-info"></i>Quản lý Tài nguyên</h4>
-    <hr>
+  <div class="row mb-3">
+    <div class="col-12">
+      <h4><i class="bi bi-boxes me-2 text-info"></i>Quản lý Tài nguyên</h4>
+      <hr>
+    </div>
   </div>
-</div>
+</ng-container>
 
 <!-- Filter -->
 <div class="card mb-3">
   <div class="card-body py-2">
     <div class="row g-2 align-items-end">
-      <div class="col-md-4">
+      <div class="col-md-4" *ngIf="!embeddedAppId">
         <label class="form-label small mb-1">Ứng dụng <span class="text-danger">*</span></label>
         <select class="form-select form-select-sm" [(ngModel)]="filterAppId" (ngModelChange)="onAppChange()">
           <option value="">-- Chọn ứng dụng --</option>
@@ -38,6 +40,11 @@
           <i class="bi bi-search me-1"></i>Tìm kiếm
         </button>
         <button class="btn btn-outline-secondary btn-sm ms-1" (click)="clearFilter()" [disabled]="!filterAppId">Xoá</button>
+      </div>
+      <div class="col-auto ms-auto" *ngIf="embeddedAppId">
+        <button class="btn btn-success btn-sm" (click)="openCreate()" *ngIf="perm.has('application','create')">
+          <i class="bi bi-node-plus-fill me-1"></i>Tạo tài nguyên mới
+        </button>
       </div>
     </div>
   </div>
@@ -114,7 +121,7 @@
 
 <!-- FAB -->
 <button class="fab-btn btn btn-success shadow-lg" (click)="openCreate()" title="Tạo tài nguyên mới"
-        *ngIf="perm.has('application','create')">
+        *ngIf="perm.has('application','create') && !embeddedAppId">
   <i class="bi bi-node-plus-fill fs-4"></i>
 </button>
 
@@ -281,7 +288,7 @@
     </div>
     <div class="modal-body-area">
       <div class="row g-3">
-        <div class="col-12">
+        <div class="col-12" *ngIf="!embeddedAppId">
           <label class="form-label small mb-1">Ứng dụng <span class="text-danger">*</span></label>
           <select class="form-select form-select-sm" [(ngModel)]="createForm.appId">
             <option value="">-- Chọn ứng dụng --</option>

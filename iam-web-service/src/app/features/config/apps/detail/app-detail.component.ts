@@ -1,14 +1,23 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AppApiService } from '../../../../shared/services/app-api.service';
 import { PermissionService } from '../../../../core/auth/permission.service';
+import { ResourceListComponent } from '../../resources/resource-list.component';
+import { ClientListComponent } from '../../clients/client-list.component';
+import { FlowListComponent } from '../../flows/flow-list.component';
+import { DefaultPermListComponent } from '../../default-perms/default-perm-list.component';
+
+type ConfigTab = 'INFO' | 'RESOURCE' | 'CLIENT' | 'AUTH_FLOW' | 'DEFAULT_PERMISSION';
 
 @Component({
   selector: 'app-app-detail',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [
+    CommonModule, FormsModule, RouterLink,
+    ResourceListComponent, ClientListComponent, FlowListComponent, DefaultPermListComponent
+  ],
   templateUrl: './app-detail.component.html',
   styleUrl: './app-detail.component.css'
 })
@@ -25,6 +34,24 @@ export class AppDetailComponent implements OnInit {
   messageType = '';
   loadingToggle = false;
 
+  // ── Setup status (dùng để lọc tab Client/Auth Flow cho app THIRD_PARTY_LDAP) ──
+  setupStatus: any = null;
+  activeConfigTab: ConfigTab = 'INFO';
+  readonly configTabDefs: { key: ConfigTab; label: string; icon: string }[] = [
+    { key: 'INFO', label: 'Thông tin chi tiết', icon: 'bi-info-circle' },
+    { key: 'RESOURCE', label: 'Tài nguyên', icon: 'bi-boxes' },
+    { key: 'CLIENT', label: 'OAuth2 Client', icon: 'bi-plug' },
+    { key: 'AUTH_FLOW', label: 'Luồng MFA', icon: 'bi-diagram-3' },
+    { key: 'DEFAULT_PERMISSION', label: 'Quyền mặc định', icon: 'bi-shield-check' },
+  ];
+
+  get visibleConfigTabs() {
+    if (this.setupStatus?.appType === 'THIRD_PARTY_LDAP') {
+      return this.configTabDefs.filter(t => t.key !== 'CLIENT' && t.key !== 'AUTH_FLOW');
+    }
+    return this.configTabDefs;
+  }
+
   constructor(
     private route: ActivatedRoute,
     private router: Router,
@@ -40,7 +67,10 @@ export class AppDetailComponent implements OnInit {
         this.flatDepartments = this.flattenDepts(this.departments);
       }
     });
-    if (this.appId) this.loadDetail();
+    if (this.appId) {
+      this.loadDetail();
+      this.loadSetupStatus();
+    }
   }
 
   loadDetail() {
@@ -54,6 +84,33 @@ export class AppDetailComponent implements OnInit {
       error: () => { this.loading = false; }
     });
   }
+
+  loadSetupStatus() {
+    this.appApi.getSetupStatus(Number(this.appId)).subscribe({
+      next: res => {
+        this.setupStatus = res.data;
+        const stillVisible = this.visibleConfigTabs.some(t => t.key === this.activeConfigTab);
+        if (!stillVisible) this.activeConfigTab = 'INFO';
+      }
+    });
+  }
+
+  isStepDone(key: ConfigTab): boolean {
+    return !!this.setupStatus?.steps?.find((s: any) => s.key === key)?.done;
+  }
+
+  missingStepLabels(): string {
+    return (this.setupStatus?.steps ?? [])
+      .filter((s: any) => s.required && !s.done)
+      .map((s: any) => s.label)
+      .join(', ');
+  }
+
+  resumeOnboarding() {
+    this.router.navigate(['/config/apps/onboard'], { queryParams: { appId: this.appId } });
+  }
+
+  switchConfigTab(tab: ConfigTab) { this.activeConfigTab = tab; }
 
   initForm() {
     const d = this.detail;

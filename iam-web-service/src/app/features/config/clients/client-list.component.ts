@@ -1,9 +1,10 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, Input, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { PermissionService } from '../../../core/auth/permission.service';
 import { AppApiService } from '../../../shared/services/app-api.service';
+import { ClientDetailComponent } from './detail/client-detail.component';
 
 const GRANT_TYPE_OPTIONS = [
   'authorization_code', 'refresh_token', 'client_credentials', 'password'
@@ -13,11 +14,18 @@ const TOKEN_ENDPOINT_AUTH_OPTIONS = ['none', 'client_secret_basic', 'client_secr
 
 @Component({
   selector: 'app-client-list',
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, ClientDetailComponent],
   templateUrl: './client-list.component.html',
   styleUrl: './client-list.component.css'
 })
 export class ClientListComponent implements OnInit {
+  /** Khi được set (nhúng trong tab AppDetailComponent) — ẩn dropdown chọn app, luôn scope theo app này. */
+  @Input() embeddedAppId?: number;
+
+  // Detail panel nhúng (thay cho navigate sang route riêng)
+  selectedClientId: string | null = null;
+  selectedInternalId: any = null;
+
   applications: any[] = [];
 
   filterAppId: any = '';
@@ -57,6 +65,11 @@ export class ClientListComponent implements OnInit {
   ) {}
 
   ngOnInit() {
+    if (this.embeddedAppId) {
+      this.filterAppId = String(this.embeddedAppId);
+      this.loadClients();
+      return;
+    }
     this.appApiService.getApplications({ size: 200 }).subscribe({
       next: res => {
         this.applications = res.data?.content ?? res.data ?? [];
@@ -115,9 +128,20 @@ export class ClientListComponent implements OnInit {
   }
 
   goToDetail(c: any) {
+    if (this.embeddedAppId) {
+      this.selectedClientId = c.clientId;
+      this.selectedInternalId = c.id;
+      return;
+    }
     this.router.navigate(['/config/clients/detail'], {
       queryParams: { clientId: c.clientId, id: c.id }
     });
+  }
+
+  closeDetailPanel() {
+    this.selectedClientId = null;
+    this.selectedInternalId = null;
+    this.loadClients();
   }
 
   getGrantTypeList(grantTypes: string): string[] {
@@ -139,7 +163,7 @@ export class ClientListComponent implements OnInit {
     this.createMessage = '';
     this.createForm = {
       clientId: '', name: '', type: 'public',
-      appId: this.filterAppId || (this.applications[0]?.id ?? ''),
+      appId: this.embeddedAppId ?? (this.filterAppId || (this.applications[0]?.id ?? '')),
       logoUri: '', description: '', defaultUrl: '', postLogoutRedirect: '',
       tokenEndpointAuth: 'none', accessTokenTtl: 3600,
       refreshTokenTtl: 86400, idTokenTtl: 3600,

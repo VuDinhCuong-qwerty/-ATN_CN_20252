@@ -1,0 +1,352 @@
+<nav aria-label="breadcrumb" class="mb-2">
+  <ol class="breadcrumb mb-0">
+    <li class="breadcrumb-item">
+      <a routerLink="/config/apps" class="text-decoration-none small">Quản lý cấu hình</a>
+    </li>
+    <li class="breadcrumb-item active small fw-semibold">Tích hợp ứng dụng</li>
+  </ol>
+</nav>
+
+<div class="d-flex align-items-center justify-content-between mb-3">
+  <h5 class="mb-0">
+    <i class="bi bi-magic me-2 text-warning"></i>Tích hợp ứng dụng mới vào IAM
+  </h5>
+</div>
+
+<div *ngIf="loadingResume" class="text-center text-muted py-5">
+  <span class="spinner-border spinner-border-sm me-2"></span>Đang tải trạng thái thiết lập...
+</div>
+
+<ng-container *ngIf="!loadingResume">
+
+  <!-- ===== Hoàn tất ===== -->
+  <div *ngIf="finished" class="card">
+    <div class="card-body p-4 text-center">
+      <i class="bi bi-check-circle-fill text-success" style="font-size: 2.5rem;"></i>
+      <h5 class="mt-3 mb-1">Đã hoàn tất thiết lập ứng dụng</h5>
+      <p class="text-muted small mb-4">
+        Ứng dụng đã sẵn sàng {{ appType === 'THIRD_PARTY_LDAP' ? '(xác thực qua LDAP)' : 'cho người dùng đăng nhập qua OAuth2' }}.
+      </p>
+      <button class="btn btn-primary btn-sm" (click)="goToDetail()">
+        <i class="bi bi-box-arrow-up-right me-1"></i>Xem chi tiết ứng dụng
+      </button>
+    </div>
+  </div>
+
+  <ng-container *ngIf="!finished">
+
+    <!-- ===== Step indicator ===== -->
+    <div class="wizard-steps mb-3">
+      <div class="wizard-step" *ngFor="let s of visibleSteps; let i = index"
+           [class.done]="i < currentIndex" [class.active]="i === currentIndex">
+        <div class="wizard-step-circle">
+          <i *ngIf="i < currentIndex" class="bi bi-check-lg"></i>
+          <span *ngIf="i >= currentIndex">{{ i + 1 }}</span>
+        </div>
+        <div class="wizard-step-label">{{ s.label }}</div>
+      </div>
+    </div>
+
+    <div *ngIf="message" class="alert alert-{{ messageType }} py-2 small mb-3">
+      <i class="bi me-1"
+         [class.bi-check-circle]="messageType === 'success'"
+         [class.bi-exclamation-triangle]="messageType === 'danger'"></i>
+      {{ message }}
+    </div>
+
+    <div class="card">
+      <div class="card-header py-2">
+        <span class="fw-semibold small">Bước {{ currentIndex + 1 }}/{{ visibleSteps.length }} — {{ currentStep.label }}</span>
+      </div>
+      <div class="card-body p-4">
+
+        <!-- ============ Step 1: Application ============ -->
+        <div *ngIf="currentStep.key === 'APPLICATION'" class="row g-3">
+          <div class="col-md-6">
+            <label class="field-label">Tên ứng dụng <span class="text-danger">*</span></label>
+            <input class="form-control form-control-sm" [(ngModel)]="appForm.name" placeholder="VD: Core Banking">
+          </div>
+          <div class="col-md-6">
+            <label class="field-label">Service Code <span class="text-danger">*</span></label>
+            <input class="form-control form-control-sm" [(ngModel)]="appForm.serviceCode" placeholder="VD: core-banking">
+          </div>
+          <div class="col-md-4">
+            <label class="field-label">Loại ứng dụng <span class="text-danger">*</span></label>
+            <select class="form-select form-select-sm" [(ngModel)]="appForm.appType">
+              <option value="INTERNAL">INTERNAL (OAuth2 + MFA nội bộ)</option>
+              <option value="THIRD_PARTY_LDAP">THIRD_PARTY_LDAP (xác thực qua LDAP)</option>
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="field-label">ACR Level</label>
+            <input type="number" class="form-control form-control-sm" [(ngModel)]="appForm.acrLevel" min="1" max="3">
+          </div>
+          <div class="col-md-4">
+            <label class="field-label">Phòng ban <span class="text-danger">*</span></label>
+            <select class="form-select form-select-sm" [(ngModel)]="appForm.departmentId">
+              <option [ngValue]="null">-- Chọn phòng ban --</option>
+              <option *ngFor="let d of flatDepartments" [ngValue]="d.id">{{ d.label }}</option>
+            </select>
+          </div>
+          <div class="col-12">
+            <label class="field-label">Mô tả</label>
+            <textarea class="form-control form-control-sm" rows="2" [(ngModel)]="appForm.description"
+                      placeholder="Mô tả ngắn về ứng dụng..."></textarea>
+          </div>
+          <div class="col-md-6">
+            <label class="field-label">Logo URL <span class="text-danger">*</span></label>
+            <input class="form-control form-control-sm" [(ngModel)]="appForm.logoUri" placeholder="https://...">
+          </div>
+          <div class="col-md-6">
+            <label class="field-label">Default URL <span class="text-danger">*</span></label>
+            <input class="form-control form-control-sm" [(ngModel)]="appForm.defaultUrl" placeholder="https://...">
+          </div>
+          <div class="col-md-6">
+            <label class="field-label">Group ID</label>
+            <input type="number" class="form-control form-control-sm" [(ngModel)]="appForm.groupId">
+          </div>
+        </div>
+
+        <!-- ============ Step 2: Resource ============ -->
+        <div *ngIf="currentStep.key === 'RESOURCE'">
+          <p class="text-muted small">Thêm các tài nguyên (resource) mà ứng dụng có thể phân quyền theo. Có thể bỏ qua bước này và thêm sau.</p>
+          <div class="row g-2 align-items-end mb-3">
+            <div class="col-md-3">
+              <label class="field-label">Resource Code</label>
+              <input class="form-control form-control-sm" [(ngModel)]="resourceForm.resourceCode" placeholder="vd: account">
+            </div>
+            <div class="col-md-3">
+              <label class="field-label">Tên tài nguyên</label>
+              <input class="form-control form-control-sm" [(ngModel)]="resourceForm.resourceName" placeholder="vd: Quản lý tài khoản">
+            </div>
+            <div class="col-md-2">
+              <label class="field-label">Loại</label>
+              <input class="form-control form-control-sm" [(ngModel)]="resourceForm.resourceType" placeholder="ENDPOINT">
+            </div>
+            <div class="col-md-2">
+              <label class="field-label">Actions (CSV)</label>
+              <input class="form-control form-control-sm" [(ngModel)]="resourceForm.actions" placeholder="read,create,update">
+            </div>
+            <div class="col-md-2">
+              <button class="btn btn-outline-primary btn-sm w-100" (click)="addPendingResource()">
+                <i class="bi bi-plus-lg me-1"></i>Thêm
+              </button>
+            </div>
+          </div>
+          <table class="table table-sm" *ngIf="pendingResources.length">
+            <thead><tr><th>Resource Code</th><th>Tên</th><th>Loại</th><th>Actions</th><th></th></tr></thead>
+            <tbody>
+              <tr *ngFor="let r of pendingResources; let i = index">
+                <td>{{ r.resourceCode }}</td>
+                <td>{{ r.resourceName }}</td>
+                <td>{{ r.resourceType }}</td>
+                <td>{{ r.actions }}</td>
+                <td class="text-end">
+                  <button class="btn btn-sm btn-outline-danger" (click)="removePendingResource(i)"><i class="bi bi-trash"></i></button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <p *ngIf="!pendingResources.length" class="text-muted small fst-italic">Chưa có tài nguyên nào trong danh sách chờ tạo.</p>
+        </div>
+
+        <!-- ============ Step 3: Default Permission ============ -->
+        <div *ngIf="currentStep.key === 'DEFAULT_PERMISSION'">
+          <p class="text-muted small">Cấu hình quyền mặc định theo (Role × Chức danh) — user hiện có khớp điều kiện sẽ được cấp quyền ngay, user mới sẽ tự động nhận khi onboard/gán role. Có thể bỏ qua và thêm sau.</p>
+
+          <ul class="nav nav-pills-iam mb-3">
+            <li><button class="nav-link" [class.active]="defaultPermTab === 'app'" (click)="defaultPermTab = 'app'">Quyền ứng dụng</button></li>
+            <li><button class="nav-link" [class.active]="defaultPermTab === 'resource'" (click)="defaultPermTab = 'resource'">Quyền tài nguyên</button></li>
+          </ul>
+
+          <div *ngIf="defaultPermTab === 'app'" class="row g-2 align-items-end">
+            <div class="col-md-4">
+              <label class="field-label">Role</label>
+              <select class="form-select form-select-sm" [(ngModel)]="defaultAppForm.roleId">
+                <option value="">-- Chọn role --</option>
+                <option *ngFor="let r of roles" [value]="r.code">{{ r.name }} ({{ r.code }})</option>
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label class="field-label">Chức danh</label>
+              <select class="form-select form-select-sm" [(ngModel)]="defaultAppForm.positionCode">
+                <option value="">-- Chọn chức danh --</option>
+                <option *ngFor="let p of positions" [value]="p.code">{{ p.name }} ({{ p.code }})</option>
+              </select>
+            </div>
+            <div class="col-md-4">
+              <button class="btn btn-outline-primary btn-sm w-100" (click)="submitDefaultApp()" [disabled]="loadingStep3">
+                <i class="bi bi-plus-lg me-1"></i>Thêm quyền ứng dụng
+              </button>
+            </div>
+          </div>
+
+          <div *ngIf="defaultPermTab === 'resource'" class="row g-2 align-items-end">
+            <div class="col-md-3">
+              <label class="field-label">Role</label>
+              <select class="form-select form-select-sm" [(ngModel)]="defaultResForm.roleId">
+                <option value="">-- Chọn role --</option>
+                <option *ngFor="let r of roles" [value]="r.id">{{ r.name }} ({{ r.code }})</option>
+              </select>
+            </div>
+            <div class="col-md-3">
+              <label class="field-label">Chức danh</label>
+              <select class="form-select form-select-sm" [(ngModel)]="defaultResForm.positionCode">
+                <option value="">-- Chọn chức danh --</option>
+                <option *ngFor="let p of positions" [value]="p.code">{{ p.name }} ({{ p.code }})</option>
+              </select>
+            </div>
+            <div class="col-md-3">
+              <label class="field-label">Resource</label>
+              <select class="form-select form-select-sm" [(ngModel)]="defaultResForm.resourceId" (change)="onDefaultResResourceChange()">
+                <option value="">-- Chọn resource --</option>
+                <option *ngFor="let r of appResources" [value]="r.id">{{ r.resourceName ?? r.resourceCode }}</option>
+              </select>
+            </div>
+            <div class="col-md-3">
+              <button class="btn btn-outline-primary btn-sm w-100" (click)="submitDefaultResource()" [disabled]="loadingStep3">
+                <i class="bi bi-plus-lg me-1"></i>Thêm quyền tài nguyên
+              </button>
+            </div>
+            <div class="col-12" *ngIf="defaultResActions.length">
+              <label class="field-label">Actions</label>
+              <div class="d-flex flex-wrap gap-2">
+                <span *ngFor="let a of defaultResActions"
+                      class="badge cursor-pointer"
+                      [class.bg-primary]="defaultResSelectedActions.includes(a)"
+                      [class.bg-secondary]="!defaultResSelectedActions.includes(a)"
+                      style="cursor:pointer"
+                      (click)="toggleDefaultResAction(a)">{{ a }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ============ Step 4: OAuth2 Client ============ -->
+        <div *ngIf="currentStep.key === 'CLIENT'" class="row g-3">
+          <ng-container *ngIf="!createdSecret">
+            <div class="col-md-6">
+              <label class="field-label">Client ID <span class="text-danger">*</span></label>
+              <input class="form-control form-control-sm" [(ngModel)]="clientForm.clientId" placeholder="vd: core-banking-web">
+            </div>
+            <div class="col-md-6">
+              <label class="field-label">Tên <span class="text-danger">*</span></label>
+              <input class="form-control form-control-sm" [(ngModel)]="clientForm.name" placeholder="vd: Core Banking Web">
+            </div>
+            <div class="col-md-4">
+              <label class="field-label">Loại client</label>
+              <select class="form-select form-select-sm" [(ngModel)]="clientForm.type">
+                <option value="public">public</option>
+                <option value="confidential">confidential</option>
+              </select>
+            </div>
+            <div class="col-md-8">
+              <label class="field-label">Redirect URIs (phân cách bởi dấu phẩy)</label>
+              <input class="form-control form-control-sm" [(ngModel)]="createRedirectUris" placeholder="https://app/callback">
+            </div>
+            <div class="col-md-6">
+              <label class="field-label">Grant types</label>
+              <div class="d-flex gap-3">
+                <div class="form-check">
+                  <input type="checkbox" class="form-check-input" id="gtAuthCode" [(ngModel)]="createGrantTypes.authorization_code">
+                  <label class="form-check-label small" for="gtAuthCode">authorization_code</label>
+                </div>
+                <div class="form-check">
+                  <input type="checkbox" class="form-check-input" id="gtRefresh" [(ngModel)]="createGrantTypes.refresh_token">
+                  <label class="form-check-label small" for="gtRefresh">refresh_token</label>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <label class="field-label">Scopes</label>
+              <div class="d-flex gap-3">
+                <div class="form-check">
+                  <input type="checkbox" class="form-check-input" id="scOpenid" [(ngModel)]="createScopes.openid">
+                  <label class="form-check-label small" for="scOpenid">openid</label>
+                </div>
+                <div class="form-check">
+                  <input type="checkbox" class="form-check-input" id="scProfile" [(ngModel)]="createScopes.profile">
+                  <label class="form-check-label small" for="scProfile">profile</label>
+                </div>
+              </div>
+            </div>
+          </ng-container>
+
+          <div class="col-12" *ngIf="createdSecret">
+            <div class="alert alert-warning py-2 small mb-0">
+              <i class="bi bi-key me-1"></i>Client secret (chỉ hiển thị 1 lần): <code>{{ createdSecret }}</code>
+            </div>
+          </div>
+        </div>
+
+        <!-- ============ Step 5: Client Method ============ -->
+        <div *ngIf="currentStep.key === 'CLIENT_METHOD'">
+          <p class="text-muted small">Chọn các phương thức xác thực ứng dụng này hỗ trợ (dùng cấu hình mặc định của hệ thống).</p>
+          <div class="d-flex flex-column gap-2">
+            <div class="form-check" *ngFor="let m of authMethods">
+              <input type="checkbox" class="form-check-input" [id]="'method-' + m.id"
+                     [checked]="selectedMethodIds.includes(m.id)" (change)="toggleMethod(m.id)">
+              <label class="form-check-label" [for]="'method-' + m.id">{{ m.method }}</label>
+            </div>
+          </div>
+          <p *ngIf="!authMethods.length" class="text-muted small fst-italic mt-2">Không có phương thức xác thực nào khả dụng.</p>
+        </div>
+
+        <!-- ============ Step 6: Auth Flow ============ -->
+        <div *ngIf="currentStep.key === 'AUTH_FLOW'">
+          <p class="text-muted small">Sắp xếp thứ tự các bước xác thực (chuỗi tuyến tính) cho luồng đăng nhập mặc định.</p>
+          <div class="row g-2 mb-3">
+            <div class="col-md-6">
+              <label class="field-label">Alias <span class="text-danger">*</span></label>
+              <input class="form-control form-control-sm" [(ngModel)]="flowForm.alias">
+            </div>
+            <div class="col-md-6">
+              <label class="field-label">Mô tả</label>
+              <input class="form-control form-control-sm" [(ngModel)]="flowForm.description">
+            </div>
+          </div>
+          <ol class="list-group list-group-numbered">
+            <li class="list-group-item d-flex justify-content-between align-items-center" *ngFor="let m of selectedMethods; let i = index">
+              {{ m.method }}
+              <span class="d-flex gap-1">
+                <button class="btn btn-sm btn-outline-secondary" [disabled]="i === 0" (click)="moveMethod(i, -1)"><i class="bi bi-arrow-up"></i></button>
+                <button class="btn btn-sm btn-outline-secondary" [disabled]="i === selectedMethods.length - 1" (click)="moveMethod(i, 1)"><i class="bi bi-arrow-down"></i></button>
+              </span>
+            </li>
+          </ol>
+        </div>
+
+      </div>
+
+      <div class="card-footer bg-white py-3 d-flex align-items-center justify-content-between">
+        <button class="btn btn-outline-secondary btn-sm" (click)="goBack()" [disabled]="currentIndex === 0">
+          <i class="bi bi-arrow-left me-1"></i>Quay lại
+        </button>
+        <div class="d-flex gap-2">
+          <button *ngIf="currentStep.key === 'RESOURCE'" class="btn btn-outline-secondary btn-sm" (click)="skipStep2()">Bỏ qua</button>
+          <button *ngIf="currentStep.key === 'DEFAULT_PERMISSION'" class="btn btn-outline-secondary btn-sm" (click)="finishStep3()">Bỏ qua / Tiếp tục</button>
+
+          <button *ngIf="currentStep.key === 'APPLICATION'" class="btn btn-primary btn-sm" (click)="submitStep1()" [disabled]="loadingStep1">
+            <span *ngIf="loadingStep1" class="spinner-border spinner-border-sm me-1"></span>Tạo ứng dụng & Tiếp tục
+          </button>
+          <button *ngIf="currentStep.key === 'RESOURCE'" class="btn btn-primary btn-sm" (click)="submitStep2()" [disabled]="loadingStep2">
+            <span *ngIf="loadingStep2" class="spinner-border spinner-border-sm me-1"></span>Lưu tài nguyên & Tiếp tục
+          </button>
+          <button *ngIf="currentStep.key === 'CLIENT' && !createdSecret" class="btn btn-primary btn-sm" (click)="submitStep4()" [disabled]="loadingStep4">
+            <span *ngIf="loadingStep4" class="spinner-border spinner-border-sm me-1"></span>Tạo Client & Tiếp tục
+          </button>
+          <button *ngIf="currentStep.key === 'CLIENT' && createdSecret" class="btn btn-primary btn-sm" (click)="currentIndex = 4">
+            Tiếp tục
+          </button>
+          <button *ngIf="currentStep.key === 'CLIENT_METHOD'" class="btn btn-primary btn-sm" (click)="submitStep5()" [disabled]="loadingStep5">
+            <span *ngIf="loadingStep5" class="spinner-border spinner-border-sm me-1"></span>Lưu & Tiếp tục
+          </button>
+          <button *ngIf="currentStep.key === 'AUTH_FLOW'" class="btn btn-success btn-sm" (click)="submitStep6()" [disabled]="loadingStep6">
+            <span *ngIf="loadingStep6" class="spinner-border spinner-border-sm me-1"></span>Tạo luồng & Hoàn tất
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </ng-container>
+</ng-container>

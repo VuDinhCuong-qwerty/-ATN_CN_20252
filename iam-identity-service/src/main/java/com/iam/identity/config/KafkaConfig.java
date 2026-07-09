@@ -39,6 +39,7 @@ public class KafkaConfig {
     public static final String TOPIC_REQUEST_PERMISSION_NOTIFY = "REQUEST-PERMISSION-NOTIFY";
     public static final String TOPIC_APPROVE_PERMISSION_NOTIFY = "APPROVE-PERMISSION-NOTIFY";
     public static final String TOPIC_REVOKED_PERMISSION_NOTIFY = "REVOKED-PERMISSION-NOTIFY";
+    public static final String TOPIC_DEFAULT_PERMISSION_CREATED = "DEFAULT-PERMISSION-CREATED";
 
     private final KafkaProperties kafkaProperties;
 

@@ -68,8 +68,24 @@ export class AppApiService {
     return this.http.get(`${BASE}/applications/${appId}/flows`);
   }
 
-  createFlow(appId: number, body: { alias: string; description?: string }): Observable<any> {
+  createFlow(appId: number, body: { alias: string; description?: string; executions?: any[] }): Observable<any> {
     return this.http.post(`${BASE}/applications/${appId}/flows`, body);
+  }
+
+  getAuthMethods(): Observable<any> {
+    return this.http.get(`${BASE}/auth-methods`, { params: { status: '1' } });
+  }
+
+  getClientMethods(appId: number): Observable<any> {
+    return this.http.get(`${BASE}/applications/${appId}/methods`);
+  }
+
+  createMethods(appId: number, body: { items: any[] }): Observable<any> {
+    return this.http.post(`${BASE}/applications/${appId}/methods`, body);
+  }
+
+  getSetupStatus(appId: number): Observable<any> {
+    return this.http.get(`${BASE}/applications/${appId}/setup-status`);
   }
 
   getAuthFlowDetail(appId: number, flowId: number): Observable<any> {

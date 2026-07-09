@@ -155,6 +155,31 @@ public class AuthRepository {
         }
     }
 
+    /**
+     * Đếm số user ACTIVE đang có role+position khớp — dùng để hiển thị
+     * "affectedUserCount" khi tạo default-permission (chỉ mang tính thông tin,
+     * không phải kết quả backfill thật — backfill chạy async qua Kafka).
+     * AUTH_USER_ROLE/AUTH_USER_PROFILE thuộc domain iam-identity-service nhưng
+     * nằm chung schema Oracle — query thẳng, không cần cross-service call.
+     */
+    public long countActiveUsersByRoleAndPosition(Long roleId, String positionCode) {
+        String sql = """
+                SELECT COUNT(*)
+                FROM AUTH_USER_ROLE ur
+                JOIN AUTH_USER_PROFILE up ON up.USER_ID = ur.USER_ID
+                JOIN AUTH_USER u ON u.ID = ur.USER_ID
+                WHERE ur.ROLE_ID = :roleId
+                  AND ur.STATUS = 'ACTIVE'
+                  AND up.POSITION = :positionCode
+                  AND u.STATUS = 'ACTIVE'
+                """;
+        Number count = (Number) entityManager.createNativeQuery(sql)
+                .setParameter("roleId", roleId)
+                .setParameter("positionCode", positionCode)
+                .getSingleResult();
+        return count.longValue();
+    }
+
     private Long toLong(Object val) {
         if (val == null) return null;
         if (val instanceof Number n) return n.longValue();

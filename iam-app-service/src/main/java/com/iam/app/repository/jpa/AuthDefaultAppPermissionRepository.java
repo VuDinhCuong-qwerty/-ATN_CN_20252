@@ -50,4 +50,7 @@ public interface AuthDefaultAppPermissionRepository extends JpaRepository<AuthDe
     List<AuthDefaultAppPermission> findActiveByRoleAndPosition(
             @Param("roleId") String roleId,
             @Param("positionCode") String positionCode);
+
+    @Query(value = "SELECT COUNT(*) FROM AUTH_DEFAULT_APP_PERMISSION WHERE APPLICATION_ID = :applicationId AND STATUS = 'ACTIVE'", nativeQuery = true)
+    int countActiveByApplicationId(@Param("applicationId") Long applicationId);
 }

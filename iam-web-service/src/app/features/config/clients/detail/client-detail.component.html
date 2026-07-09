@@ -1,4 +1,4 @@
-<nav aria-label="breadcrumb" class="mb-2">
+<nav aria-label="breadcrumb" class="mb-2" *ngIf="!embedded">
   <ol class="breadcrumb mb-0">
     <li class="breadcrumb-item text-muted small">Quản lý cấu hình</li>
     <li class="breadcrumb-item small">
@@ -10,7 +10,8 @@
 
 <div class="d-flex align-items-center gap-3 mb-3">
   <button class="btn btn-outline-secondary btn-sm" (click)="goBack()">
-    <i class="bi bi-arrow-left me-1"></i>Quay lại
+    <i class="bi" [class.bi-arrow-left]="!embedded" [class.bi-x-lg]="embedded"></i>
+    <span class="ms-1">{{ embedded ? 'Đóng' : 'Quay lại' }}</span>
   </button>
   <h4 class="mb-0">
     <i class="bi bi-plug me-2 text-primary"></i>

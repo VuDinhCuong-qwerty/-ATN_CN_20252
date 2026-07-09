@@ -38,6 +38,7 @@ public class KafkaConfig {
     public static final String TOPIC_REVOKED_PERMISSION_NOTIFY = "REVOKED-PERMISSION-NOTIFY";
     public static final String TOPIC_CLIENT_SECRET_RESET_NOTIFY = "CLIENT-SECRET-RESET-NOTIFY";
     public static final String TOPIC_FLOW_EXECUTION_UPDATED = "FLOW-EXECUTION-UPDATED";
+    public static final String TOPIC_DEFAULT_PERMISSION_CREATED = "DEFAULT-PERMISSION-CREATED";
 
     private final KafkaProperties kafkaProperties;
 

@@ -13,6 +13,7 @@ services:
       GATEWAY_CLIENT_ID: iam-gateway-user
       GATEWAY_CLIENT_SECRET: 9917e921-9f81-49c2-a2a7-3bccfcdff11b
       CORS_ORIGIN: http://localhost:4200
+      FLUENT_HOST: fluent-bit
     networks:
       - iam-internal-network
     depends_on:

@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, Input, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { PermissionService } from '../../../core/auth/permission.service';
@@ -18,6 +18,9 @@ interface FlatNode {
   styleUrl: './flow-list.component.css'
 })
 export class FlowListComponent implements OnInit {
+  /** Khi được set (nhúng trong tab AppDetailComponent) — ẩn dropdown chọn app, luôn scope theo app này. */
+  @Input() embeddedAppId?: number;
+
   applications: any[] = [];
   selectedAppId: any = '';
   flows: any[] = [];
@@ -35,6 +38,11 @@ export class FlowListComponent implements OnInit {
   constructor(public perm: PermissionService, private appApiService: AppApiService) {}
 
   ngOnInit() {
+    if (this.embeddedAppId) {
+      this.selectedAppId = this.embeddedAppId;
+      this.loadFlows();
+      return;
+    }
     this.appApiService.getApplications({ size: 200 }).subscribe({
       next: res => {
         this.applications = res.data?.content ?? res.data ?? [];

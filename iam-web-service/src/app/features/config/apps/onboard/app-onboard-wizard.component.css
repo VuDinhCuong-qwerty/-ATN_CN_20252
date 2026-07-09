@@ -1,0 +1,69 @@
+.wizard-steps {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.25rem;
+}
+
+.wizard-step {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  position: relative;
+}
+
+.wizard-step:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  top: 15px;
+  left: 55%;
+  right: -45%;
+  height: 2px;
+  background: var(--iam-border, #D5E3F5);
+  z-index: 0;
+}
+
+.wizard-step.done:not(:last-child)::after {
+  background: var(--iam-primary, #003B8E);
+}
+
+.wizard-step-circle {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #F0F4F9;
+  border: 2px solid var(--iam-border, #D5E3F5);
+  color: var(--iam-text-muted, #5A6E8C);
+  font-size: 0.8rem;
+  font-weight: 600;
+  z-index: 1;
+  position: relative;
+}
+
+.wizard-step.active .wizard-step-circle {
+  background: var(--iam-primary, #003B8E);
+  border-color: var(--iam-primary, #003B8E);
+  color: #fff;
+}
+
+.wizard-step.done .wizard-step-circle {
+  background: var(--iam-primary, #003B8E);
+  border-color: var(--iam-primary, #003B8E);
+  color: #fff;
+}
+
+.wizard-step-label {
+  margin-top: 0.4rem;
+  font-size: 0.72rem;
+  color: var(--iam-text-muted, #5A6E8C);
+  max-width: 100px;
+}
+
+.wizard-step.active .wizard-step-label {
+  color: var(--iam-text, #0F2044);
+  font-weight: 600;
+}

@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -17,6 +17,13 @@ const TOKEN_ENDPOINT_AUTH_OPTIONS = ['none', 'client_secret_basic', 'client_secr
   styleUrl: './client-detail.component.css'
 })
 export class ClientDetailComponent implements OnInit {
+  /** Khi được set (nhúng trong modal của ClientListComponent) — dùng thay cho query params. */
+  @Input() embedClientId?: string;
+  @Input() embedInternalId?: any;
+  @Output() closed = new EventEmitter<void>();
+
+  get embedded(): boolean { return this.embedClientId != null; }
+
   clientId = '';    // OAuth2 string clientId — dùng cho GET /clients/{clientId}
   internalId: any = null;  // numeric id — dùng cho update/reset/scopes
   loading = false;
@@ -55,6 +62,12 @@ export class ClientDetailComponent implements OnInit {
   ) {}
 
   ngOnInit() {
+    if (this.embedClientId != null) {
+      this.clientId = this.embedClientId;
+      this.internalId = this.embedInternalId;
+      if (this.clientId) this.loadDetail();
+      return;
+    }
     this.route.queryParams.subscribe(p => {
       this.clientId = p['clientId'];
       this.internalId = p['id'];
@@ -189,7 +202,10 @@ export class ClientDetailComponent implements OnInit {
     });
   }
 
-  goBack() { this.router.navigate(['/config/clients']); }
+  goBack() {
+    if (this.embedded) { this.closed.emit(); return; }
+    this.router.navigate(['/config/clients']);
+  }
 
   statusBadge(enabled: any): string {
     return enabled === 1 || enabled === true ? 'bg-success' : 'bg-secondary';

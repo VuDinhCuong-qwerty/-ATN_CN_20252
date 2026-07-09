@@ -1,5 +1,6 @@
 package com.iam.app.service.impl;
 
+import com.iam.app.config.KafkaConfig;
 import com.iam.app.config.context.RequestContext;
 import com.iam.app.domain.AuthDefaultResource;
 import com.iam.app.domain.AuthPosition;
@@ -10,8 +11,11 @@ import com.iam.app.dto.request.CreateDefaultResourcePermissionRequest;
 import com.iam.app.dto.response.DefaultResourcePermissionResponse;
 import com.iam.app.enums.ErrorCode;
 import com.iam.app.exception.BusinessException;
+import com.iam.app.kafka.payload.DefaultPermissionCreatedPayload;
+import com.iam.app.kafka.producer.AppEventProducer;
 import com.iam.app.repository.jpa.AuthDefaultResourceRepository;
 import com.iam.app.repository.jpa.AuthPositionRepository;
+import com.iam.app.repository.jpa.AuthRepository;
 import com.iam.app.repository.jpa.AuthResourceRepository;
 import com.iam.app.repository.jpa.AuthRoleRepository;
 import com.iam.app.service.DefaultResourcePermissionService;
@@ -39,6 +43,8 @@ public class DefaultResourcePermissionServiceImpl implements DefaultResourcePerm
     private final AuthRoleRepository roleRepository;
     private final AuthPositionRepository positionRepository;
     private final AuthResourceRepository resourceRepository;
+    private final AuthRepository authRepository;
+    private final AppEventProducer eventProducer;
 
     @Override
     public Page<DefaultResourcePermissionResponse> getPermissions(Long roleId, String positionCode,
@@ -150,12 +156,40 @@ public class DefaultResourcePermissionServiceImpl implements DefaultResourcePerm
         Map<String, String> positionNameMap = positionMap.entrySet().stream()
                 .collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().getName()));
 
-        return saved.stream()
-                .map(entity -> buildResponse(entity,
-                        roleNameMap.get(entity.getRoleId()),
-                        positionNameMap.get(entity.getPositionCode()),
-                        resourceMap.get(entity.getResourceId())))
-                .toList();
+        // Bắn Kafka backfill + tính affectedUserCount cho từng item vừa tạo
+        List<DefaultResourcePermissionResponse> responses = new ArrayList<>();
+        for (AuthDefaultResource entity : saved) {
+            AuthRole role = roleMap.get(entity.getRoleId());
+            long affectedUserCount = authRepository.countActiveUsersByRoleAndPosition(
+                    entity.getRoleId(), entity.getPositionCode());
+
+            try {
+                eventProducer.publish(
+                        KafkaConfig.TOPIC_DEFAULT_PERMISSION_CREATED,
+                        "DEFAULT_RESOURCE_PERMISSION_ADDED",
+                        DefaultPermissionCreatedPayload.builder()
+                                .permissionType("RESOURCE")
+                                .resourceId(entity.getResourceId())
+                                .roleId(entity.getRoleId())
+                                .roleCode(role.getCode())
+                                .positionCode(entity.getPositionCode())
+                                .actions(Arrays.asList(entity.getActions().split(",")))
+                                .build());
+            } catch (Exception e) {
+                log.error("Failed to publish DEFAULT_RESOURCE_PERMISSION_ADDED for defaultResourcePermissionId={}: {}",
+                        entity.getId(), e.getMessage(), e);
+            }
+
+            AuthResource resource = resourceMap.get(entity.getResourceId());
+            responses.add(new DefaultResourcePermissionResponse(
+                    entity,
+                    roleNameMap.get(entity.getRoleId()),
+                    positionNameMap.get(entity.getPositionCode()),
+                    resource != null ? resource.getResourceCode() : null,
+                    resource != null ? resource.getResourceName() : null,
+                    affectedUserCount));
+        }
+        return responses;
     }
 
     @Override

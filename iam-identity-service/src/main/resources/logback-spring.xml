@@ -14,8 +14,10 @@
     <appender-ref ref="FLUENT"/>
   </appender>
 
+  <springProperty scope="context" name="fluentHost" source="logging.fluent.host" defaultValue="localhost"/>
+
   <appender name="FLUENT" class="net.logstash.logback.appender.LogstashTcpSocketAppender">
-    <destination>fluent-bit:5044</destination>
+    <destination>${fluentHost}:5044</destination>
     <reconnectionDelay>10 seconds</reconnectionDelay>
     <encoder class="net.logstash.logback.encoder.LogstashEncoder">
       <customFields>{"service": "iam-identity-service"}</customFields>

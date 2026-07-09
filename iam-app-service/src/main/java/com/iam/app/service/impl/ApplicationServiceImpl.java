@@ -18,13 +18,18 @@ import com.iam.app.dto.response.AppWarning;
 import com.iam.app.dto.response.ApplicationResponse;
 import com.iam.app.dto.response.GetApplicationsResponse;
 import com.iam.app.dto.response.GetDetailAppResponse;
+import com.iam.app.dto.response.SetupStatusResponse;
 import com.iam.app.enums.ErrorCode;
 import com.iam.app.exception.BusinessException;
 import com.iam.app.repository.jpa.ApplicationSpec;
 import com.iam.app.repository.jpa.AuthApplicationRepository;
 import com.iam.app.repository.jpa.AuthClientGroupRepository;
+import com.iam.app.repository.jpa.AuthClientMethodRepository;
 import com.iam.app.repository.jpa.AuthClientRepository;
+import com.iam.app.repository.jpa.AuthDefaultAppPermissionRepository;
+import com.iam.app.repository.jpa.AuthDefaultResourceRepository;
 import com.iam.app.repository.jpa.AuthDepartmentRepository;
+import com.iam.app.repository.jpa.AuthFlowRepository;
 import com.iam.app.repository.jpa.AuthRepository;
 import com.iam.app.repository.jpa.AuthResourceRepository;
 import com.iam.app.service.ApplicationService;
@@ -43,6 +48,10 @@ public class ApplicationServiceImpl implements ApplicationService {
     private final AuthClientGroupRepository groupRepository;
     private final AuthClientRepository clientRepository;
     private final AuthResourceRepository resourceRepository;
+    private final AuthClientMethodRepository clientMethodRepository;
+    private final AuthFlowRepository flowRepository;
+    private final AuthDefaultAppPermissionRepository defaultAppPermissionRepository;
+    private final AuthDefaultResourceRepository defaultResourceRepository;
 
     @Override
     public Page<GetApplicationsResponse> getApps(
@@ -171,5 +180,54 @@ public class ApplicationServiceImpl implements ApplicationService {
         }
 
         return response;
+    }
+
+    @Override
+    public SetupStatusResponse getSetupStatus(Long id) {
+        AuthApplication app = appRepository.findById(id)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Ứng dụng không tồn tại"));
+
+        boolean isInternal = "INTERNAL".equals(app.getAppType());
+
+        boolean hasResource = !resourceRepository.findActiveByAppId(id).isEmpty();
+        boolean hasDefaultPermission = defaultAppPermissionRepository.countActiveByApplicationId(id) > 0
+                || defaultResourceRepository.countActiveByApplicationId(id) > 0;
+
+        // App THIRD_PARTY_LDAP (vd: GitLab) thường tự quản lý tài nguyên/quyền riêng —
+        // Resource + Default Permission chỉ bắt buộc với app INTERNAL.
+        List<SetupStatusResponse.Step> steps = new ArrayList<>();
+        steps.add(buildStep("APPLICATION", "Tạo ứng dụng", true, true));
+        steps.add(buildStep("RESOURCE", "Tài nguyên", hasResource, isInternal));
+        steps.add(buildStep("DEFAULT_PERMISSION", "Quyền mặc định", hasDefaultPermission, isInternal));
+
+        if (isInternal) {
+            boolean hasClient = !clientRepository.findEnabledByAppId(id).isEmpty();
+            boolean hasClientMethod = clientMethodRepository.findByAppId(id).stream()
+                    .anyMatch(m -> "ACTIVE".equals(m.getStatus()));
+            boolean hasFlow = flowRepository.countActiveByAppId(id) > 0;
+
+            steps.add(buildStep("CLIENT", "OAuth2 Client", hasClient, true));
+            steps.add(buildStep("CLIENT_METHOD", "Phương thức xác thực", hasClientMethod, true));
+            steps.add(buildStep("AUTH_FLOW", "Luồng MFA", hasFlow, true));
+        }
+
+        String nextStep = steps.stream()
+                .filter(s -> s.isRequired() && !s.isDone())
+                .map(SetupStatusResponse.Step::getKey)
+                .findFirst()
+                .orElse(null);
+        boolean overallComplete = nextStep == null;
+
+        return SetupStatusResponse.builder()
+                .appId(id)
+                .appType(app.getAppType())
+                .steps(steps)
+                .nextStep(nextStep)
+                .overallComplete(overallComplete)
+                .build();
+    }
+
+    private SetupStatusResponse.Step buildStep(String key, String label, boolean done, boolean required) {
+        return SetupStatusResponse.Step.builder().key(key).label(label).done(done).required(required).build();
     }
 }

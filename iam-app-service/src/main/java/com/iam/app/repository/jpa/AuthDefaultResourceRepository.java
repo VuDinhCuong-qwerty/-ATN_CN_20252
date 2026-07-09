@@ -55,4 +55,9 @@ public interface AuthDefaultResourceRepository extends JpaRepository<AuthDefault
     List<AuthDefaultResource> findActiveByRoleAndPosition(
             @Param("roleId") Long roleId,
             @Param("positionCode") String positionCode);
+
+    @Query(value = "SELECT COUNT(*) FROM AUTH_DEFAULT_RESOURCE dr " +
+                    "JOIN AUTH_RESOURCE r ON r.ID = dr.RESOURCE_ID " +
+                    "WHERE r.APP_ID = :applicationId AND dr.STATUS = 'ACTIVE'", nativeQuery = true)
+    int countActiveByApplicationId(@Param("applicationId") Long applicationId);
 }

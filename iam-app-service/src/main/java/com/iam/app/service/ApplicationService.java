@@ -8,6 +8,7 @@ import com.iam.app.dto.request.UpdateApplicationRequest;
 import com.iam.app.dto.response.ApplicationResponse;
 import com.iam.app.dto.response.GetApplicationsResponse;
 import com.iam.app.dto.response.GetDetailAppResponse;
+import com.iam.app.dto.response.SetupStatusResponse;
 
 public interface ApplicationService {
 
@@ -20,4 +21,6 @@ public interface ApplicationService {
     ApplicationResponse updateApp(Long id, UpdateApplicationRequest request);
 
     ApplicationResponse toggleAppStatus(Long id, String status);
+
+    SetupStatusResponse getSetupStatus(Long id);
 }

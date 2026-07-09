@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, Input, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { PermissionService } from '../../../core/auth/permission.service';
@@ -11,6 +11,9 @@ import { AppApiService } from '../../../shared/services/app-api.service';
   styleUrl: './resource-list.component.css'
 })
 export class ResourceListComponent implements OnInit {
+  /** Khi được set (nhúng trong tab AppDetailComponent) — ẩn dropdown chọn app, luôn scope theo app này. */
+  @Input() embeddedAppId?: number;
+
   applications: any[] = [];
   resources: any[] = [];
   loading = false;
@@ -46,6 +49,11 @@ export class ResourceListComponent implements OnInit {
   constructor(public perm: PermissionService, private appApi: AppApiService) {}
 
   ngOnInit() {
+    if (this.embeddedAppId) {
+      this.filterAppId = String(this.embeddedAppId);
+      this.loadResources();
+      return;
+    }
     this.appApi.getApplications({ size: 200 }).subscribe({
       next: res => {
         this.applications = res.data?.content ?? res.data ?? [];
@@ -189,7 +197,7 @@ export class ResourceListComponent implements OnInit {
   // ── Create modal ──────────────────────────────────────────────
   openCreate() {
     this.createForm = {
-      appId: this.filterAppId || (this.applications[0]?.id ?? ''),
+      appId: this.embeddedAppId ?? (this.filterAppId || (this.applications[0]?.id ?? '')),
       resourceCode: '',
       resourceName: '',
       resourceType: 'ENDPOINT',

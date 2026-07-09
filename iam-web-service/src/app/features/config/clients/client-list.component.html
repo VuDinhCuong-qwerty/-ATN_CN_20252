@@ -1,13 +1,15 @@
-<nav aria-label="breadcrumb" class="mb-2">
-  <ol class="breadcrumb mb-0">
-    <li class="breadcrumb-item text-muted small">Quản lý cấu hình</li>
-    <li class="breadcrumb-item active small fw-semibold">OAuth2 Client</li>
-  </ol>
-</nav>
+<ng-container *ngIf="!embeddedAppId">
+  <nav aria-label="breadcrumb" class="mb-2">
+    <ol class="breadcrumb mb-0">
+      <li class="breadcrumb-item text-muted small">Quản lý cấu hình</li>
+      <li class="breadcrumb-item active small fw-semibold">OAuth2 Client</li>
+    </ol>
+  </nav>
 
-<div class="d-flex align-items-center mb-3">
-  <h4 class="mb-0"><i class="bi bi-plug me-2 text-primary"></i>Quản lý OAuth2 Client</h4>
-</div>
+  <div class="d-flex align-items-center mb-3">
+    <h4 class="mb-0"><i class="bi bi-plug me-2 text-primary"></i>Quản lý OAuth2 Client</h4>
+  </div>
+</ng-container>
 
 <!-- Global alert -->
 <div *ngIf="message" class="alert alert-floating alert-{{ messageType }} alert-dismissible" role="alert">
@@ -17,7 +19,7 @@
 <!-- Search bar -->
 <div class="search-bar mb-3">
   <div class="row g-2 align-items-end">
-    <div class="col-md-3">
+    <div class="col-md-3" *ngIf="!embeddedAppId">
       <label class="form-label small mb-1">Ứng dụng</label>
       <select class="form-select form-select-sm" [(ngModel)]="filterAppId">
         <option value="">-- Tất cả --</option>
@@ -50,6 +52,11 @@
         <i *ngIf="!loading" class="bi bi-search me-1"></i>Tìm
       </button>
       <button class="btn btn-outline-secondary btn-sm ms-1" (click)="clearSearch()">Xoá</button>
+    </div>
+    <div class="col-auto ms-auto" *ngIf="embeddedAppId">
+      <button class="btn btn-success btn-sm" (click)="openCreate()" *ngIf="perm.has('client','create')">
+        <i class="bi bi-plus-lg me-1"></i>Tạo Client mới
+      </button>
     </div>
   </div>
 </div>
@@ -122,7 +129,7 @@
 
 <!-- FAB: Create Client -->
 <button class="fab-btn btn btn-success shadow-lg" (click)="openCreate()" title="Tạo OAuth2 Client mới"
-        *ngIf="perm.has('client','create')">
+        *ngIf="perm.has('client','create') && !embeddedAppId">
   <i class="bi bi-plus-lg fs-5"></i>
 </button>
 
@@ -159,7 +166,7 @@
             <option value="confidential">confidential</option>
           </select>
         </div>
-        <div class="col-md-6">
+        <div class="col-md-6" *ngIf="!embeddedAppId">
           <label class="form-label small">Ứng dụng <span class="text-danger">*</span></label>
           <select class="form-select form-select-sm" [(ngModel)]="createForm.appId">
             <option value="">-- Chọn --</option>
@@ -242,5 +249,16 @@
         <i *ngIf="!loadingCreate" class="bi bi-plus-lg me-1"></i>Tạo Client
       </button>
     </div>
+  </div>
+</div>
+
+<!-- ===== Modal: Chi tiết Client (chỉ khi nhúng trong tab AppDetailComponent) ===== -->
+<div class="modal-overlay" *ngIf="embeddedAppId && selectedClientId" (click)="closeDetailPanel()">
+  <div class="modal-panel modal-panel-lg" (click)="$event.stopPropagation()">
+    <app-client-detail
+      [embedClientId]="selectedClientId"
+      [embedInternalId]="selectedInternalId"
+      (closed)="closeDetailPanel()">
+    </app-client-detail>
   </div>
 </div>

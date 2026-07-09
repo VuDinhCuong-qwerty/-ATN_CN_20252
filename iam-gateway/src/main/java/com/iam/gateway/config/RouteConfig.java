@@ -218,6 +218,11 @@ public class RouteConfig {
                         .filters(f -> f.filter(require("iam-service/application:update")))
                         .uri(appUri))
 
+                .route("get-application-setup-status", r -> r
+                        .path("/iam-app-service/applications/*/setup-status").and().method(GET)
+                        .filters(f -> f.filter(require("iam-service/application:read")))
+                        .uri(appUri))
+
                 .route("get-application-detail", r -> r
                         .path("/iam-app-service/applications/*").and().method(GET)
                         .filters(f -> f.filter(require("iam-service/application:read")))

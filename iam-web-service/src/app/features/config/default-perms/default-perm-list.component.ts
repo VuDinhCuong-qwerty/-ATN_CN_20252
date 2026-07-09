@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, Input, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { PermissionService } from '../../../core/auth/permission.service';
@@ -11,11 +11,17 @@ import { AppApiService } from '../../../shared/services/app-api.service';
   styleUrl: './default-perm-list.component.css'
 })
 export class DefaultPermListComponent implements OnInit {
+  /** Khi được set (nhúng trong tab AppDetailComponent) — ẩn dropdown chọn app, luôn scope theo app này. */
+  @Input() embeddedAppId?: number;
 
   activeTab: 'app' | 'resource' = 'app';
   roles: any[] = [];
   positions: any[] = [];
   applications: any[] = [];
+
+  // ── Floating alert (vd: thông báo số user bị ảnh hưởng sau khi tạo default-permission) ──
+  message = '';
+  messageType = '';
 
   // ── App permissions ──────────────────────────────────────────────────────
   appPerms: any[] = [];
@@ -67,6 +73,15 @@ export class DefaultPermListComponent implements OnInit {
   ngOnInit() {
     this.api.getRoles().subscribe({ next: res => this.roles = res.data ?? [] });
     this.api.getPositions().subscribe({ next: res => this.positions = res.data ?? [] });
+
+    if (this.embeddedAppId) {
+      this.filterApp.applicationId = String(this.embeddedAppId);
+      this.filterResAppId = String(this.embeddedAppId);
+      this.onFilterResAppChange();
+      this.loadAppPerms();
+      return;
+    }
+
     this.api.getApplications({ size: 200 }).subscribe({
       next: res => this.applications = res.data?.content ?? res.data ?? []
     });
@@ -117,7 +132,7 @@ export class DefaultPermListComponent implements OnInit {
   }
 
   openCreateApp() {
-    this.createAppForm = { roleId: '', positionCode: '', applicationId: '' };
+    this.createAppForm = { roleId: '', positionCode: '', applicationId: this.embeddedAppId ? String(this.embeddedAppId) : '' };
     this.createAppMessage = '';
     this.showCreateAppModal = true;
   }
@@ -138,7 +153,15 @@ export class DefaultPermListComponent implements OnInit {
         applicationId: Number(this.createAppForm.applicationId)
       }]
     }).subscribe({
-      next: () => { this.loadingCreateApp = false; this.showCreateAppModal = false; this.searchAppPerms(); },
+      next: res => {
+        this.loadingCreateApp = false;
+        this.showCreateAppModal = false;
+        this.searchAppPerms();
+        const count = res.data?.[0]?.affectedUserCount;
+        if (count != null) {
+          this.showMessage(`Đã kích hoạt cấp quyền cho ${count} user hiện có khớp role/chức danh.`, 'success');
+        }
+      },
       error: err => {
         this.loadingCreateApp = false;
         this.createAppMessage = err?.error?.errorDesc ?? 'Đã có lỗi xảy ra.';
@@ -188,12 +211,13 @@ export class DefaultPermListComponent implements OnInit {
   }
 
   openCreateResource() {
-    this.createResForm = { roleId: '', positionCode: '', appId: '', resourceId: '' };
+    this.createResForm = { roleId: '', positionCode: '', appId: this.embeddedAppId ? String(this.embeddedAppId) : '', resourceId: '' };
     this.createResResources = [];
     this.createResActions = [];
     this.createResSelectedActions = [];
     this.createResourceMessage = '';
     this.showCreateResourceModal = true;
+    if (this.embeddedAppId) this.onCreateResAppChange();
   }
   closeCreateResource() { this.showCreateResourceModal = false; }
 
@@ -239,7 +263,15 @@ export class DefaultPermListComponent implements OnInit {
         actions: this.createResSelectedActions
       }]
     }).subscribe({
-      next: () => { this.loadingCreateResource = false; this.showCreateResourceModal = false; this.searchResourcePerms(); },
+      next: res => {
+        this.loadingCreateResource = false;
+        this.showCreateResourceModal = false;
+        this.searchResourcePerms();
+        const count = res.data?.[0]?.affectedUserCount;
+        if (count != null) {
+          this.showMessage(`Đã kích hoạt cấp quyền cho ${count} user hiện có khớp role/chức danh.`, 'success');
+        }
+      },
       error: err => {
         this.loadingCreateResource = false;
         this.createResourceMessage = err?.error?.errorDesc ?? 'Đã có lỗi xảy ra.';
@@ -292,5 +324,11 @@ export class DefaultPermListComponent implements OnInit {
   parseActions(actions: string | string[]): string[] {
     if (Array.isArray(actions)) return actions.filter(Boolean);
     return (actions ?? '').split(',').map(a => a.trim()).filter(Boolean);
+  }
+
+  private showMessage(msg: string, type: string) {
+    this.message = msg;
+    this.messageType = type;
+    setTimeout(() => this.message = '', 6000);
   }
 }

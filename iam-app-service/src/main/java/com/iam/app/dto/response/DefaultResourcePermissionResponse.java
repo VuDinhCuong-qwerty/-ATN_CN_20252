@@ -20,12 +20,23 @@ public class DefaultResourcePermissionResponse {
     private final String status;
     private final Instant createdAt;
     private final Instant updatedAt;
+    /** Số user ACTIVE hiện có khớp role+position — chỉ hiển thị thông tin, null nếu không tính (vd response của updatePermissions) */
+    private final Long affectedUserCount;
 
     public DefaultResourcePermissionResponse(AuthDefaultResource entity,
                                              String roleName,
                                              String positionName,
                                              String resourceCode,
                                              String resourceName) {
+        this(entity, roleName, positionName, resourceCode, resourceName, null);
+    }
+
+    public DefaultResourcePermissionResponse(AuthDefaultResource entity,
+                                             String roleName,
+                                             String positionName,
+                                             String resourceCode,
+                                             String resourceName,
+                                             Long affectedUserCount) {
         this.id = entity.getId();
         this.roleId = entity.getRoleId();
         this.roleName = roleName;
@@ -38,5 +49,6 @@ public class DefaultResourcePermissionResponse {
         this.status = entity.getStatus();
         this.createdAt = entity.getCreatedAt();
         this.updatedAt = entity.getUpdatedAt();
+        this.affectedUserCount = affectedUserCount;
     }
 }

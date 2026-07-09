@@ -31,6 +31,17 @@ public interface AuthUserRoleRepository extends JpaRepository<AuthUserRole, Long
     @Query(value = "SELECT COUNT(*) FROM AUTH_USER_ROLE ur JOIN AUTH_ROLE r ON ur.ROLE_ID = r.ID WHERE ur.USER_ID = :userId AND r.CODE = :roleCode AND ur.STATUS = 'ACTIVE'", nativeQuery = true)
     int countActiveByUserIdAndRoleCode(@Param("userId") Long userId, @Param("roleCode") String roleCode);
 
+    /**
+     * Lookup NGƯỢC chiều so với các query trên: từ 1 (role, position) tìm toàn bộ user ACTIVE khớp —
+     * dùng cho backfill khi có default-permission mới (DefaultPermissionBackfillConsumer).
+     */
+    @Query(value = "SELECT ur.USER_ID FROM AUTH_USER_ROLE ur " +
+                    "JOIN AUTH_USER_PROFILE up ON up.USER_ID = ur.USER_ID " +
+                    "JOIN AUTH_USER u ON u.ID = ur.USER_ID " +
+                    "WHERE ur.ROLE_ID = :roleId AND ur.STATUS = 'ACTIVE' " +
+                    "AND up.POSITION = :positionCode AND u.STATUS = 'ACTIVE'", nativeQuery = true)
+    List<Long> findActiveUserIdsByRoleIdAndPosition(@Param("roleId") Long roleId, @Param("positionCode") String positionCode);
+
     @Query(
         value = "SELECT * FROM AUTH_USER_ROLE WHERE USER_ID = :userId AND STATUS = :status",
         countQuery = "SELECT COUNT(*) FROM AUTH_USER_ROLE WHERE USER_ID = :userId AND STATUS = :status",

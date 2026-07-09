@@ -13,11 +13,7 @@ import { PermissionRequestDetailComponent } from './features/permissions/detail/
 import { AppListComponent } from './features/config/apps/app-list.component';
 import { AppDetailComponent } from './features/config/apps/detail/app-detail.component';
 import { AppCreateComponent } from './features/config/apps/create/app-create.component';
-import { ResourceListComponent } from './features/config/resources/resource-list.component';
-import { ClientListComponent } from './features/config/clients/client-list.component';
-import { ClientDetailComponent } from './features/config/clients/detail/client-detail.component';
-import { FlowListComponent } from './features/config/flows/flow-list.component';
-import { DefaultPermListComponent } from './features/config/default-perms/default-perm-list.component';
+import { AppOnboardWizardComponent } from './features/config/apps/onboard/app-onboard-wizard.component';
 import { authGuard } from './core/auth/auth.guard';
 
 export const routes: Routes = [
@@ -35,10 +31,6 @@ export const routes: Routes = [
   { path: 'users/credentials', component: UserCredentialComponent, canActivate: [authGuard] },
   { path: 'config/apps', component: AppListComponent, canActivate: [authGuard] },
   { path: 'config/apps/create', component: AppCreateComponent, canActivate: [authGuard] },
+  { path: 'config/apps/onboard', component: AppOnboardWizardComponent, canActivate: [authGuard] },
   { path: 'config/apps/detail', component: AppDetailComponent, canActivate: [authGuard] },
-  { path: 'config/resources', component: ResourceListComponent, canActivate: [authGuard] },
-  { path: 'config/clients', component: ClientListComponent, canActivate: [authGuard] },
-  { path: 'config/clients/detail', component: ClientDetailComponent, canActivate: [authGuard] },
-  { path: 'config/flows', component: FlowListComponent, canActivate: [authGuard] },
-  { path: 'config/default-perms', component: DefaultPermListComponent, canActivate: [authGuard] },
 ];

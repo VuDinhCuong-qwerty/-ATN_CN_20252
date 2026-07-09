@@ -79,25 +79,13 @@
         <i class="bi toggle-icon" [class.bi-chevron-down]="!configExpanded" [class.bi-chevron-up]="configExpanded"></i>
       </button>
       <div class="sub-nav" *ngIf="configExpanded">
+        <a class="nav-link-item" routerLink="/config/apps/onboard" routerLinkActive="active"
+           *ngIf="perm.has('application','create')">
+          <i class="bi bi-magic"></i><span>Tích hợp ứng dụng</span>
+        </a>
         <a class="nav-link-item" routerLink="/config/apps" routerLinkActive="active"
            *ngIf="perm.has('application','read')">
           <i class="bi bi-window"></i><span>Ứng dụng</span>
-        </a>
-        <a class="nav-link-item" routerLink="/config/resources" routerLinkActive="active"
-           *ngIf="perm.has('application','read')">
-          <i class="bi bi-boxes"></i><span>Tài nguyên</span>
-        </a>
-        <a class="nav-link-item" routerLink="/config/clients" routerLinkActive="active"
-           *ngIf="perm.has('client','read')">
-          <i class="bi bi-plug"></i><span>OAuth2 Client</span>
-        </a>
-        <a class="nav-link-item" routerLink="/config/flows" routerLinkActive="active"
-           *ngIf="perm.has('auth-flow','read')">
-          <i class="bi bi-diagram-3"></i><span>Auth Flow</span>
-        </a>
-        <a class="nav-link-item" routerLink="/config/default-perms" routerLinkActive="active"
-           *ngIf="perm.has('default-permission','read')">
-          <i class="bi bi-shield-check"></i><span>Quyền mặc định</span>
         </a>
       </div>
     </ng-container>

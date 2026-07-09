@@ -1,5 +1,6 @@
 package com.iam.app.service.impl;
 
+import com.iam.app.config.KafkaConfig;
 import com.iam.app.config.context.RequestContext;
 import com.iam.app.domain.AuthApplication;
 import com.iam.app.domain.AuthDefaultAppPermission;
@@ -10,9 +11,12 @@ import com.iam.app.dto.request.CreateDefaultAppPermissionRequest;
 import com.iam.app.dto.response.DefaultAppPermissionResponse;
 import com.iam.app.enums.ErrorCode;
 import com.iam.app.exception.BusinessException;
+import com.iam.app.kafka.payload.DefaultPermissionCreatedPayload;
+import com.iam.app.kafka.producer.AppEventProducer;
 import com.iam.app.repository.jpa.AuthApplicationRepository;
 import com.iam.app.repository.jpa.AuthDefaultAppPermissionRepository;
 import com.iam.app.repository.jpa.AuthPositionRepository;
+import com.iam.app.repository.jpa.AuthRepository;
 import com.iam.app.repository.jpa.AuthRoleRepository;
 import com.iam.app.service.DefaultAppPermissionService;
 import lombok.RequiredArgsConstructor;
@@ -38,6 +42,8 @@ public class DefaultAppPermissionServiceImpl implements DefaultAppPermissionServ
     private final AuthRoleRepository roleRepository;
     private final AuthPositionRepository positionRepository;
     private final AuthApplicationRepository applicationRepository;
+    private final AuthRepository authRepository;
+    private final AppEventProducer eventProducer;
 
     @Override
     public Page<DefaultAppPermissionResponse> getPermissions(String roleId, String positionCode,
@@ -145,13 +151,37 @@ public class DefaultAppPermissionServiceImpl implements DefaultAppPermissionServ
         Map<Long, String> appNameMap = appMap.entrySet().stream()
                 .collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().getName()));
 
-        return saved.stream()
-                .map(entity -> new DefaultAppPermissionResponse(
-                        entity,
-                        roleNameMap.get(entity.getRoleId()),
-                        positionNameMap.get(entity.getPositionCode()),
-                        appNameMap.get(entity.getApplicationId())))
-                .toList();
+        // Bắn Kafka backfill + tính affectedUserCount cho từng item vừa tạo
+        List<DefaultAppPermissionResponse> responses = new ArrayList<>();
+        for (AuthDefaultAppPermission entity : saved) {
+            AuthRole role = roleMap.get(entity.getRoleId());
+            long affectedUserCount = authRepository.countActiveUsersByRoleAndPosition(
+                    role.getId(), entity.getPositionCode());
+
+            try {
+                eventProducer.publish(
+                        KafkaConfig.TOPIC_DEFAULT_PERMISSION_CREATED,
+                        "DEFAULT_APP_PERMISSION_ADDED",
+                        DefaultPermissionCreatedPayload.builder()
+                                .permissionType("APP")
+                                .applicationId(entity.getApplicationId())
+                                .roleId(role.getId())
+                                .roleCode(role.getCode())
+                                .positionCode(entity.getPositionCode())
+                                .build());
+            } catch (Exception e) {
+                log.error("Failed to publish DEFAULT_APP_PERMISSION_ADDED for defaultAppPermissionId={}: {}",
+                        entity.getId(), e.getMessage(), e);
+            }
+
+            responses.add(new DefaultAppPermissionResponse(
+                    entity,
+                    roleNameMap.get(entity.getRoleId()),
+                    positionNameMap.get(entity.getPositionCode()),
+                    appNameMap.get(entity.getApplicationId()),
+                    affectedUserCount));
+        }
+        return responses;
     }
 
     @Override
