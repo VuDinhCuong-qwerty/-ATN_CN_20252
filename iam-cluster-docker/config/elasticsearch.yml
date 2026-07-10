@@ -22,3 +22,5 @@ xpack.security.authc.realms.ldap.ldap1.group_search.filter: "(member={0})"
 xpack.security.authc.realms.ldap.ldap1.group_search.scope: sub_tree
 xpack.security.authc.realms.ldap.ldap1.files.role_mapping: "/usr/share/elasticsearch/config/role_mapping.yml"
 xpack.security.authc.realms.ldap.ldap1.metadata: ["uid", "cn", "mail", "employeeNumber", "title", "description"]
+# Tắt cache để phục vụ demo — quyền vừa cấp có hiệu lực ngay, không cần đợi TTL hay gọi _clear_cache
+xpack.security.authc.realms.ldap.ldap1.cache.ttl: 0s
